@@ -84,6 +84,12 @@ export function getMenuList(pathname: string): Group[] {
           submenus: []
         },
         {
+          href: "/tasks",
+          label: "Task",
+          icon: Workflow,
+          submenus: []
+        },
+        {
           href: "/livetracking",
           label: "Live Tracking",
           icon: LucideView,

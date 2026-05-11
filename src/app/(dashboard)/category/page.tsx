@@ -2,11 +2,18 @@
 
 import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash } from "lucide-react"
+import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -41,6 +48,10 @@ export default function CategoryPage() {
     setIsDialogOpen(true)
   }
 
+  const handleDelete = (id: number) => {
+    setCategories((prev) => prev.filter((item) => item.id !== id))
+  }
+
   const handleAddNew = () => {
     setEditingCategory(null)
     setIsDialogOpen(true)
@@ -50,41 +61,54 @@ export default function CategoryPage() {
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="text-center">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
     },
     {
       accessorKey: "name",
       header: "Category Name",
-      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "groups",
       header: "Associated Groups",
-      cell: ({ row }) => <div className="text-muted-foreground italic">{row.getValue("groups")}</div>,
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {(row.getValue("groups") as string).split(",").map((group) => (
+            <Badge key={group} variant="secondary" className="bg-zinc-100 text-zinc-600 border-none text-[10px]">
+              {group.trim()}
+            </Badge>
+          ))}
+        </div>
+      ),
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right pr-4">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="flex justify-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleEdit(row.original)}
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
-            </Button>
+          <div className="text-right pr-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
+                  <MoreVertical className="h-4 w-4 text-zinc-500" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
+                <DropdownMenuItem 
+                  onClick={() => handleEdit(row.original)}
+                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
+                >
+                  <Edit className="h-4 w-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(row.original.id)}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
+                >
+                  <Trash className="h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },
@@ -121,7 +145,7 @@ export default function CategoryPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={categories} />
+        <DataTable columns={columns} data={categories} searchKey="name" />
       </div>
     </ContentLayout>
   )

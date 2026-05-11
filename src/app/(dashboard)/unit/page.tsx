@@ -2,12 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash } from "lucide-react"
+import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -52,16 +58,8 @@ export default function UnitPage() {
     }
   }, [editingUnit])
 
-  const handleStatusToggle = (id: number) => {
-    setTimeout(() => {
-      setData((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, status: item.status === "Active" ? "Inactive" : "Active" }
-            : item
-        )
-      )
-    }, 300)
+  const handleDelete = (id: number) => {
+    setData((prev) => prev.filter((item) => item.id !== id))
   }
 
   const handleEdit = (unit: Unit) => {
@@ -78,17 +76,17 @@ export default function UnitPage() {
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="text-center">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
     },
     {
       accessorKey: "label",
       header: "Label",
-      cell: ({ row }) => <div className="font-medium">{row.getValue("label")}</div>,
+      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("label")}</div>,
     },
     {
       accessorKey: "value",
       header: "Value",
-      cell: ({ row }) => <div className="font-mono font-bold text-primary">{row.getValue("value")}</div>,
+      cell: ({ row }) => <div className="text-zinc-600">{row.getValue("value")}</div>,
     },
     {
       accessorKey: "status",
@@ -96,39 +94,43 @@ export default function UnitPage() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
-          <div className="flex justify-center">
-            <AppleSwitch
-              checked={status === "Active"}
-              onCheckedChange={() => handleStatusToggle(row.original.id)}
-              size="sm"
-            />
-          </div>
+          <Badge 
+            variant={status === "Active" ? "success" : "secondary"}
+            className="rounded-full px-4 py-1 font-medium"
+          >
+            {status}
+          </Badge>
         )
       },
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right pr-4">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="flex justify-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleEdit(row.original)}
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
-            </Button>
+          <div className="text-right pr-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
+                  <MoreVertical className="h-4 w-4 text-zinc-500" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
+                <DropdownMenuItem 
+                  onClick={() => handleEdit(row.original)}
+                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
+                >
+                  <Edit className="h-4 w-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(row.original.id)}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
+                >
+                  <Trash className="h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },
@@ -186,7 +188,7 @@ export default function UnitPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={data} />
+        <DataTable columns={columns} data={data} searchKey="label" />
       </div>
     </ContentLayout>
   )

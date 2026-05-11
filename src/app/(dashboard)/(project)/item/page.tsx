@@ -2,13 +2,18 @@
 
 import { useState } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash } from "lucide-react"
+import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -78,15 +83,17 @@ export default function ItemPage() {
   const [editingItem, setEditingItem] = useState<Item | null>(null)
 
   const handleStatusToggle = (id: number) => {
-    setTimeout(() => {
-      setData((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, isBlocked: !item.isBlocked }
-            : item
-        )
+    setData((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, isBlocked: !item.isBlocked }
+          : item
       )
-    }, 300)
+    )
+  }
+
+  const handleDelete = (id: number) => {
+    setData((prev) => prev.filter((item) => item.id !== id))
   }
 
   const handleEdit = (item: Item) => {
@@ -103,13 +110,13 @@ export default function ItemPage() {
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="text-center">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
     },
     {
       accessorKey: "code",
       header: "Item Code",
       cell: ({ row }) => (
-        <Badge variant="secondary" className="font-mono">
+        <Badge variant="secondary" className="font-mono bg-zinc-100 text-zinc-700 border-none rounded-md">
           {row.getValue("code")}
         </Badge>
       ),
@@ -117,13 +124,13 @@ export default function ItemPage() {
     {
       accessorKey: "name",
       header: "Item Name",
-      cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "specification",
       header: "Specification",
       cell: ({ row }) => (
-        <div className="max-w-[200px] truncate text-muted-foreground">
+        <div className="max-w-[200px] truncate text-zinc-500">
           {row.getValue("specification")}
         </div>
       ),
@@ -132,68 +139,80 @@ export default function ItemPage() {
       accessorKey: "unit",
       header: "Unit",
       cell: ({ row }) => (
-        <div className="uppercase">{row.getValue("unit")}</div>
+        <div className="uppercase text-zinc-600 font-medium">{row.getValue("unit")}</div>
       ),
     },
     {
       accessorKey: "group",
       header: "Group",
       cell: ({ row }) => (
-        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full font-medium whitespace-nowrap">
+        <Badge variant="outline" className="rounded-full border-zinc-200 text-zinc-600 font-normal">
           {row.getValue("group")}
-        </span>
+        </Badge>
       ),
     },
     {
       accessorKey: "price",
-      header: () => <div className="text-right">Price (₹)</div>,
+      header: () => <div className="text-right">Price</div>,
       cell: ({ row }) => {
         const price = parseFloat(row.getValue("price"))
         const formatted = new Intl.NumberFormat("en-IN", {
           style: "currency",
           currency: "INR",
         }).format(price)
-        return <div className="text-right font-semibold">{formatted}</div>
+        return <div className="text-right font-semibold text-zinc-900">{formatted}</div>
       },
     },
     {
       accessorKey: "isBlocked",
-      header: "Item Blocked",
+      header: "Status",
       cell: ({ row }) => {
+        const isBlocked = row.getValue("isBlocked") as boolean
         return (
-          <div className="flex justify-center">
-            <AppleSwitch
-              checked={row.getValue("isBlocked")}
-              onCheckedChange={() => handleStatusToggle(row.original.id)}
-              size="sm"
-            />
-          </div>
+          <Badge 
+            variant={isBlocked ? "destructive" : "success"}
+            className="rounded-full px-4 py-1 font-medium"
+          >
+            {isBlocked ? "Blocked" : "Active"}
+          </Badge>
         )
       },
     },
     {
       id: "actions",
-      header: "Action",
+      header: () => <div className="text-right pr-4">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="flex justify-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => handleEdit(row.original)}
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Edit</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
-            </Button>
+          <div className="text-right pr-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
+                  <MoreVertical className="h-4 w-4 text-zinc-500" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
+                <DropdownMenuItem 
+                  onClick={() => handleEdit(row.original)}
+                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
+                >
+                  <Edit className="h-4 w-4" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleStatusToggle(row.original.id)}
+                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
+                >
+                  <AppleSwitch checked={!row.original.isBlocked} size="sm" className="scale-75" /> 
+                  {row.original.isBlocked ? "Unblock" : "Block"}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(row.original.id)}
+                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
+                >
+                  <Trash className="h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )
       },
@@ -239,7 +258,7 @@ export default function ItemPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={data} />
+        <DataTable columns={columns} data={data} searchKey="name" />
       </div>
     </ContentLayout>
   )
