@@ -79,17 +79,38 @@ export function getMenuList(pathname: string): Group[] {
           ]
         },
         {
+          href: "",
+          icon: Workflow,
+          label: "Project",
+          submenus: [
+            {
+              href: "/item",
+              label: "Item"
+            },
+            {
+              href: "/project",
+              label: "Project"
+            }
+          ]
+        },
+        {
+          href: "/vendor",
+          label: "Vendor",
+          icon: Scale,
+          submenus: []
+        },
+        {
           href: "/geofence",
           label: "Geofence",
           icon: LocateIcon,
           submenus: []
         },
-        // {
-        //   href: "/stores",
-        //   label: "Stores",
-        //   icon: Store,
-        //   submenus: []
-        // },
+        {
+          href: "/stores",
+          label: "Stores",
+          icon: Store,
+          submenus: []
+        },
         {
           href: "/calendar",
           label: "Calendar",
@@ -111,27 +132,6 @@ export function getMenuList(pathname: string): Group[] {
           href: "/Attendance-policy",
           label: "Attendance Policy",
           icon: ShieldCheck,
-          submenus: []
-        },
-        {
-          href: "",
-          icon: Workflow,
-          label: "Project",
-          submenus: [
-            {
-              href: "/item",
-              label: "Item"
-            },
-            {
-              href: "/project",
-              label: "Project"
-            }
-          ]
-        },
-        {
-          href: "/vendor",
-          label: "Vendor",
-          icon: Scale,
           submenus: []
         }
       ]

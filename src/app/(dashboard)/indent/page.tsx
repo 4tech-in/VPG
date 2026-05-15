@@ -201,7 +201,7 @@ export default function IndentPage() {
            </div>
         </div>
 
-        {/* Global Strategy Metrics */}
+        {/* Global Strategy Metrics
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            {[
              { label: "Total Indents", val: "142", color: "text-zinc-600", bg: "bg-zinc-50" },
@@ -218,7 +218,7 @@ export default function IndentPage() {
                 </div>
              </div>
            ))}
-        </div>
+        </div> */}
 
         {/* Indent Board */}
         <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm">

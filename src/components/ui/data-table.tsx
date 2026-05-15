@@ -85,6 +85,19 @@ export function DataTable<TData, TValue>({
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center space-x-2">
+          {searchKey && (
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-primary transition-colors" />
+              <Input
+                placeholder={`Search ${searchKey}...`}
+                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+                onChange={(event) =>
+                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                }
+                className="h-10 w-[250px] pl-10 rounded-xl border-slate-200 focus-visible:ring-primary/20 bg-white shadow-sm transition-all"
+              />
+            </div>
+          )}
         </div>
       </div>
       <div className="w-full overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
+import Link from "next/link"
 import { ColumnDef } from "@tanstack/react-table"
 import { 
   Edit, 
@@ -14,7 +15,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { cn } from "@/lib/utils"
-import { Switch } from "@/components/ui/switch"
+import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
 import {
   Dialog,
   DialogContent,
@@ -75,7 +76,7 @@ export default function ProjectPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
 
-  const handleStatusToggle = (id: number) => {
+  const handleStatusToggle = useCallback((id: number) => {
     setData((prev) =>
       prev.map((item) =>
         item.id === id
@@ -83,24 +84,24 @@ export default function ProjectPage() {
           : item
       )
     )
-  }
+  }, [])
 
-  const handleDelete = (id: number) => {
+  const handleDelete = useCallback((id: number) => {
     setData((prev) => prev.filter((item) => item.id !== id))
-  }
+  }, [])
 
-  const handleEdit = (project: Project) => {
+  const handleEdit = useCallback((project: Project) => {
     setEditingProject(project)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingProject(null)
     setIsDialogOpen(true)
-  }
+  }, [])
 
   // ... columns definition (kept same as before but ensured it's professional) ...
-  const columns: ColumnDef<Project>[] = [
+  const columns = useMemo<ColumnDef<Project>[]>(() => [
     {
       accessorKey: "id",
       header: () => <div className="text-center w-full">S.No</div>,
@@ -110,10 +111,17 @@ export default function ProjectPage() {
       accessorKey: "name",
       header: "Project Name",
       cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-bold text-zinc-900 leading-none mb-1">{row.getValue("name")}</span>
-          <span className="text-[10px] text-zinc-400 uppercase tracking-tighter font-medium">Project ID: PRJ-00{row.original.id}</span>
-        </div>
+        <Link 
+          href={`/project/${row.original.id}`}
+          className="flex flex-col group cursor-pointer"
+        >
+          <span className="font-bold text-zinc-900 leading-none mb-1 group-hover:text-primary transition-colors">
+            {row.getValue("name")}
+          </span>
+          <span className="text-[10px] text-zinc-400 uppercase tracking-tighter font-medium">
+            Project ID: PRJ-00{row.original.id}
+          </span>
+        </Link>
       ),
     },
     {
@@ -127,14 +135,14 @@ export default function ProjectPage() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
-          <div className="flex items-center justify-center gap-2">
-            <Switch 
+          <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <AppleSwitch 
               checked={status === "Active"}
               onCheckedChange={() => handleStatusToggle(row.original.id)}
-              className="data-[state=checked]:bg-emerald-600"
+              size="sm"
             />
             <span className={cn(
-              "text-xs font-bold min-w-[55px] px-2 py-0.5 rounded-full transition-colors",
+              "text-xs font-bold w-[65px] text-center px-2 py-0.5 rounded-full transition-colors",
               status === "Active" ? "text-emerald-700 bg-emerald-50" : "text-zinc-500 bg-zinc-100"
             )}>
               {status}
@@ -179,7 +187,7 @@ export default function ProjectPage() {
         )
       },
     },
-  ]
+  ], [handleStatusToggle, handleEdit, handleDelete])
 
   return (
     <ContentLayout title="Project Management">
