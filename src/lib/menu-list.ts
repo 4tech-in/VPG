@@ -15,7 +15,8 @@ import {
   ShoppingCart,
   LayoutDashboard,
   LucideView,
-  User2
+  User2,
+  DollarSign
 } from "lucide-react";
 
 type Submenu = {
@@ -127,6 +128,11 @@ export function getMenuList(pathname: string): Group[] {
           href:"/leave",
           label:"Leave",
           icon:Calendar
+        },
+        {
+          href:"/advance",
+          label:"Advance",
+          icon:DollarSign
         }
       ]
     },
