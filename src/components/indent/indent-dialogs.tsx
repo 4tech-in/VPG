@@ -162,7 +162,7 @@ export function ViewIndentDialog({ trigger }: { trigger: React.ReactNode }) {
 
                {/* Explanation: Leaner */}
                <div className="p-5 bg-zinc-100/50 rounded-2xl border border-zinc-100 border-dashed">
-                  <p className="text-[11px] font-bold text-zinc-500 italic leading-relaxed">"Required for plastering work on 4th floor"</p>
+                  <p className="text-[11px] font-bold text-zinc-500 italic leading-relaxed">&quot;Required for plastering work on 4th floor&quot;</p>
                </div>
 
                {/* Requested Items */}

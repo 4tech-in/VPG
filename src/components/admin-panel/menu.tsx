@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Ellipsis, LogOut, Settings } from "lucide-react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -129,9 +130,11 @@ export function Menu({ isOpen }: MenuProps) {
               isOpen === false ? "justify-center" : "gap-3"
             )}>
               <div className="relative flex-shrink-0">
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100&h=100"
                   alt="User"
+                  width={40}
+                  height={40}
                   className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
                 />
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>

@@ -13,7 +13,7 @@ interface StaffCardProps {
     name: string
     role: string
     properties: number
-    status: "Active" | "Busy" | "Away"
+    status: "Active" | "Busy" | "Away" | "Inactive"
     avatarUrl?: string
   }
 }
@@ -23,6 +23,7 @@ export function StaffCard({ staff }: StaffCardProps) {
     Active: "bg-emerald-500",
     Busy: "bg-rose-500",
     Away: "bg-amber-500",
+    Inactive: "bg-zinc-400",
   }
 
   return (

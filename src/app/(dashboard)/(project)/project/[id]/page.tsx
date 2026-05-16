@@ -158,7 +158,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </div>
       ),
     },
-  ], [handleTowerStatusToggle])
+  ], [handleTowerStatusToggle, project.id])
 
   const nonTowerColumns = useMemo<ColumnDef<any>[]>(() => [
     {

@@ -31,7 +31,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function PolicyDialog() {
+interface PolicyDialogProps {
+  mode?: "edit" | "create"
+}
+
+export function PolicyDialog({ mode = "create" }: PolicyDialogProps) {
   const [open, setOpen] = useState(false)
 
   return (

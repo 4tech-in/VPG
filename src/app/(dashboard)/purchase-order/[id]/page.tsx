@@ -163,7 +163,7 @@ export default function PODetailPage() {
                        </div>
                     </div>
                     <div className="bg-zinc-50/50 p-6 rounded-2xl border border-zinc-100/50 italic text-sm font-bold text-zinc-500 leading-relaxed">
-                       "Please ensure all cement bags are from the latest batch. Sand must be double-washed as per site specifications."
+                       &quot;Please ensure all cement bags are from the latest batch. Sand must be double-washed as per site specifications.&quot;
                     </div>
                  </div>
 

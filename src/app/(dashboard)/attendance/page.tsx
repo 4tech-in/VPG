@@ -241,7 +241,7 @@ export default function AttendancePage() {
                  <div className="h-9 w-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white">
                     <User2 className="h-5 w-5" />
                  </div>
-                 <h3 className="text-lg font-black text-zinc-900 tracking-tight">Today's Presence</h3>
+                 <h3 className="text-lg font-black text-zinc-900 tracking-tight">Today&apos;s Presence</h3>
               </div>
               <Button variant="ghost" className="text-zinc-400 font-bold text-xs gap-2 hover:text-zinc-900">
                  View History <ArrowUpRight className="h-4 w-4" />

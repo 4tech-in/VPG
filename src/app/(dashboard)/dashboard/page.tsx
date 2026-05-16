@@ -2,6 +2,7 @@
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { 
   BookOpen, 
@@ -222,7 +223,7 @@ export default function DashboardPage() {
                       <tr key={i} className="hover:bg-muted/30 transition-colors">
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <img src={row.img} className="w-8 h-8 rounded-full" alt="" />
+                            <Image src={row.img} className="w-8 h-8 rounded-full" alt="" width={32} height={32} />
                             <div className="flex flex-col">
                               <span className="font-bold text-xs">{row.name}</span>
                               <span className="text-[10px] text-muted-foreground">ID: {row.id}</span>
@@ -263,7 +264,7 @@ export default function DashboardPage() {
                 ].map((author, i) => (
                   <div key={i} className="flex items-center gap-4">
                     <div className="relative">
-                      <img src={author.img} className="w-10 h-10 rounded-full" alt="" />
+                      <Image src={author.img} className="w-10 h-10 rounded-full" alt="" width={40} height={40} />
                       <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white">
                         {author.rank}
                       </div>
