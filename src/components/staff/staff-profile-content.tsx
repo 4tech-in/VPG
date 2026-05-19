@@ -33,7 +33,7 @@ export function StaffProfileContent({ id }: { id: string }) {
 
   const mockInitialValues = {
     name: "Julian Casablancas",
-    email: "julian@marbella.estate",
+    email: "julian@VPG.estate",
     phone: "+34 600 123 456",
     role: "agent",
     gender: "male",
@@ -84,14 +84,14 @@ export function StaffProfileContent({ id }: { id: string }) {
           <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Staff Profile</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={() => setIsRequestDialogOpen(true)}
             className="h-11 rounded-xl px-6 bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20"
           >
             New Request
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setIsEditDialogOpen(true)}
             className="h-11 rounded-xl px-6 border-zinc-100 font-bold hover:bg-zinc-50"
           >
@@ -100,18 +100,18 @@ export function StaffProfileContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <NewRequestDialog 
-        open={isRequestDialogOpen} 
-        onOpenChange={setIsRequestDialogOpen} 
+      <NewRequestDialog
+        open={isRequestDialogOpen}
+        onOpenChange={setIsRequestDialogOpen}
       />
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem]">
           <div className="max-h-[90vh] overflow-y-auto p-12 custom-scrollbar bg-white">
-            <StaffForm 
-              isDialog 
+            <StaffForm
+              isDialog
               initialValues={mockInitialValues}
-              onSuccess={() => setIsEditDialogOpen(false)} 
+              onSuccess={() => setIsEditDialogOpen(false)}
             />
           </div>
         </DialogContent>
@@ -154,7 +154,7 @@ export function StaffProfileContent({ id }: { id: string }) {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-zinc-400 uppercase">Email</span>
-                    <span className="text-sm font-bold text-zinc-900">julian@marbella.estate</span>
+                    <span className="text-sm font-bold text-zinc-900">julian@VPG.estate</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -208,7 +208,7 @@ export function StaffProfileContent({ id }: { id: string }) {
                   <div>
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Bio / Notes</p>
                     <p className="text-zinc-500 leading-relaxed">
-                      Senior Sales Agent specializing in luxury properties in Marbella. Over 5 years of experience in the local market. Known for excellent client relationships and closing high-value deals.
+                      Senior Sales Agent specializing in luxury properties in VPG. Over 5 years of experience in the local market. Known for excellent client relationships and closing high-value deals.
                     </p>
                   </div>
                 </CardContent>

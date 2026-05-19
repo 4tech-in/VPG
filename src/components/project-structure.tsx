@@ -1,13 +1,13 @@
 "use client"
 
 import React, { useState } from "react"
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  LayoutGrid, 
-  Map, 
-  Building2, 
-  Layers, 
+import {
+  ChevronDown,
+  ChevronRight,
+  LayoutGrid,
+  Map,
+  Building2,
+  Layers,
   Home,
   CheckCircle2
 } from "lucide-react"
@@ -26,7 +26,7 @@ interface Node {
 const structureData: Node = {
   id: "p1",
   type: "Project",
-  name: "Marbella Grande",
+  name: "VPG Grande",
   isOpen: true,
   children: [
     {
@@ -140,7 +140,7 @@ const TreeNode = ({ node, isLast, level }: { node: Node, isLast: boolean, level:
       <div className="flex items-start gap-4 py-3">
         <div className="flex items-center justify-center w-6 h-10 shrink-0">
           {hasChildren && (
-            <button 
+            <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-zinc-400 hover:text-zinc-600 transition-colors z-10"
             >
@@ -171,23 +171,23 @@ const TreeNode = ({ node, isLast, level }: { node: Node, isLast: boolean, level:
           <div className={cn(
             "absolute left-[-28px] top-[-10px] w-[1px] bg-zinc-200",
             isLast ? "h-[20px]" : "bottom-[26px]" // This logic is slightly flawed for recursion
-          )} 
-          style={{ 
-            height: isLast ? '0px' : 'calc(100% - 10px)',
-            bottom: '26px' 
-          }}
+          )}
+            style={{
+              height: isLast ? '0px' : 'calc(100% - 10px)',
+              bottom: '26px'
+            }}
           />
           {/* Simpler approach: a line that always goes from top to bottom, but we hide it for the last node if it's a leaf? No. */}
           {/* Let's use a border on the container and rely on the child to "cover" the bottom part if needed, 
               but standard tree lines are usually handled by a vertical line that extends from the parent down to the last child's branch. */}
           <div className="absolute left-[-28px] top-[-10px] bottom-[26px] w-[1px] bg-zinc-200" />
-          
+
           {node.children?.map((child, index) => (
-            <TreeNode 
-              key={child.id} 
-              node={child} 
+            <TreeNode
+              key={child.id}
+              node={child}
               level={level + 1}
-              isLast={index === (node.children?.length ?? 0) - 1} 
+              isLast={index === (node.children?.length ?? 0) - 1}
             />
           ))}
         </div>
@@ -205,7 +205,7 @@ export function ProjectStructure() {
         </div>
         <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Project Structure</h2>
       </div>
-      
+
       <div className="max-w-full">
         <TreeNode node={structureData} level={0} isLast={true} />
       </div>

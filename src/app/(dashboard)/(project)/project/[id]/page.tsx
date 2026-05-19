@@ -2,19 +2,19 @@
 
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { 
-  ArrowLeft, 
-  Edit3, 
-  Calendar, 
-  MapPin, 
-  FileText, 
-  Layout, 
-  Building2, 
-  HardHat, 
-  FileStack, 
-  Settings2, 
-  Search, 
-  Plus, 
+import {
+  ArrowLeft,
+  Edit3,
+  Calendar,
+  MapPin,
+  FileText,
+  Layout,
+  Building2,
+  HardHat,
+  FileStack,
+  Settings2,
+  Search,
+  Plus,
   MoreVertical,
   Eye,
   Trash,
@@ -49,7 +49,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   // In a real app, you'd fetch this data based on the ID
   const project = {
     id: params.id,
-    name: "Marbella Grande",
+    name: "VPG Grande",
     location: "Sector 82, Mohali",
     status: "Active",
     startDate: "01/01/2023",
@@ -92,7 +92,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       accessorKey: "name",
       header: "Tower Name",
       cell: ({ row }) => (
-        <Link 
+        <Link
           href={`/project/${project.id}/tower/${row.original.id}`}
           className="font-bold text-zinc-900 hover:text-primary transition-colors"
         >
@@ -104,7 +104,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       accessorKey: "number",
       header: "Tower Number",
       cell: ({ row }) => (
-        <Link 
+        <Link
           href={`/project/${project.id}/tower/${row.original.id}`}
           className="text-blue-600 font-bold hover:underline cursor-pointer"
         >
@@ -119,8 +119,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         const status = row.getValue("status") as string
         return (
           <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            <AppleSwitch 
-              checked={status === "Active"} 
+            <AppleSwitch
+              checked={status === "Active"}
               onCheckedChange={() => handleTowerStatusToggle(row.original.id)}
               size="sm"
             />
@@ -144,9 +144,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               <Eye className="h-4 w-4" />
             </Button>
           </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setEditingTower(row.original)
               setIsEditTowerDialogOpen(true)
@@ -199,9 +199,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       header: "Action",
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setEditingArea(row.original)
               setIsEditAreaDialogOpen(true)
@@ -210,9 +210,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           >
             <Edit3 className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-8 w-8 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
           >
             <Trash className="h-4 w-4" />
@@ -244,32 +244,32 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         {/* Tabs Section */}
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="bg-zinc-100/80 p-1.5 rounded-2xl h-auto mb-6 flex-wrap justify-start border border-zinc-200/50 backdrop-blur-sm">
-            <TabsTrigger 
-              value="details" 
+            <TabsTrigger
+              value="details"
               className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-bold text-sm transition-all"
             >
               Project Details
             </TabsTrigger>
-            <TabsTrigger 
-              value="towers" 
+            <TabsTrigger
+              value="towers"
               className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-bold text-sm transition-all text-zinc-500 hover:text-zinc-900"
             >
               Towers
             </TabsTrigger>
-            <TabsTrigger 
-              value="non-tower" 
+            <TabsTrigger
+              value="non-tower"
               className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-bold text-sm transition-all text-zinc-500 hover:text-zinc-900"
             >
               Non Tower Area
             </TabsTrigger>
-            <TabsTrigger 
-              value="documents" 
+            <TabsTrigger
+              value="documents"
               className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-bold text-sm transition-all text-zinc-500 hover:text-zinc-900"
             >
               Project Documents
             </TabsTrigger>
-            <TabsTrigger 
-              value="structure" 
+            <TabsTrigger
+              value="structure"
               className="rounded-xl px-6 py-2.5 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary font-bold text-sm transition-all text-zinc-500 hover:text-zinc-900"
             >
               Structure
@@ -280,7 +280,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="bg-white border border-zinc-200 rounded-[32px] p-8 sm:p-12 shadow-sm relative overflow-hidden group">
               {/* Decorative accent */}
               <div className="absolute top-0 left-0 w-1 h-full bg-primary/10 group-hover:bg-primary transition-colors" />
-              
+
               <div className="space-y-12">
                 {/* Status Section */}
                 <div className="flex items-center gap-3">
@@ -299,7 +299,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     </div>
                     <p className="text-lg font-black text-zinc-900">{project.startDate}</p>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-primary/60">
                       <Layout className="h-4 w-4" />
@@ -339,7 +339,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               {/* Towers Header */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <h2 className="text-xl font-black text-zinc-900">Project Towers</h2>
-                <Button 
+                <Button
                   onClick={() => setIsTowerDialogOpen(true)}
                   className="rounded-xl h-10 px-4 gap-2 bg-[#00A991] hover:bg-[#008F7A] text-white font-bold border-none shadow-lg shadow-[#00A991]/20"
                 >
@@ -362,12 +362,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <div className="flex items-center gap-3">
                   <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-primary transition-colors" />
-                    <Input 
-                      placeholder="Search areas..." 
+                    <Input
+                      placeholder="Search areas..."
                       className="h-10 w-[250px] pl-10 rounded-xl border-zinc-200 focus-visible:ring-primary/20 bg-white shadow-sm"
                     />
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => setIsAddAreaDialogOpen(true)}
                     className="rounded-xl h-10 px-4 gap-2 bg-[#00A991] hover:bg-[#008F7A] text-white font-bold border-none shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
                   >
@@ -411,22 +411,22 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="p-8 space-y-6">
               <div className="space-y-3">
                 <label className="text-sm font-bold text-zinc-600">How many towers would you like to create?</label>
-                <Input 
+                <Input
                   type="number"
-                  placeholder="e.g. 10" 
+                  placeholder="e.g. 10"
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
                 />
               </div>
             </div>
             <div className="flex items-center justify-end gap-4 p-8 bg-zinc-50/50 border-t border-zinc-100">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setIsTowerDialogOpen(false)}
                 className="rounded-2xl h-12 px-8 font-black text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/50"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="rounded-2xl h-12 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Create Towers
@@ -444,16 +444,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="p-8 space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Tower Name</label>
-                <Input 
-                  placeholder="e.g. Tower A" 
+                <Input
+                  placeholder="e.g. Tower A"
                   defaultValue={editingTower?.name}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Tower Number</label>
-                <Input 
-                  placeholder="e.g. A1" 
+                <Input
+                  placeholder="e.g. A1"
                   defaultValue={editingTower?.number}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-zinc-200 text-lg font-bold transition-all px-6"
                 />
@@ -472,14 +472,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
             </div>
             <div className="flex items-center justify-center gap-4 p-8 border-t border-zinc-100">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsEditTowerDialogOpen(false)}
                 className="rounded-2xl h-14 px-10 font-black text-zinc-900 border-zinc-200 border-2 hover:bg-zinc-50"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="rounded-2xl h-14 px-10 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Update Tower
@@ -497,9 +497,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="p-6 space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-600">Area Name</label>
-                <Input 
+                <Input
                   defaultValue={editingArea?.name}
-                  placeholder="e.g. Swimming Pool" 
+                  placeholder="e.g. Swimming Pool"
                   className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
                 />
               </div>
@@ -517,14 +517,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
             </div>
             <div className="flex items-center justify-center gap-3 p-6 border-t border-zinc-100 bg-white">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsEditAreaDialogOpen(false)}
                 className="rounded-xl h-11 px-8 font-black text-zinc-900 border-zinc-200"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all"
               >
                 Update Area
@@ -542,8 +542,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             <div className="p-6 space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-600">Area Name</label>
-                <Input 
-                  placeholder="e.g. Swimming Pool, Garden" 
+                <Input
+                  placeholder="e.g. Swimming Pool, Garden"
                   className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
                 />
               </div>
@@ -561,14 +561,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
             </div>
             <div className="flex items-center justify-center gap-3 p-6 border-t border-zinc-100 bg-white">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsAddAreaDialogOpen(false)}
                 className="rounded-xl h-11 px-8 font-black text-zinc-900 border-zinc-200"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Add Area

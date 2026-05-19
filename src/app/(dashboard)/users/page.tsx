@@ -55,7 +55,7 @@ const INITIAL_STAFF: Staff[] = [
     id: "1",
     name: "Julian Casablancas",
     role: "Senior Sales Agent",
-    email: "julian@marbella.estate",
+    email: "julian@VPG.estate",
     phone: "+34 600 123 456",
     properties: 42,
     status: "Active",
@@ -64,7 +64,7 @@ const INITIAL_STAFF: Staff[] = [
     id: "2",
     name: "Sofia Rodriguez",
     role: "Luxury Property Specialist",
-    email: "sofia@marbella.estate",
+    email: "sofia@VPG.estate",
     phone: "+34 600 234 567",
     properties: 28,
     status: "Busy",
@@ -73,7 +73,7 @@ const INITIAL_STAFF: Staff[] = [
     id: "3",
     name: "Marcus Aurelius",
     role: "Operations Manager",
-    email: "marcus@marbella.estate",
+    email: "marcus@VPG.estate",
     phone: "+34 600 345 678",
     properties: 0,
     status: "Away",
@@ -82,7 +82,7 @@ const INITIAL_STAFF: Staff[] = [
     id: "4",
     name: "Elena Gilbert",
     role: "Real Estate Consultant",
-    email: "elena@marbella.estate",
+    email: "elena@VPG.estate",
     phone: "+34 600 456 789",
     properties: 15,
     status: "Active",
@@ -157,7 +157,7 @@ export default function UserPage() {
         const isActive = status === "Active"
         return (
           <div className="flex items-center justify-center gap-2">
-            <Switch 
+            <Switch
               checked={isActive}
               onCheckedChange={(checked) => handleUpdateStatus(row.original.id, checked ? "Active" : "Inactive")}
               className="data-[state=checked]:bg-emerald-600"
@@ -240,7 +240,7 @@ export default function UserPage() {
               </Button>
             </div>
 
-            <Button 
+            <Button
               onClick={handleAddNew}
               className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20"
             >
@@ -271,19 +271,19 @@ export default function UserPage() {
               <DialogDescription className="font-medium text-zinc-500">
                 {editingStaff
                   ? "Modify account permissions and professional details for this member."
-                  : "Onboard a new member to the Marbella Estate team."}
+                  : "Onboard a new member to the VPG Estate team."}
               </DialogDescription>
             </DialogHeader>
             <div className="py-2">
-              <StaffForm 
+              <StaffForm
                 isDialog
                 onSuccess={() => setIsDialogOpen(false)}
                 initialValues={editingStaff ? {
                   name: editingStaff.name,
                   email: editingStaff.email,
                   phone: editingStaff.phone,
-                  role: editingStaff.role.toLowerCase().includes("agent") ? "agent" : 
-                        editingStaff.role.toLowerCase().includes("manager") ? "manager" : "admin"
+                  role: editingStaff.role.toLowerCase().includes("agent") ? "agent" :
+                    editingStaff.role.toLowerCase().includes("manager") ? "manager" : "admin"
                 } : undefined}
               />
             </div>

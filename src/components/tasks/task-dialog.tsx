@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { 
-  Plus, 
-  Calendar as CalendarIcon, 
-  MessageSquare, 
-  Paperclip, 
-  User, 
-  CheckCircle2, 
-  Clock, 
+import {
+  Plus,
+  Calendar as CalendarIcon,
+  MessageSquare,
+  Paperclip,
+  User,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   Briefcase
 } from "lucide-react"
@@ -40,16 +40,16 @@ import { Badge } from "@/components/ui/badge"
 
 // Mock projects and users for the "automatic assignment" demo
 const PROJECTS = [
-  { id: "p1", name: "Marbella Twin Towers", users: ["Julian Casablancas", "Sofia Rodriguez"] },
-  { id: "p2", name: "Marbella Royce", users: ["Marcus Aurelius", "Elena Gilbert"] },
-  { id: "p3", name: "Marbella Grand", users: ["Julian Casablancas", "Marcus Aurelius"] },
+  { id: "p1", name: "VPG Twin Towers", users: ["Julian Casablancas", "Sofia Rodriguez"] },
+  { id: "p2", name: "VPG Royce", users: ["Marcus Aurelius", "Elena Gilbert"] },
+  { id: "p3", name: "VPG Grand", users: ["Julian Casablancas", "Marcus Aurelius"] },
 ]
 
 export function TaskDialog() {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedProject, setSelectedProject] = useState<string>("")
   const [assignedUsers, setAssignedUsers] = useState<string[]>([])
-  
+
   // Handle automatic user assignment based on project
   useEffect(() => {
     if (selectedProject) {
@@ -93,9 +93,9 @@ export function TaskDialog() {
             {/* Task Name */}
             <div className="space-y-2 md:col-span-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Name</Label>
-              <Input 
-                required 
-                placeholder="e.g. Finalize Sale for Unit 402" 
+              <Input
+                required
+                placeholder="e.g. Finalize Sale for Unit 402"
                 className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-bold"
               />
             </div>
@@ -103,8 +103,8 @@ export function TaskDialog() {
             {/* Description */}
             <div className="space-y-2 md:col-span-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Description</Label>
-              <Textarea 
-                placeholder="Describe the task in detail..." 
+              <Textarea
+                placeholder="Describe the task in detail..."
                 className="min-h-[100px] rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-medium p-4"
               />
             </div>
@@ -158,8 +158,8 @@ export function TaskDialog() {
             <div className="space-y-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Due Date</Label>
               <div className="relative">
-                <Input 
-                  type="date" 
+                <Input
+                  type="date"
                   className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-bold pl-4"
                 />
                 <CalendarIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
@@ -184,7 +184,7 @@ export function TaskDialog() {
             </div>
           </div>
 
-          
+
           <DialogFooter className="pt-8 border-t border-zinc-50 gap-4">
             <Button type="button" variant="ghost" className="h-14 rounded-2xl px-8 font-bold text-zinc-400" onClick={() => setIsOpen(false)}>
               Cancel

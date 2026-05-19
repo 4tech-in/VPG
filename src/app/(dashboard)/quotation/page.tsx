@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
-import { 
+import {
   Plus,
   Search,
   MoreVertical,
@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,7 +50,7 @@ const MOCK_QUOTATIONS: Quotation[] = [
   {
     id: "IND-001",
     requester: { name: "Ravi Kumar", role: "Worker" },
-    project: { name: "Marbella Grande" },
+    project: { name: "VPG Grande" },
     items: { count: 1, preview: "Cement Bag" },
     status: "AWAITING QUOTATION",
     created: "2024-05-01"
@@ -129,27 +129,27 @@ export default function QuotationPage() {
       header: "Action",
       cell: ({ row }) => (
         <div className="flex justify-end pr-4">
-           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-zinc-100">
-                    <MoreVertical className="h-4 w-4 text-zinc-400" />
-                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-2xl border-none">
-                 <DropdownMenuItem 
-                   onClick={() => router.push(`/quotation/${row.original.id}`)}
-                   className="rounded-xl font-bold text-zinc-600 gap-3 py-3 cursor-pointer"
-                 >
-                    <Eye className="h-4 w-4" /> View Details
-                 </DropdownMenuItem>
-                 <DropdownMenuItem className="rounded-xl font-bold text-emerald-600 gap-3 py-3 cursor-pointer focus:bg-emerald-50 focus:text-emerald-600">
-                    <CheckCircle2 className="h-4 w-4" /> Approve Quotation
-                 </DropdownMenuItem>
-                 <DropdownMenuItem className="rounded-xl font-bold text-rose-500 gap-3 py-3 cursor-pointer focus:bg-rose-50 focus:text-rose-600">
-                    <XCircle className="h-4 w-4" /> Reject Quotation
-                 </DropdownMenuItem>
-              </DropdownMenuContent>
-           </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-zinc-100">
+                <MoreVertical className="h-4 w-4 text-zinc-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-2xl border-none">
+              <DropdownMenuItem
+                onClick={() => router.push(`/quotation/${row.original.id}`)}
+                className="rounded-xl font-bold text-zinc-600 gap-3 py-3 cursor-pointer"
+              >
+                <Eye className="h-4 w-4" /> View Details
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl font-bold text-emerald-600 gap-3 py-3 cursor-pointer focus:bg-emerald-50 focus:text-emerald-600">
+                <CheckCircle2 className="h-4 w-4" /> Approve Quotation
+              </DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl font-bold text-rose-500 gap-3 py-3 cursor-pointer focus:bg-rose-50 focus:text-rose-600">
+                <XCircle className="h-4 w-4" /> Reject Quotation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
@@ -158,28 +158,28 @@ export default function QuotationPage() {
   return (
     <ContentLayout title="Quotation Requests (RFQs)">
       <div className="flex flex-col gap-8 p-6 sm:p-10 max-w-[1600px] mx-auto min-h-screen">
-        
+
         {/* Header Control Hub */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-           <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Quotation Requests (RFQs)</h1>
-           
-           <div className="flex items-center gap-4">
-              <div className="relative w-72">
-                 <Input placeholder="Search by Indent ID..." className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-medium shadow-sm" />
-                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
-              </div>
-              <Button className="h-12 px-8 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20 gap-2">
-                 <Plus className="h-5 w-5" /> New RFQ
-              </Button>
-           </div>
+          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Quotation Requests (RFQs)</h1>
+
+          <div className="flex items-center gap-4">
+            <div className="relative w-72">
+              <Input placeholder="Search by Indent ID..." className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-medium shadow-sm" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
+            </div>
+            <Button className="h-12 px-8 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20 gap-2">
+              <Plus className="h-5 w-5" /> New RFQ
+            </Button>
+          </div>
         </div>
 
         {/* Board */}
         <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm">
-           <DataTable 
-             columns={columns} 
-             data={data} 
-           />
+          <DataTable
+            columns={columns}
+            data={data}
+          />
         </div>
       </div>
     </ContentLayout>

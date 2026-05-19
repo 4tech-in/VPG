@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { 
-  Building2, 
+import {
+  Building2,
   User,
   Phone,
   Mail,
@@ -17,12 +17,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select"
 import {
   Dialog,
@@ -50,9 +50,9 @@ export function VendorDialog() {
       <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">
         {label} {required && <span className="text-rose-500">*</span>}
       </Label>
-      <Input 
-        placeholder={placeholder} 
-        className="h-11 rounded-xl bg-zinc-50/50 border-zinc-100 focus:bg-white transition-all font-medium text-sm" 
+      <Input
+        placeholder={placeholder}
+        className="h-11 rounded-xl bg-zinc-50/50 border-zinc-100 focus:bg-white transition-all font-medium text-sm"
       />
     </div>
   )
@@ -61,40 +61,40 @@ export function VendorDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="h-12 px-8 rounded-2xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/20 gap-2 hover:bg-zinc-800 transition-all">
-           <Plus className="h-5 w-5" /> Add Strategic Vendor
+          <Plus className="h-5 w-5" /> Add Strategic Vendor
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] flex flex-col bg-white">
-        
+
         {/* Modern Header */}
         <div className="flex items-center justify-between p-8 bg-white shrink-0 border-b border-zinc-50">
-           <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-lg shadow-zinc-900/20">
-                 <Building2 className="h-6 w-6" />
-              </div>
-              <div>
-                 <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">VENDOR MASTER</DialogTitle>
-                 <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.3em] leading-none mt-1">Partner Registration System</p>
-              </div>
-           </div>
-           <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full hover:bg-zinc-50">
-              <X className="h-5 w-5 text-zinc-400" />
-           </Button>
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-lg shadow-zinc-900/20">
+              <Building2 className="h-6 w-6" />
+            </div>
+            <div>
+              <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">VENDOR MASTER</DialogTitle>
+              <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.3em] leading-none mt-1">Partner Registration System</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setOpen(false)} className="rounded-full hover:bg-zinc-50">
+            <X className="h-5 w-5 text-zinc-400" />
+          </Button>
         </div>
 
         {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-12">
-          
+
           {/* Vendor Details */}
           <section>
             <SectionHeader icon={Building2} title="Vendor Details" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <FormField label="Vendor Name" placeholder="e.g. Marbella Concrete Ltd." required />
+                <FormField label="Vendor Name" placeholder="e.g. VPG Concrete Ltd." required />
               </div>
               <FormField label="Company Name" placeholder="Legal registered name" />
               <FormField label="Vendor Code" placeholder="VND-000" />
-              
+
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">
                   Group <span className="text-rose-500">*</span>
@@ -197,16 +197,16 @@ export function VendorDialog() {
 
         {/* Action Footer */}
         <div className="p-8 bg-zinc-50/50 border-t border-zinc-100 flex items-center justify-end gap-4 shrink-0">
-           <Button 
-             variant="ghost" 
-             onClick={() => setOpen(false)}
-             className="h-12 px-8 rounded-2xl font-black text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-all"
-           >
-              Cancel
-           </Button>
-           <Button className="h-12 px-10 rounded-2xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/20 gap-3 hover:bg-zinc-800 transition-all active:scale-95">
-              <Save className="h-5 w-5" /> Save Vendor
-           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setOpen(false)}
+            className="h-12 px-8 rounded-2xl font-black text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-all"
+          >
+            Cancel
+          </Button>
+          <Button className="h-12 px-10 rounded-2xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/20 gap-3 hover:bg-zinc-800 transition-all active:scale-95">
+            <Save className="h-5 w-5" /> Save Vendor
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
 // Dynamically import MapView to avoid window is not defined error
-const MapView = dynamic(() => import("@/components/live-tracking/map-view"), { 
+const MapView = dynamic(() => import("@/components/live-tracking/map-view"), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-zinc-100 animate-pulse flex items-center justify-center font-bold text-zinc-400">Loading Map Engine...</div>
 })
@@ -28,23 +28,23 @@ type ActiveUser = {
 }
 
 const activeUsers: ActiveUser[] = [
-  { 
-    id: "1", 
-    name: "Assa Singh", 
-    initials: "AS", 
-    color: "bg-rose-500", 
-    status: "Active", 
-    location: "Marbella Twin Towers",
+  {
+    id: "1",
+    name: "Assa Singh",
+    initials: "AS",
+    color: "bg-rose-500",
+    status: "Active",
+    location: "VPG Twin Towers",
     lat: 30.7866602,
     lng: 76.7546189
   },
-  { 
-    id: "6", 
-    name: "Rajwalia", 
-    initials: "RA", 
-    color: "bg-cyan-500", 
-    status: "Pending", 
-    location: "Marbella Royce",
+  {
+    id: "6",
+    name: "Rajwalia",
+    initials: "RA",
+    color: "bg-cyan-500",
+    status: "Pending",
+    location: "VPG Royce",
     lat: 30.63337829999999,
     lng: 76.7264209
   },
@@ -53,7 +53,7 @@ const activeUsers: ActiveUser[] = [
 export default function LiveTrackingPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>("1")
 
-  const selectedUser = useMemo(() => 
+  const selectedUser = useMemo(() =>
     activeUsers.find(u => u.id === selectedUserId) || activeUsers[0],
     [selectedUserId]
   )

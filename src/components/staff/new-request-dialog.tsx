@@ -39,9 +39,9 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
                 <SelectValue placeholder="Choose project" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="twin-towers">Marbella Twin Towers</SelectItem>
-                <SelectItem value="royce">Marbella Royce</SelectItem>
-                <SelectItem value="grand">Marbella Grand</SelectItem>
+                <SelectItem value="twin-towers">VPG Twin Towers</SelectItem>
+                <SelectItem value="royce">VPG Royce</SelectItem>
+                <SelectItem value="grand">VPG Grand</SelectItem>
               </SelectContent>
             </Select>
           </div>

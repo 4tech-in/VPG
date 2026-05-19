@@ -81,7 +81,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             <div className="relative">
               <Input
                 defaultValue={initialValues?.email}
-                placeholder="staff@marbella.estate"
+                placeholder="staff@VPG.estate"
                 className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
               />
               <Mail className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
@@ -151,9 +151,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 <SelectValue placeholder="Select Project" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="twin-towers">Marbella Twin Towers</SelectItem>
-                <SelectItem value="royce">Marbella Royce</SelectItem>
-                <SelectItem value="grand">Marbella Grand</SelectItem>
+                <SelectItem value="twin-towers">VPG Twin Towers</SelectItem>
+                <SelectItem value="royce">VPG Royce</SelectItem>
+                <SelectItem value="grand">VPG Grand</SelectItem>
               </SelectContent>
             </Select>
           </div>

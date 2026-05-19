@@ -143,7 +143,7 @@ export function ViewIndentDialog({ trigger }: { trigger: React.ReactNode }) {
                {/* Project Details: Optimized Grid */}
                <div className="grid grid-cols-2 gap-y-6 gap-x-10 px-2">
                   {[
-                     { label: "Project", val: "Marbella Grande", icon: Building2 },
+                     { label: "Project", val: "VPG Grande", icon: Building2 },
                      { label: "Tower", val: "Tower A", icon: Layers },
                      { label: "Floor / Flat", val: "Floor 4 · 402", icon: MapPin },
                      { label: "Store Room", val: "Ground Floor", icon: Layers },
@@ -264,7 +264,7 @@ export function CreateIndentDialog({ trigger }: { trigger: React.ReactNode }) {
                            <SelectValue placeholder="Select project" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
-                           <SelectItem value="marbella">Marbella Grande</SelectItem>
+                           <SelectItem value="VPG">VPG Grande</SelectItem>
                         </SelectContent>
                      </Select>
                   </div>

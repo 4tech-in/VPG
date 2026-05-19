@@ -17,8 +17,8 @@ type Geofence = {
 }
 
 const mockGeofences: Geofence[] = [
-  { id: "1", name: "Marbella Twin Towers", latitude: 30.7866602, longitude: 76.7546189, radius: 100 },
-  { id: "2", name: "Marbella Royce", latitude: 30.63337829999999, longitude: 76.7264209, radius: 100 },
+  { id: "1", name: "VPG Twin Towers", latitude: 30.7866602, longitude: 76.7546189, radius: 100 },
+  { id: "2", name: "VPG Royce", latitude: 30.63337829999999, longitude: 76.7264209, radius: 100 },
   { id: "3", name: "Sector 22A", latitude: 30.7348906, longitude: 76.7700722, radius: 500 },
 ]
 
@@ -51,9 +51,9 @@ export default function GeofencePage() {
       header: "ACTION",
       cell: () => (
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setIsDialogOpen(true)}
             className="h-9 w-9 rounded-full text-zinc-400 hover:text-primary hover:bg-primary/5"
           >
@@ -72,8 +72,8 @@ export default function GeofencePage() {
       <div className="flex flex-col gap-8 p-4 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Geo Locations</h1>
-          
-          <Button 
+
+          <Button
             onClick={() => setIsDialogOpen(true)}
             className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20"
           >

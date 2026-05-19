@@ -16,7 +16,8 @@ import {
   LayoutDashboard,
   LucideView,
   User2,
-  DollarSign
+  DollarSign,
+  Box
 } from "lucide-react";
 
 type Submenu = {
@@ -70,10 +71,10 @@ export function getMenuList(pathname: string): Group[] {
               href: "/indent",
               label: "Indent List"
             },
-            {
-              href: "/quotation",
-              label: "Quotation Requests"
-            },
+            // {
+            //   href: "/quotation",
+            //   label: "Quotation Requests"
+            // },
             {
               href: "/purchase-order",
               label: "Purchase Orders"
@@ -133,6 +134,11 @@ export function getMenuList(pathname: string): Group[] {
           href:"/advance",
           label:"Advance",
           icon:DollarSign
+        },
+        {
+          href:"/material",
+          label:"Material",
+          icon:Box
         }
       ]
     },
@@ -173,10 +179,10 @@ export function getMenuList(pathname: string): Group[] {
               href: "/sub-group",
               label: "Sub Group"
             },
-            {
-              href: "/category",
-              label: "Category"
-            }
+            // {
+            //   href: "/category",
+            //   label: "Category"
+            // }
           ]
         }
       ]

@@ -130,7 +130,7 @@ export default function TaskDetailsPage({
 
               <div className="flex items-start justify-between">
                 <h2 className="text-3xl font-bold text-zinc-900 leading-tight">
-                  Finalize architecture review for Marbella Twin Towers Phase 1.
+                  Finalize architecture review for VPG Twin Towers Phase 1.
                 </h2>
                 <Button
                   variant="ghost"

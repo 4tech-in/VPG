@@ -52,7 +52,7 @@ const mockTasks: Task[] = [
     title: "Update Project Renderings",
     description:
       "Prepare the latest high-res renderings for the penthouse levels.",
-    project: "Marbella Twin Towers",
+    project: "VPG Twin Towers",
     projectId: "p1",
     priority: "High",
     status: "Pending",
@@ -64,7 +64,7 @@ const mockTasks: Task[] = [
     title: "Client Site Visit",
     description:
       "Escort the investor group for a walk-through of the Royce showroom.",
-    project: "Marbella Royce",
+    project: "VPG Royce",
     projectId: "p2",
     priority: "Medium",
     status: "Pending",
@@ -75,7 +75,7 @@ const mockTasks: Task[] = [
     id: "t3",
     title: "Contract Review",
     description: "Legal review of the master sale agreement for Phase 2.",
-    project: "Marbella Grand",
+    project: "VPG Grand",
     projectId: "p3",
     priority: "High",
     status: "Completed",
