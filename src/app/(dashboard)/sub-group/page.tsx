@@ -1,19 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
+import { Edit, Plus, Trash } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -22,70 +16,94 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { SubGroupForm } from "@/components/sub-group-form"
-
-type SubGroup = {
-  id: number
-  group: string
-  subGroup: string
-  status: "Active" | "Inactive"
-}
-
-const initialData: SubGroup[] = [
-  { id: 1, group: "Tech", subGroup: "Hardware", status: "Active" },
-  { id: 2, group: "Tech", subGroup: "Software", status: "Active" },
-  { id: 3, group: "Home", subGroup: "Kitchen", status: "Inactive" },
-  { id: 4, group: "Fashion", subGroup: "Men's Wear", status: "Active" },
-  { id: 5, group: "Office", subGroup: "Supplies", status: "Active" },
-]
+import { useSubGroups, SubGroup } from "@/hooks/use-sub-groups"
+import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
+import { cn } from "@/lib/utils"
 
 export default function SubGroupPage() {
-  const [data, setData] = useState<SubGroup[]>(initialData)
+  const { 
+    subGroups, 
+    addSubGroup, 
+    editSubGroup, 
+    removeSubGroup, 
+    toggleSubGroupStatus,
+    page,
+    setPage,
+    limit,
+    search,
+    setSearch,
+    pagination,
+  } = useSubGroups()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null)
 
-  const handleStatusToggle = (id: number) => {
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status: item.status === "Active" ? "Inactive" : "Active" }
-          : item
-      )
-    )
-  }
+  const handleStatusToggle = useCallback(async (id: string) => {
+    try {
+      await toggleSubGroupStatus(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [toggleSubGroupStatus])
 
-  const handleDelete = (id: number) => {
-    setData((prev) => prev.filter((item) => item.id !== id))
-  }
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await removeSubGroup(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [removeSubGroup])
 
-  const handleEdit = (subGroup: SubGroup) => {
+  const handleEdit = useCallback((subGroup: SubGroup) => {
     setEditingSubGroup(subGroup)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingSubGroup(null)
     setIsDialogOpen(true)
+  }, [])
+
+  const handleSave = async (values: { group: string; subGroup: string; status: string }) => {
+    try {
+      if (editingSubGroup) {
+        // Status is omitted during edit saves to prevent status override
+        await editSubGroup(editingSubGroup.id, {
+          groupId: values.group,
+          name: values.subGroup,
+        })
+      } else {
+        await addSubGroup({
+          groupId: values.group,
+          name: values.subGroup,
+          status: values.status === "Active" ? "active" : "inactive",
+        })
+      }
+    } catch (error) {
+      throw error
+    }
   }
 
-  const columns: ColumnDef<SubGroup>[] = [
+  const columns = useMemo<ColumnDef<SubGroup>[]>(() => [
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1 + (page - 1) * limit}</div>,
     },
     {
       accessorKey: "group",
       header: "Group",
       cell: ({ row }) => (
-        <Badge variant="outline" className="rounded-full border-zinc-200 text-zinc-600 font-normal">
-          {row.getValue("group")}
-        </Badge>
+        <div className="pl-2">
+          <Badge variant="outline" className="rounded-full border-zinc-200 text-zinc-600 font-normal">
+            {row.getValue("group")}
+          </Badge>
+        </div>
       ),
     },
     {
       accessorKey: "subGroup",
       header: "Sub Group",
-      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("subGroup")}</div>,
+      cell: ({ row }) => <div className="pl-2 font-medium text-zinc-900">{row.getValue("subGroup")}</div>,
     },
     {
       accessorKey: "status",
@@ -93,54 +111,51 @@ export default function SubGroupPage() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
-          <Badge 
-            variant={status === "Active" ? "success" : "secondary"}
-            className="rounded-full px-4 py-1 font-medium"
-          >
-            {status}
-          </Badge>
+          <div className="flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <AppleSwitch
+              checked={status === "Active"}
+              onCheckedChange={() => handleStatusToggle(row.original.id)}
+              size="sm"
+            />
+            <span className={cn(
+              "text-xs font-bold min-w-[65px] px-2 py-0.5 rounded-full transition-colors text-center",
+              status === "Active" ? "text-emerald-700 bg-emerald-50" : "text-zinc-500 bg-zinc-100"
+            )}>
+              {status}
+            </span>
+          </div>
         )
       },
     },
     {
       id: "actions",
-      header: () => <div className="text-right pr-4">Action</div>,
+      header: () => <div className="pl-2">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="text-right pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
-                  <MoreVertical className="h-4 w-4 text-zinc-500" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
-                <DropdownMenuItem 
-                  onClick={() => handleEdit(row.original)}
-                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
-                >
-                  <Edit className="h-4 w-4" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleStatusToggle(row.original.id)}
-                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
-                >
-                  <MoreVertical className="h-4 w-4 rotate-90" /> {row.original.status === "Active" ? "Deactivate" : "Activate"}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleDelete(row.original.id)}
-                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
-                >
-                  <Trash className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-start gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-zinc-700 hover:text-zinc-950 border-zinc-200 hover:bg-zinc-50 rounded-lg transition-all duration-200"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 border-zinc-200 hover:border-destructive/20 rounded-lg transition-all duration-200"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
           </div>
         )
       },
     },
-  ]
+  ], [handleStatusToggle, handleEdit, handleDelete, page, limit])
 
   return (
     <ContentLayout title="Sub Group">
@@ -161,17 +176,33 @@ export default function SubGroupPage() {
                     : "Create a new sub group and associate it with a group."}
                 </DialogDescription>
               </DialogHeader>
-              <SubGroupForm 
-                onSuccess={() => setIsDialogOpen(false)} 
-                initialValues={editingSubGroup ? {
-                  ...editingSubGroup,
-                  group: editingSubGroup.group.toLowerCase(), // Mapping label to value
-                } : undefined}
-              />
+              {isDialogOpen && (
+                <SubGroupForm 
+                  onSuccess={() => setIsDialogOpen(false)} 
+                  onSubmit={handleSave}
+                  initialValues={editingSubGroup ? {
+                    group: editingSubGroup.groupId,
+                    subGroup: editingSubGroup.subGroup,
+                    status: editingSubGroup.status,
+                  } : undefined}
+                />
+              )}
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={data} searchKey="subGroup" />
+        <DataTable 
+          columns={columns} 
+          data={subGroups} 
+          searchKey="subGroup"
+          isServerSide={true}
+          pageIndex={page - 1}
+          pageSize={limit}
+          pageCount={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          searchValue={search}
+          onSearchChange={setSearch}
+          onPageChange={(p) => setPage(p + 1)}
+        />
       </div>
     </ContentLayout>
   )

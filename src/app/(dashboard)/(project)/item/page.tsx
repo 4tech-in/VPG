@@ -1,14 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash } from "lucide-react"
+import { Edit, Plus, Trash, Tag, Box, Info } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
-import { Badge } from "@/components/ui/badge"
 import {
    Dialog,
    DialogContent,
@@ -17,106 +16,76 @@ import {
    DialogTitle,
 } from "@/components/ui/dialog"
 import { ItemForm } from "@/components/item-form"
-
-type Item = {
-   id: number
-   code: string
-   name: string
-   specification: string
-   unit: string
-   group: string
-   price: number
-   isBlocked: boolean
-}
-
-const initialData: Item[] = [
-   {
-      id: 1,
-      code: "CM/P/RM/0001",
-      name: "Steel Rod 10mm",
-      specification: "Grade Fe500, 12m length",
-      unit: "PCS",
-      group: "Construction Materials",
-      price: 450.0,
-      isBlocked: false,
-   },
-   {
-      id: 2,
-      code: "CM/C/RM/0002",
-      name: "Cement 50kg Bag",
-      specification: "OPC 43 Grade",
-      unit: "BAG",
-      group: "Construction Materials",
-      price: 380.0,
-      isBlocked: false,
-   },
-   {
-      id: 3,
-      code: "P/P/RM/0003",
-      name: "PVC Pipe 4\"",
-      specification: "Heavy Duty, 6m",
-      unit: "PCS",
-      group: "Plumbing",
-      price: 1200.0,
-      isBlocked: true,
-   },
-   {
-      id: 4,
-      code: "E/W/RM/0004",
-      name: "Copper Wire 2.5sqmm",
-      specification: "90m Coil, FR LSH",
-      unit: "COIL",
-      group: "Electricals",
-      price: 2150.0,
-      isBlocked: false,
-   },
-]
-
-import { Clock, Tag, Box, Info } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
+import { useItems, Item } from "@/hooks/use-items"
 import { cn } from "@/lib/utils"
 
 export default function ItemPage() {
-   const [data, setData] = useState<Item[]>(initialData)
+   const {
+      items,
+      isLoading,
+      addItem,
+      editItem,
+      removeItem,
+      toggleItemBlockStatus,
+      page,
+      setPage,
+      limit,
+      search,
+      setSearch,
+      pagination,
+   } = useItems()
+
    const [isDialogOpen, setIsDialogOpen] = useState(false)
    const [editingItem, setEditingItem] = useState<Item | null>(null)
 
-   const handleStatusToggle = (id: number) => {
-      setData((prev) =>
-         prev.map((item) =>
-            item.id === id
-               ? { ...item, isBlocked: !item.isBlocked }
-               : item
-         )
-      )
-   }
+   const handleStatusToggle = useCallback(async (id: string) => {
+      try {
+         await toggleItemBlockStatus(id)
+      } catch (error) {
+         // Handled in hook
+      }
+   }, [toggleItemBlockStatus])
 
-   const handleEdit = (item: Item) => {
+   const handleDelete = useCallback(async (id: string) => {
+      try {
+         await removeItem(id)
+      } catch (error) {
+         // Handled in hook
+      }
+   }, [removeItem])
+
+   const handleEdit = useCallback((item: Item) => {
       setEditingItem(item)
       setIsDialogOpen(true)
-   }
+   }, [])
 
-   const handleAddNew = () => {
+   const handleAddNew = useCallback(() => {
       setEditingItem(null)
       setIsDialogOpen(true)
+   }, [])
+
+   const handleSave = async (payload: any) => {
+      try {
+         if (editingItem) {
+            await editItem(editingItem.id, payload)
+         } else {
+            await addItem(payload)
+         }
+         setIsDialogOpen(false)
+      } catch (error) {
+         throw error
+      }
    }
 
-   const columns: ColumnDef<Item>[] = [
+   const columns = useMemo<ColumnDef<Item>[]>(() => [
       {
          accessorKey: "id",
          header: () => <div className="text-center w-full">S.No</div>,
-         cell: ({ row }) => <div className="text-center w-full font-medium text-zinc-500">{row.index + 1}</div>,
+         cell: ({ row }) => <div className="text-center w-full font-medium text-zinc-500">{row.index + 1 + (page - 1) * limit}</div>,
       },
-      {
-         accessorKey: "code",
-         header: "Item Code",
-         cell: ({ row }) => (
-            <div className="flex flex-col">
-               <span className="font-mono text-[11px] font-bold text-primary px-2 py-0.5 bg-primary/5 rounded-md border border-primary/10 w-fit">
-                  {row.getValue("code")}
-               </span>
-            </div>
-         ),
+      { accessorKey: "itemCode",
+         header: () => <div className="text-center w-full">Item Code</div>,
+         cell: ({ row }) => <div className="text-center w-full font-medium text-zinc-500">{row.original.itemCode}</div>
       },
       {
          accessorKey: "name",
@@ -125,7 +94,7 @@ export default function ItemPage() {
             <div className="flex flex-col">
                <span className="font-bold text-zinc-900 leading-none mb-1">{row.getValue("name")}</span>
                <div className="flex items-center gap-1 text-[10px] text-zinc-400 uppercase tracking-tighter font-medium">
-                  <Tag className="h-2.5 w-2.5" /> {row.original.group}
+                  <Tag className="h-2.5 w-2.5" /> {row.original.group || "General"}
                </div>
             </div>
          ),
@@ -136,7 +105,7 @@ export default function ItemPage() {
          cell: ({ row }) => (
             <div className="max-w-[180px] flex items-start gap-1.5 text-zinc-500 font-medium">
                <Info className="h-3 w-3 mt-0.5 shrink-0 text-zinc-300" />
-               <span className="text-xs line-clamp-2 leading-tight italic">{row.getValue("specification")}</span>
+               <span className="text-xs line-clamp-2 leading-tight italic">{row.getValue("specification") || "N/A"}</span>
             </div>
          ),
       },
@@ -173,15 +142,15 @@ export default function ItemPage() {
          cell: ({ row }) => {
             const isBlocked = row.getValue("isBlocked") as boolean
             return (
-               <div className="flex items-center justify-center gap-2">
-                  <Switch
+               <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <AppleSwitch
                      checked={isBlocked}
                      onCheckedChange={() => handleStatusToggle(row.original.id)}
-                     className="data-[state=checked]:bg-emerald-600"
+                     size="sm"
                   />
                   <span className={cn(
                      "text-xs font-bold min-w-[65px] px-2 py-0.5 rounded-full transition-colors text-center",
-                     isBlocked ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
+                     isBlocked ? "text-rose-700 bg-rose-50 border border-rose-100" : "text-emerald-700 bg-emerald-50 border border-emerald-100"
                   )}>
                      {isBlocked ? "Blocked" : "Not Blocked"}
                   </span>
@@ -194,27 +163,30 @@ export default function ItemPage() {
          header: () => <div className="text-center w-full">Action</div>,
          cell: ({ row }) => {
             return (
-               <div className="flex items-center justify-center gap-1">
+               <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button
                      variant="ghost"
                      size="icon"
-                     className="h-9 w-9 rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all"
+                     className="h-9 w-9 rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all duration-200"
                      onClick={() => handleEdit(row.original)}
                   >
                      <Edit className="h-4 w-4" />
+                     <span className="sr-only">Edit</span>
                   </Button>
                   <Button
                      variant="ghost"
                      size="icon"
-                     className="h-9 w-9 rounded-xl text-zinc-400 hover:text-destructive hover:bg-destructive/5 transition-all"
+                     className="h-9 w-9 rounded-xl text-zinc-400 hover:text-destructive hover:bg-destructive/5 transition-all duration-200"
+                     onClick={() => handleDelete(row.original.id)}
                   >
                      <Trash className="h-4 w-4" />
+                     <span className="sr-only">Delete</span>
                   </Button>
                </div>
             )
          },
       },
-   ]
+   ], [handleStatusToggle, handleEdit, handleDelete, page, limit])
 
    return (
       <ContentLayout title="Inventory Management">
@@ -230,7 +202,7 @@ export default function ItemPage() {
                </div>
                <Button
                   onClick={handleAddNew}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground h-11 px-6 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground h-11 px-6 rounded-xl shadow-lg shadow-primary/20 flex items-center gap-2 transition-all active:scale-95 animate-in fade-in-50 duration-300"
                >
                   <Plus className="h-5 w-5" />
                   <span className="font-bold">Add New Item</span>
@@ -238,7 +210,7 @@ export default function ItemPage() {
             </div>
 
             {/* Table Section */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-2 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-3xl p-2 shadow-sm animate-in fade-in duration-300">
                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                      <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -246,11 +218,24 @@ export default function ItemPage() {
                   </div>
                   <div className="flex items-center gap-2">
                      <div className="text-[10px] font-bold text-zinc-400 uppercase bg-zinc-50 px-2 py-1 rounded-md border border-zinc-100">
-                        Total Items: {data.length}
+                        Total Items: {pagination.totalItems}
                      </div>
                   </div>
                </div>
-               <DataTable columns={columns} data={data} searchKey="name" />
+               
+               <DataTable 
+                  columns={columns} 
+                  data={items} 
+                  searchKey="name"
+                  isServerSide={true}
+                  pageIndex={page - 1}
+                  pageSize={limit}
+                  pageCount={pagination.totalPages}
+                  totalItems={pagination.totalItems}
+                  searchValue={search}
+                  onSearchChange={setSearch}
+                  onPageChange={(p) => setPage(p + 1)}
+               />
             </div>
 
             {/* Dialog */}
@@ -265,20 +250,30 @@ export default function ItemPage() {
                      </DialogDescription>
                   </DialogHeader>
                   <div className="py-2">
-                     <ItemForm
-                        onSuccess={() => setIsDialogOpen(false)}
-                        initialValues={editingItem ? {
-                           itemName: editingItem.name,
-                           itemCode: editingItem.code,
-                           specification: editingItem.specification,
-                           unit: editingItem.unit,
-                           rate: editingItem.price.toString(),
-                           isBlocked: editingItem.isBlocked,
-                           groupName: editingItem.group === "Construction Materials" ? "construction" :
-                              editingItem.group === "Plumbing" ? "plumbing" :
-                                 editingItem.group === "Electrical" ? "electrical" : "",
-                        } : undefined}
-                     />
+                     {isDialogOpen && (
+                        <ItemForm
+                           onSuccess={() => setIsDialogOpen(false)}
+                           onSubmit={handleSave}
+                           initialValues={editingItem ? {
+                              groupName: editingItem.groupId,
+                              subGroup: editingItem.subGroupId || "",
+                              itemName: editingItem.name,
+                              itemCode: editingItem.itemCode,
+                              specification: editingItem.specification,
+                              size: editingItem.size,
+                              info: editingItem.info,
+                              unit: editingItem.unitId,
+                              rate: editingItem.price.toString(),
+                              gst: editingItem.gst,
+                              hsnCode: editingItem.hsnCode,
+                              minLevel: editingItem.minLevel,
+                              maxLevel: editingItem.maxLevel,
+                              openingLedger: editingItem.openingLedger,
+                              openingPhysical: editingItem.openingPhysical,
+                              isBlocked: editingItem.isBlocked,
+                           } : undefined}
+                        />
+                     )}
                   </div>
                </DialogContent>
             </Dialog>

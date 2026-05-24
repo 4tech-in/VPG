@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -23,30 +23,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
-
-const groupOptions = [
-  { value: "construction", label: "Construction Materials" },
-  { value: "plumbing", label: "Plumbing" },
-  { value: "electrical", label: "Electricals" },
-]
-
-const subGroupOptions = [
-  { value: "pipes", label: "Pipes" },
-  { value: "cements", label: "Cements" },
-  { value: "wires", label: "Wires" },
-]
-
-const categoryOptions = [
-  { value: "smart", label: "Smart Devices" },
-  { value: "raw", label: "Raw Material" },
-  { value: "finished", label: "Finished Good" },
-]
+import { useGroups } from "@/hooks/use-groups"
+import { useSubGroups } from "@/hooks/use-sub-groups"
+import { useUnits } from "@/hooks/use-units"
 
 const getInitials = (text: string) => {
   if (!text) return ""
-  return text
-    .split(" ")
+  const cleaned = text.replace(/[^a-zA-Z\s]/g, "")
+  return cleaned
+    .split(/\s+/)
     .map((word) => word[0])
+    .filter(Boolean)
     .join("")
     .toUpperCase()
 }
@@ -54,9 +41,7 @@ const getInitials = (text: string) => {
 const formSchema = z.object({
   groupName: z.string().min(1, "Group Name is required"),
   subGroup: z.string().optional(),
-  category: z.string().min(1, "Category is required"),
   itemName: z.string().min(1, "Item Name is required"),
-  itemCode: z.string().min(1, "Item Code is required"),
   specification: z.string().optional(),
   size: z.string().optional(),
   info: z.string().optional(),
@@ -73,18 +58,24 @@ const formSchema = z.object({
 
 interface ItemFormProps {
   onSuccess?: () => void
-  initialValues?: Partial<z.infer<typeof formSchema>>
+  initialValues?: any
+  onSubmit: (values: any) => Promise<void>
 }
 
-export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
+export function ItemForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: ItemFormProps) {
+  // Fetch dynamic categories dropdown from backend APIs
+  const { groups } = useGroups(true)
+  const { subGroups } = useSubGroups()
+  const { units } = useUnits(true)
+  
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       groupName: initialValues?.groupName || "",
       subGroup: initialValues?.subGroup || "",
-      category: initialValues?.category || "",
       itemName: initialValues?.itemName || "",
-      itemCode: initialValues?.itemCode || "",
       specification: initialValues?.specification || "",
       size: initialValues?.size || "",
       info: initialValues?.info || "",
@@ -100,7 +91,7 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
     },
   })
 
-  // Reset form when initialValues change (e.g. when switching from Add to Edit)
+  // Reset form when initialValues change
   useEffect(() => {
     if (initialValues) {
       form.reset({
@@ -111,9 +102,7 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
       form.reset({
         groupName: "",
         subGroup: "",
-        category: "",
         itemName: "",
-        itemCode: "",
         specification: "",
         size: "",
         info: "",
@@ -132,33 +121,51 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
 
   const groupName = form.watch("groupName")
   const subGroup = form.watch("subGroup")
-  const category = form.watch("category")
 
+  // Filter subGroups locally to match selected Group dynamically
+  const filteredSubGroups = useMemo(() => {
+    if (!groupName) return []
+    return subGroups.filter((sg) => sg.groupId === groupName)
+  }, [groupName, subGroups])
+
+  // Clear subGroup selection if selected groupName changes and old subGroup is no longer matching
   useEffect(() => {
-    // Only auto-generate if we're not in edit mode (or if code is empty)
-    if (initialValues?.itemCode) return;
-
-    const groupLabel = groupOptions.find((o) => o.value === groupName)?.label || ""
-    const subLabel = subGroupOptions.find((o) => o.value === subGroup)?.label || ""
-    const catLabel = categoryOptions.find((o) => o.value === category)?.label || ""
-
-    const initials = [
-      getInitials(groupLabel),
-      getInitials(subLabel),
-      getInitials(catLabel),
-    ]
-      .filter(Boolean)
-      .join("/")
-
-    if (initials) {
-      const generatedCode = `${initials}/0001`
-      form.setValue("itemCode", generatedCode, { shouldValidate: true })
+    if (subGroup && !filteredSubGroups.some((sg) => sg.id === subGroup)) {
+      form.setValue("subGroup", "")
     }
-  }, [groupName, subGroup, category, form, initialValues?.itemCode])
+  }, [groupName, filteredSubGroups, subGroup, form])
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
-    onSuccess?.()
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true)
+    try {
+      // Auto-generate a unique itemCode in the background to satisfy backend validation
+      const generatedCode = initialValues?.itemCode || `ITEM-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+
+      const payload = {
+        itemCode: generatedCode,
+        HSNcode: values.hsnCode,
+        itemName: values.itemName,
+        blockItem: values.isBlocked,
+        specification: values.specification,
+        openingLedger: values.openingLedger,
+        openingPhysical: values.openingPhysical,
+        size: values.size,
+        info: values.info,
+        unitId: values.unit,
+        groupId: values.groupName,
+        subGroupId: values.subGroup || undefined,
+        price: values.rate,
+        minLevel: values.minLevel,
+        maxLevel: values.maxLevel,
+        gstPercentage: values.gst,
+      }
+      await onSubmitProp(payload)
+      onSuccess?.()
+    } catch (error) {
+      // Handled in hooks / interceptors
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -167,22 +174,22 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
         {/* Section: Classification */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Classification</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="groupName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Group Name <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select Group" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {groupOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {groups.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -196,37 +203,19 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Sub Group</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value} 
+                    disabled={!groupName}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select Sub Group" />
+                        <SelectValue placeholder={groupName ? "Select Sub Group" : "Select Group first"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {subGroupOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Category" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categoryOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {filteredSubGroups.map((opt) => (
+                        <SelectItem key={opt.id} value={opt.id}>{opt.subGroup}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -240,7 +229,7 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
         {/* Section: Basic Information */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Basic Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="itemName"
@@ -249,19 +238,6 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
                   <FormLabel>Item Name <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. TILE" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="itemCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Item Code <span className="text-destructive">*</span></FormLabel>
-                  <FormControl>
-                    <Input placeholder="JK/YY/SM/0001" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -281,8 +257,8 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
               )}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="grid grid-cols-2 gap-2">
+        
+            <div className="grid grid-cols-3 gap-2">
               <FormField
                 control={form.control}
                 name="size"
@@ -309,31 +285,30 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
                   </FormItem>
                 )}
               />
-            </div>
-            <FormField
+              <FormField
               control={form.control}
               name="unit"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select Unit" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="KG">KG</SelectItem>
-                      <SelectItem value="PCS">PCS</SelectItem>
-                      <SelectItem value="BAG">BAG</SelectItem>
-                      <SelectItem value="COIL">COIL</SelectItem>
+                      {units.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.label} ({u.value})</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+            </div>
+
         </div>
 
         {/* Section: Pricing & Inventory */}
@@ -455,10 +430,12 @@ export function ItemForm({ onSuccess, initialValues }: ItemFormProps) {
         </div>
 
         <div className="flex justify-end gap-3 mt-8">
-          <Button variant="outline" type="button" onClick={onSuccess}>
+          <Button variant="outline" type="button" onClick={onSuccess} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">Save Item</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Item"}
+          </Button>
         </div>
       </form>
     </Form>

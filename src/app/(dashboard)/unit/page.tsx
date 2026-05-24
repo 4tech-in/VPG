@@ -1,19 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
-
+import { Edit, Plus, Trash } from "lucide-react"
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -23,24 +15,27 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-type Unit = {
-  id: number
-  label: string
-  value: string
-  status: "Active" | "Inactive"
-}
-
-const initialData: Unit[] = [
-  { id: 1, label: "Kilogram", value: "KG", status: "Active" },
-  { id: 2, label: "Pieces", value: "PCS", status: "Active" },
-  { id: 3, label: "Bags", value: "BAG", status: "Active" },
-  { id: 4, label: "Coils", value: "COIL", status: "Inactive" },
-  { id: 5, label: "Meters", value: "MTR", status: "Active" },
-]
+import { useUnits, Unit } from "@/hooks/use-units"
+import { toast } from "sonner"
+import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
+import { cn } from "@/lib/utils"
 
 export default function UnitPage() {
-  const [data, setData] = useState<Unit[]>(initialData)
+  const { 
+    units, 
+    isLoading, 
+    addUnit, 
+    editUnit, 
+    removeUnit, 
+    toggleUnitStatus,
+    page,
+    setPage,
+    limit,
+    search,
+    setSearch,
+    pagination,
+  } = useUnits()
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
   
@@ -58,35 +53,72 @@ export default function UnitPage() {
     }
   }, [editingUnit])
 
-  const handleDelete = (id: number) => {
-    setData((prev) => prev.filter((item) => item.id !== id))
-  }
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await removeUnit(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [removeUnit])
 
-  const handleEdit = (unit: Unit) => {
+  const handleStatusToggle = useCallback(async (id: string) => {
+    try {
+      await toggleUnitStatus(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [toggleUnitStatus])
+
+  const handleEdit = useCallback((unit: Unit) => {
     setEditingUnit(unit)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingUnit(null)
     setIsDialogOpen(true)
+  }, [])
+
+  const handleSave = async () => {
+    if (!label.trim() || !value.trim()) {
+      toast.error("Please fill in both label and value fields.")
+      return
+    }
+
+    try {
+      if (editingUnit) {
+        await editUnit(editingUnit.id, {
+          label: label.trim(),
+          value: value.trim(),
+        })
+      } else {
+        await addUnit({
+          label: label.trim(),
+          value: value.trim(),
+          status: "active",
+        })
+      }
+      setIsDialogOpen(false)
+    } catch (error) {
+      // Handled in hook
+    }
   }
 
-  const columns: ColumnDef<Unit>[] = [
+  const columns = useMemo<ColumnDef<Unit>[]>(() => [
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1 + (page - 1) * limit}</div>,
     },
     {
       accessorKey: "label",
       header: "Label",
-      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("label")}</div>,
+      cell: ({ row }) => <div className="pl-2 font-medium text-zinc-900">{row.getValue("label")}</div>,
     },
     {
       accessorKey: "value",
       header: "Value",
-      cell: ({ row }) => <div className="text-zinc-600">{row.getValue("value")}</div>,
+      cell: ({ row }) => <div className="pl-2 text-zinc-600">{row.getValue("value")}</div>,
     },
     {
       accessorKey: "status",
@@ -94,48 +126,51 @@ export default function UnitPage() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
-          <Badge 
-            variant={status === "Active" ? "success" : "secondary"}
-            className="rounded-full px-4 py-1 font-medium"
-          >
-            {status}
-          </Badge>
+          <div className="flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <AppleSwitch
+              checked={status === "Active"}
+              onCheckedChange={() => handleStatusToggle(row.original.id)}
+              size="sm"
+            />
+            <span className={cn(
+              "text-xs font-bold min-w-[65px] px-2 py-0.5 rounded-full transition-colors text-center",
+              status === "Active" ? "text-emerald-700 bg-emerald-50" : "text-zinc-500 bg-zinc-100"
+            )}>
+              {status}
+            </span>
+          </div>
         )
       },
     },
     {
       id: "actions",
-      header: () => <div className="text-right pr-4">Action</div>,
+      header: () => <div className="pl-2">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="text-right pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
-                  <MoreVertical className="h-4 w-4 text-zinc-500" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
-                <DropdownMenuItem 
-                  onClick={() => handleEdit(row.original)}
-                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
-                >
-                  <Edit className="h-4 w-4" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleDelete(row.original.id)}
-                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
-                >
-                  <Trash className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-start gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-zinc-700 hover:text-zinc-950 border-zinc-200 hover:bg-zinc-50 rounded-lg transition-all duration-200"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 border-zinc-200 hover:border-destructive/20 rounded-lg transition-all duration-200"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
           </div>
         )
       },
     },
-  ]
+  ], [handleStatusToggle, handleEdit, handleDelete, page, limit])
 
   return (
     <ContentLayout title="Unit Management">
@@ -178,17 +213,30 @@ export default function UnitPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isLoading}>
                   Cancel
                 </Button>
-                <Button onClick={() => setIsDialogOpen(false)}>
-                  {editingUnit ? "Update Unit" : "Save Unit"}
+                <Button onClick={handleSave} disabled={isLoading}>
+                  {isLoading ? "Saving..." : editingUnit ? "Update Unit" : "Save Unit"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={data} searchKey="label" />
+        
+        <DataTable 
+          columns={columns} 
+          data={units} 
+          searchKey="label"
+          isServerSide={true}
+          pageIndex={page - 1}
+          pageSize={limit}
+          pageCount={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          searchValue={search}
+          onSearchChange={setSearch}
+          onPageChange={(p) => setPage(p + 1)}
+        />
       </div>
     </ContentLayout>
   )

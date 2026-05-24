@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -35,9 +35,11 @@ const formSchema = z.object({
 interface GroupFormProps {
   onSuccess?: () => void
   initialValues?: Partial<z.infer<typeof formSchema>>
+  onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>
 }
 
-export function GroupForm({ onSuccess, initialValues }: GroupFormProps) {
+export function GroupForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: GroupFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -60,9 +62,16 @@ export function GroupForm({ onSuccess, initialValues }: GroupFormProps) {
     }
   }, [initialValues, form])
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
-    onSuccess?.()
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true)
+    try {
+      await onSubmitProp(values)
+      onSuccess?.()
+    } catch (error) {
+      // Error handled in hook/api-client
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -103,11 +112,11 @@ export function GroupForm({ onSuccess, initialValues }: GroupFormProps) {
           )}
         />
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" type="button" onClick={onSuccess}>
+          <Button variant="outline" type="button" onClick={onSuccess} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">
-            Save Group
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Group"}
           </Button>
         </div>
       </form>

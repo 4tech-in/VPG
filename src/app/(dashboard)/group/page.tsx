@@ -1,19 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { Edit, Plus, Trash, MoreVertical } from "lucide-react"
+import { Edit, Plus, Trash } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
-import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -22,60 +15,81 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { GroupForm } from "@/components/group-form"
-
-type Group = {
-  id: number
-  name: string
-  status: "Active" | "Inactive"
-}
-
-const initialData: Group[] = [
-  { id: 1, name: "Tech", status: "Active" },
-  { id: 2, name: "Gadgets", status: "Active" },
-  { id: 3, name: "Home", status: "Inactive" },
-  { id: 4, name: "Office", status: "Active" },
-  { id: 5, name: "Fashion", status: "Active" },
-]
+import { useGroups, Group } from "@/hooks/use-groups"
+import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
+import { cn } from "@/lib/utils"
 
 export default function GroupPage() {
-  const [data, setData] = useState<Group[]>(initialData)
+  const { 
+    groups, 
+    addGroup, 
+    editGroup, 
+    removeGroup, 
+    toggleGroupStatus,
+    page,
+    setPage,
+    limit,
+    search,
+    setSearch,
+    pagination,
+  } = useGroups()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<Group | null>(null)
 
-  const handleStatusToggle = (id: number) => {
-    setData((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status: item.status === "Active" ? "Inactive" : "Active" }
-          : item
-      )
-    )
-  }
+  const handleStatusToggle = useCallback(async (id: string) => {
+    try {
+      await toggleGroupStatus(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [toggleGroupStatus])
 
-  const handleDelete = (id: number) => {
-    setData((prev) => prev.filter((item) => item.id !== id))
-  }
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      await removeGroup(id)
+    } catch (error) {
+      // Handled in hook
+    }
+  }, [removeGroup])
 
-  const handleEdit = (group: Group) => {
+  const handleEdit = useCallback((group: Group) => {
     setEditingGroup(group)
     setIsDialogOpen(true)
-  }
+  }, [])
 
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setEditingGroup(null)
     setIsDialogOpen(true)
+  }, [])
+
+  const handleSave = async (values: { name: string; status: string }) => {
+    try {
+      if (editingGroup) {
+        // Status is omitted during edit saves to prevent status override
+        await editGroup(editingGroup.id, {
+          name: values.name,
+        })
+      } else {
+        await addGroup({
+          name: values.name,
+          status: values.status === "Active" ? "active" : "inactive",
+        })
+      }
+    } catch (error) {
+      throw error
+    }
   }
 
-  const columns: ColumnDef<Group>[] = [
+  const columns = useMemo<ColumnDef<Group>[]>(() => [
     {
       accessorKey: "id",
       header: "S.No",
-      cell: ({ row }) => <div className="pl-2">{row.index + 1}</div>,
+      cell: ({ row }) => <div className="pl-2">{row.index + 1 + (page - 1) * limit}</div>,
     },
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => <div className="font-medium text-zinc-900">{row.getValue("name")}</div>,
+      cell: ({ row }) => <div className="pl-2 font-medium text-zinc-900">{row.getValue("name")}</div>,
     },
     {
       accessorKey: "status",
@@ -83,54 +97,51 @@ export default function GroupPage() {
       cell: ({ row }) => {
         const status = row.getValue("status") as string
         return (
-          <Badge 
-            variant={status === "Active" ? "success" : "secondary"}
-            className="rounded-full px-4 py-1 font-medium"
-          >
-            {status}
-          </Badge>
+          <div className="flex items-center gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <AppleSwitch
+              checked={status === "Active"}
+              onCheckedChange={() => handleStatusToggle(row.original.id)}
+              size="sm"
+            />
+            <span className={cn(
+              "text-xs font-bold min-w-[65px] px-2 py-0.5 rounded-full transition-colors text-center",
+              status === "Active" ? "text-emerald-700 bg-emerald-50" : "text-zinc-500 bg-zinc-100"
+            )}>
+              {status}
+            </span>
+          </div>
         )
       },
     },
     {
       id: "actions",
-      header: () => <div className="text-right pr-4">Action</div>,
+      header: () => <div className="pl-2">Action</div>,
       cell: ({ row }) => {
         return (
-          <div className="text-right pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
-                  <MoreVertical className="h-4 w-4 text-zinc-500" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100">
-                <DropdownMenuItem 
-                  onClick={() => handleEdit(row.original)}
-                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
-                >
-                  <Edit className="h-4 w-4" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleStatusToggle(row.original.id)}
-                  className="flex items-center gap-2 cursor-pointer focus:bg-zinc-50"
-                >
-                  <MoreVertical className="h-4 w-4 rotate-90" /> {row.original.status === "Active" ? "Deactivate" : "Activate"}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => handleDelete(row.original.id)}
-                  className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
-                >
-                  <Trash className="h-4 w-4" /> Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center justify-start gap-2 pl-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-zinc-700 hover:text-zinc-950 border-zinc-200 hover:bg-zinc-50 rounded-lg transition-all duration-200"
+              onClick={() => handleEdit(row.original)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 border-zinc-200 hover:border-destructive/20 rounded-lg transition-all duration-200"
+              onClick={() => handleDelete(row.original.id)}
+            >
+              <Trash className="h-4 w-4" />
+              <span className="sr-only">Delete</span>
+            </Button>
           </div>
         )
       },
     },
-  ]
+  ], [handleStatusToggle, handleEdit, handleDelete, page, limit])
 
   return (
     <ContentLayout title="Group">
@@ -154,11 +165,24 @@ export default function GroupPage() {
               <GroupForm 
                 onSuccess={() => setIsDialogOpen(false)} 
                 initialValues={editingGroup || undefined}
+                onSubmit={handleSave}
               />
             </DialogContent>
           </Dialog>
         </div>
-        <DataTable columns={columns} data={data} searchKey="name" />
+        <DataTable 
+          columns={columns} 
+          data={groups} 
+          searchKey="name"
+          isServerSide={true}
+          pageIndex={page - 1}
+          pageSize={limit}
+          pageCount={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          searchValue={search}
+          onSearchChange={setSearch}
+          onPageChange={(p) => setPage(p + 1)}
+        />
       </div>
     </ContentLayout>
   )

@@ -41,6 +41,16 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchKey?: string
   onRowClick?: (data: TData) => void
+
+  // Server-side props
+  isServerSide?: boolean
+  pageIndex?: number
+  pageSize?: number
+  pageCount?: number
+  totalItems?: number
+  searchValue?: string
+  onSearchChange?: (value: string) => void
+  onPageChange?: (page: number) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -48,6 +58,14 @@ export function DataTable<TData, TValue>({
   data,
   searchKey,
   onRowClick,
+  isServerSide = false,
+  pageIndex = 0,
+  pageSize = 10,
+  pageCount = 1,
+  totalItems = 0,
+  searchValue = "",
+  onSearchChange,
+  onPageChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -63,16 +81,25 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: isServerSide ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    getFilteredRowModel: isServerSide ? undefined : getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    pageCount: isServerSide ? pageCount : undefined,
+    manualPagination: isServerSide,
+    manualFiltering: isServerSide,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      ...(isServerSide ? {
+        pagination: {
+          pageIndex,
+          pageSize,
+        }
+      } : {})
     },
     initialState: {
       pagination: {
@@ -90,9 +117,11 @@ export function DataTable<TData, TValue>({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-primary transition-colors" />
               <Input
                 placeholder={`Search ${searchKey}...`}
-                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+                value={isServerSide ? searchValue : ((table.getColumn(searchKey)?.getFilterValue() as string) ?? "")}
                 onChange={(event) =>
-                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                  isServerSide
+                    ? onSearchChange?.(event.target.value)
+                    : table.getColumn(searchKey)?.setFilterValue(event.target.value)
                 }
                 className="h-10 w-[250px] pl-10 rounded-xl border-slate-200 focus-visible:ring-primary/20 bg-white shadow-sm transition-all"
               />
@@ -168,21 +197,21 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 rounded-b-3xl border-t border-slate-100">
         <div className="flex-1 text-sm font-medium text-zinc-500">
-           Showing <span className="text-zinc-900 font-bold">{table.getRowModel().rows.length}</span> of{" "}
-          <span className="text-zinc-900 font-bold">{table.getFilteredRowModel().rows.length}</span> results
+           Showing <span className="text-zinc-900 font-bold">{isServerSide ? data.length : table.getRowModel().rows.length}</span> of{" "}
+          <span className="text-zinc-900 font-bold">{isServerSide ? totalItems : table.getFilteredRowModel().rows.length}</span> results
         </div>
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">
             <p className="text-sm font-bold text-zinc-500">
-              Page <span className="text-primary">{table.getState().pagination.pageIndex + 1}</span> of {table.getPageCount()}
+              Page <span className="text-primary">{isServerSide ? (pageIndex + 1) : (table.getState().pagination.pageIndex + 1)}</span> of {isServerSide ? pageCount : table.getPageCount()}
             </p>
           </div>
           <div className="flex items-center gap-1">
             <Button
               variant="outline"
               className="h-9 w-9 p-0 rounded-xl border-slate-200 hover:bg-white hover:text-primary transition-all shadow-sm active:scale-95"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => isServerSide ? onPageChange?.(pageIndex - 1) : table.previousPage()}
+              disabled={isServerSide ? (pageIndex === 0) : !table.getCanPreviousPage()}
             >
               <span className="sr-only">Go to previous page</span>
               <ChevronDown className="h-4 w-4 rotate-90" />
@@ -190,8 +219,8 @@ export function DataTable<TData, TValue>({
             <Button
               variant="outline"
               className="h-9 w-9 p-0 rounded-xl border-slate-200 hover:bg-white hover:text-primary transition-all shadow-sm active:scale-95"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => isServerSide ? onPageChange?.(pageIndex + 1) : table.nextPage()}
+              disabled={isServerSide ? ((pageIndex + 1) >= pageCount) : !table.getCanNextPage()}
             >
               <span className="sr-only">Go to next page</span>
               <ChevronDown className="h-4 w-4 -rotate-90" />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useGroups } from "@/hooks/use-groups"
 
 const formSchema = z.object({
   group: z.string().min(1, {
@@ -38,9 +39,13 @@ const formSchema = z.object({
 interface SubGroupFormProps {
   onSuccess?: () => void
   initialValues?: Partial<z.infer<typeof formSchema>>
+  onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>
 }
 
-export function SubGroupForm({ onSuccess, initialValues }: SubGroupFormProps) {
+export function SubGroupForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: SubGroupFormProps) {
+  const { groups, refetch: fetchGroups } = useGroups(!!initialValues?.group)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -65,9 +70,16 @@ export function SubGroupForm({ onSuccess, initialValues }: SubGroupFormProps) {
     }
   }, [initialValues, form])
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values)
-    onSuccess?.()
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true)
+    try {
+      await onSubmitProp(values)
+      onSuccess?.()
+    } catch (error) {
+      // Handled by custom hook / api client
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -79,18 +91,32 @@ export function SubGroupForm({ onSuccess, initialValues }: SubGroupFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Select Group <span className="text-destructive">*</span></FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select 
+                onValueChange={field.onChange} 
+                value={field.value}
+                onOpenChange={(open) => {
+                  if (open) {
+                    fetchGroups()
+                  }
+                }}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a group" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="tech">Tech</SelectItem>
-                  <SelectItem value="gadgets">Gadgets</SelectItem>
-                  <SelectItem value="home">Home</SelectItem>
-                  <SelectItem value="office">Office</SelectItem>
-                  <SelectItem value="fashion">Fashion</SelectItem>
+                  {groups.length === 0 ? (
+                    <div className="py-2 px-3 text-xs text-zinc-500">
+                      No groups available. Please create a group first.
+                    </div>
+                  ) : (
+                    groups.map((g) => (
+                      <SelectItem key={g.id} value={String(g.id)}>
+                        {g.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -116,7 +142,7 @@ export function SubGroupForm({ onSuccess, initialValues }: SubGroupFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -132,11 +158,11 @@ export function SubGroupForm({ onSuccess, initialValues }: SubGroupFormProps) {
           )}
         />
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" type="button" onClick={onSuccess}>
+          <Button variant="outline" type="button" onClick={onSuccess} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">
-            Save Sub Group
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save Sub Group"}
           </Button>
         </div>
       </form>
