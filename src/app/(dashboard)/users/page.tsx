@@ -6,13 +6,9 @@ import {
   List,
   Plus,
   Search,
-  MoreVertical,
   Edit,
-  Trash2,
-  UserCheck,
-  UserX
+  Trash
 } from "lucide-react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -21,7 +17,6 @@ import { Input } from "@/components/ui/input"
 import { StaffCard } from "@/components/staff/staff-card"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 import {
@@ -34,82 +29,32 @@ import {
 import { StaffForm } from "@/components/staff/staff-form"
 
 import { Switch } from "@/components/ui/switch"
-import { Trash } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-import { toast } from "sonner"
-
-type Staff = {
-  id: string
-  name: string
-  role: string
-  email: string
-  phone: string
-  properties: number
-  status: "Active" | "Busy" | "Away" | "Inactive"
-  avatarUrl?: string
-}
-
-const INITIAL_STAFF: Staff[] = [
-  {
-    id: "1",
-    name: "Julian Casablancas",
-    role: "Senior Sales Agent",
-    email: "julian@VPG.estate",
-    phone: "+34 600 123 456",
-    properties: 42,
-    status: "Active",
-  },
-  {
-    id: "2",
-    name: "Sofia Rodriguez",
-    role: "Luxury Property Specialist",
-    email: "sofia@VPG.estate",
-    phone: "+34 600 234 567",
-    properties: 28,
-    status: "Busy",
-  },
-  {
-    id: "3",
-    name: "Marcus Aurelius",
-    role: "Operations Manager",
-    email: "marcus@VPG.estate",
-    phone: "+34 600 345 678",
-    properties: 0,
-    status: "Away",
-  },
-  {
-    id: "4",
-    name: "Elena Gilbert",
-    role: "Real Estate Consultant",
-    email: "elena@VPG.estate",
-    phone: "+34 600 456 789",
-    properties: 15,
-    status: "Active",
-  },
-]
+import { useUsers, Staff } from "@/hooks/use-users"
 
 export default function UserPage() {
   const router = useRouter()
+  const {
+    users,
+    search,
+    setSearch,
+    toggleUserStatus,
+    removeUser,
+    isLoading
+  } = useUsers()
+
   const [view, setView] = useState<"grid" | "table">("table")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [staffList, setStaffList] = useState<Staff[]>(INITIAL_STAFF)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
 
-  const filteredStaff = staffList.filter((s) =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.role.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const handleUpdateStatus = (id: string, status: Staff["status"]) => {
-    setStaffList(prev => prev.map(s => s.id === id ? { ...s, status } : s))
-    toast.success(`Member status updated to ${status}`)
+  const handleUpdateStatus = async (id: string) => {
+    await toggleUserStatus(id)
   }
 
-  const handleDelete = (id: string, name: string) => {
-    setStaffList(prev => prev.filter(s => s.id !== id))
-    toast.success(`${name} has been removed from the team`)
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to remove this staff member?")) {
+      await removeUser(id)
+    }
   }
 
   const handleEdit = (staff: Staff) => {
@@ -145,28 +90,27 @@ export default function UserPage() {
       cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.getValue("email")}</span>,
     },
     {
-      accessorKey: "properties",
-      header: () => <div className="text-center w-full">Properties</div>,
-      cell: ({ row }) => <div className="text-center w-full font-black text-zinc-900">{row.getValue("properties")}</div>,
+      accessorKey: "phone",
+      header: "Phone",
+      cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.phone || "-"}</span>,
     },
     {
       accessorKey: "status",
       header: () => <div className="text-center w-full">Status</div>,
       cell: ({ row }) => {
-        const status = row.getValue("status") as string
-        const isActive = status === "Active"
+        const isActive = row.original.isActive
         return (
           <div className="flex items-center justify-center gap-2">
             <Switch
               checked={isActive}
-              onCheckedChange={(checked) => handleUpdateStatus(row.original.id, checked ? "Active" : "Inactive")}
+              onCheckedChange={() => handleUpdateStatus(row.original.id)}
               className="data-[state=checked]:bg-emerald-600"
             />
             <span className={cn(
               "text-xs font-bold min-w-[65px] px-2 py-0.5 rounded-full transition-colors text-center",
               isActive ? "text-emerald-700 bg-emerald-50" : "text-zinc-500 bg-zinc-100"
             )}>
-              {status}
+              {isActive ? "Active" : "Inactive"}
             </span>
           </div>
         )
@@ -194,7 +138,7 @@ export default function UserPage() {
             className="h-9 w-9 rounded-xl text-zinc-400 hover:text-destructive hover:bg-destructive/5 transition-all"
             onClick={(e) => {
               e.stopPropagation()
-              handleDelete(row.original.id, row.original.name)
+              handleDelete(row.original.id)
             }}
           >
             <Trash className="h-4 w-4" />
@@ -216,8 +160,8 @@ export default function UserPage() {
               <Input
                 placeholder="Search team..."
                 className="pl-10 h-11 bg-white border-none shadow-sm rounded-xl focus-visible:ring-primary"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
 
@@ -249,16 +193,23 @@ export default function UserPage() {
           </div>
         </div>
 
-        {view === "grid" ? (
+        {isLoading && users.length === 0 ? (
+          <div className="text-center py-12 text-zinc-400 font-bold">
+            Loading team profiles...
+          </div>
+        ) : view === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {filteredStaff.map((staff) => (
-              <StaffCard key={staff.id} staff={staff} />
+            {users.map((staff) => (
+              <StaffCard key={staff.id} staff={{
+                ...staff,
+                status: staff.isActive ? "Active" : "Inactive"
+              }} />
             ))}
           </div>
         ) : (
           <DataTable
             columns={columns}
-            data={filteredStaff}
+            data={users}
             onRowClick={(row) => router.push(`/users/${row.id}`)}
           />
         )}
@@ -278,13 +229,7 @@ export default function UserPage() {
               <StaffForm
                 isDialog
                 onSuccess={() => setIsDialogOpen(false)}
-                initialValues={editingStaff ? {
-                  name: editingStaff.name,
-                  email: editingStaff.email,
-                  phone: editingStaff.phone,
-                  role: editingStaff.role.toLowerCase().includes("agent") ? "agent" :
-                    editingStaff.role.toLowerCase().includes("manager") ? "manager" : "admin"
-                } : undefined}
+                initialValues={editingStaff || undefined}
               />
             </div>
           </DialogContent>

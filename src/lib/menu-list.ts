@@ -146,8 +146,20 @@ export function getMenuList(pathname: string): Group[] {
       groupLabel: "MANAGEMENT",
       menus: [
         {
+          href: "/orgnization",
+          label: "Organization Master",
+          icon: Workflow,
+          submenus: []
+        },
+        {
+          href: "/roles",
+          label: "Role Master",
+          icon: User,
+          submenus: []
+        },
+        {
           href: "/tasks",
-          label: "Task",
+          label: "Task Master",
           icon: Workflow,
           submenus: []
         },

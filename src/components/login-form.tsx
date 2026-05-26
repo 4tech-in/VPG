@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import apiClient from "@/lib/api-client"
+import { useAuthStore } from "@/store/use-auth-store"
+
 
 export function LoginForm({
   className,
@@ -31,8 +33,7 @@ export function LoginForm({
       })
 
       if (response && response.token) {
-        localStorage.setItem("token", response.token)
-        localStorage.setItem("user", JSON.stringify(response.data))
+        useAuthStore.getState().setAuth(response.token, response.data)
         
         toast.success("Login successful! Redirecting...")
         router.push("/dashboard")

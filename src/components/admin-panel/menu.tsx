@@ -74,8 +74,8 @@ export function Menu({ isOpen }: MenuProps) {
                                 ((active === undefined &&
                                   pathname.startsWith(href)) ||
                                   active)
-                                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
-                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:text-white"
+                                  : "text-sidebar-foreground"
                               )}
                               asChild
                             >

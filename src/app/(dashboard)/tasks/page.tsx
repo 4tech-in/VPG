@@ -16,7 +16,6 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

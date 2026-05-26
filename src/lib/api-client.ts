@@ -1,5 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner"
+import { validateSession } from "@/store/proxy"
+
 
 // Define standard API response shape if required
 export interface ApiResponse<T = any> {
@@ -23,6 +25,9 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Retrieve authentication token from localStorage or cookies if it exists
     if (typeof window !== "undefined") {
+      if (config.url !== "/auth/login") {
+        validateSession()
+      }
       const token = localStorage.getItem("token")
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`
@@ -73,10 +78,8 @@ apiClient.interceptors.response.use(
             break
           case 401:
             errorMessage = "Unauthorized. Please log in again."
-            // Optionally redirect to login or clear auth tokens
             if (typeof window !== "undefined") {
-              // localStorage.removeItem("token");
-              // window.location.href = "/login";
+              validateSession()
             }
             break
           case 403:

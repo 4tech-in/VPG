@@ -1,37 +1,117 @@
 "use client"
 
-import { ArrowLeft, Camera, Calendar as CalendarIcon, ChevronDown, Eye, Mail, Phone, User, MapPin, Globe, Briefcase } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Mail, Phone, User, Eye, EyeOff, Briefcase, Network, Building } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { useRoles } from "@/hooks/use-roles"
+import { useUnits } from "@/hooks/use-units"
+import { useUsers, Staff } from "@/hooks/use-users"
+import { toast } from "sonner"
 
-import { useState } from "react"
-import { format, parse, isValid } from "date-fns"
 type StaffFormProps = {
-  initialValues?: {
-    name: string
-    email: string
-    phone: string
-    role: string
-    gender?: string
-    dob?: string
-  }
+  initialValues?: Partial<Staff>
   isDialog?: boolean
   onSuccess?: () => void
 }
 
 export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps) {
+  const { roles, isLoading: rolesLoading } = useRoles()
+  const { units, isLoading: unitsLoading } = useUnits(true)
+  const { allUsers, addUser, editUser, isLoading: userActionLoading } = useUsers()
+
+  const [name, setName] = useState(initialValues?.name || "")
+  const [email, setEmail] = useState(initialValues?.email || "")
+  const [phone, setPhone] = useState(initialValues?.phone || "")
+  const [password, setPassword] = useState("")
+  const [roleId, setRoleId] = useState(initialValues?.roleId || "")
+  const [reportsTo, setReportsTo] = useState(initialValues?.reportsTo || "none")
+  const [primaryNodeId, setPrimaryNodeId] = useState(initialValues?.primaryNodeId || "")
+  
+  // Custom multi-select or single selection list for nodeIds
+  const [selectedNodes, setSelectedNodes] = useState<string[]>(initialValues?.nodeIds || [])
+  const [showPassword, setShowPassword] = useState(false)
+
+  // Sync state if initialValues changes
+  useEffect(() => {
+    if (initialValues) {
+      setName(initialValues.name || "")
+      setEmail(initialValues.email || "")
+      setPhone(initialValues.phone || "")
+      setRoleId(initialValues.roleId || "")
+      setReportsTo(initialValues.reportsTo || "none")
+      setPrimaryNodeId(initialValues.primaryNodeId || "")
+      setSelectedNodes(initialValues.nodeIds || [])
+    }
+  }, [initialValues])
+
+  const handleToggleNode = (nodeId: string) => {
+    setSelectedNodes((prev) => {
+      const next = prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
+      // Clear primaryNodeId if it is removed from node list
+      if (!next.includes(primaryNodeId)) {
+        setPrimaryNodeId("")
+      }
+      return next
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!name.trim()) return toast.error("Full Name is required")
+    if (!email.trim()) return toast.error("Email is required")
+    if (!roleId) return toast.error("Role is required")
+
+    try {
+      const payload: any = {
+        name,
+        email,
+        mobile: phone,
+        roleId,
+        nodeIds: selectedNodes,
+        primaryNodeId: primaryNodeId || null,
+        reportsTo: reportsTo === "none" || !reportsTo ? null : reportsTo,
+      }
+
+      if (password) {
+        payload.password = password
+      } else if (!initialValues) {
+        // Password is required for new users
+        return toast.error("Password is required for new users")
+      }
+
+      if (initialValues?.id) {
+        await editUser(initialValues.id, payload)
+      } else {
+        await addUser(payload)
+      }
+
+      if (onSuccess) onSuccess()
+    } catch (err: any) {
+      // toast already called by editUser/addUser hooks
+    }
+  }
+
+  const activeRoles = roles.filter((r) => r.isActive)
+  const activeUnits = units.filter((u) => u.status === "Active")
+  
+  // Filter out the user itself from reportsTo select dropdown list when editing
+  const potentialReportsTo = allUsers.filter((u) => u.isActive && (!initialValues || u.id !== initialValues.id))
+
+  const isLoading = rolesLoading || unitsLoading || userActionLoading
+
   return (
-    <div className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       {!isDialog && (
         <div className="flex items-center gap-4">
           <Link href="/users">
-            <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100">
+            <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -48,41 +128,42 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         <div className="flex flex-col sm:flex-row gap-12 mb-12 items-start">
           <div className="relative group">
             <Avatar className="h-32 w-32 rounded-[2.5rem] border-4 border-zinc-50 shadow-sm bg-zinc-100 flex items-center justify-center">
-              <User className="h-12 w-12 text-zinc-300" />
+              <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">
+                {name ? name[0].toUpperCase() : <User className="h-12 w-12 text-zinc-300" />}
+              </AvatarFallback>
             </Avatar>
-            <Button size="icon" className="absolute -bottom-2 -right-2 rounded-full h-10 w-10 border-4 border-white bg-primary hover:bg-primary/90 shadow-md">
-              <PlusIcon className="h-5 w-5 text-white" />
-            </Button>
           </div>
 
           <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-bold text-zinc-900">Staff Photo</h2>
+            <h2 className="text-xl font-bold text-zinc-900">Member Profile</h2>
             <p className="text-sm text-zinc-400 max-w-xs">
-              Upload a clear profile picture for identification. Supported formats: JPG, PNG.
+              Fill in the corporate profile and resource mapping details for VPG Estate members.
             </p>
-            <Button variant="outline" className="w-fit mt-2 rounded-xl h-10 border-zinc-100 font-bold hover:bg-zinc-50">
-              Change Image
-            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Full Name</Label>
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Full Name <span className="text-destructive">*</span></Label>
             <Input
-              defaultValue={initialValues?.name}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Enter full name"
               className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
+              required
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address</Label>
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address <span className="text-destructive">*</span></Label>
             <div className="relative">
               <Input
-                defaultValue={initialValues?.email}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="staff@VPG.estate"
+                type="email"
                 className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
+                required
               />
               <Mail className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
             </div>
@@ -90,111 +171,145 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
           <div className="space-y-2">
             <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Phone Number</Label>
-            <Input
-              defaultValue={initialValues?.phone}
-              placeholder="+34 000 000 000"
-              className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Password</Label>
-            <div className="relative">
-              <Input type="password" placeholder="********" className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium" />
-              <Eye className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Gender</Label>
-            <Select defaultValue={initialValues?.gender}>
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Date of Birth</Label>
             <div className="relative">
               <Input
-                type="date"
-                defaultValue={initialValues?.dob ? format(parse(initialValues.dob, "dd/MM/yyyy", new Date()), "yyyy-MM-dd") : ""}
-                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 pr-12 focus-visible:ring-primary font-medium appearance-none"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+34 000 000 000"
+                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
               />
+              <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role</Label>
-            <Select defaultValue={initialValues?.role}>
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+              Password {initialValues && <span className="text-[10px] text-zinc-400 font-bold tracking-normal">(Leave blank to keep current)</span>} {!initialValues && <span className="text-destructive">*</span>}
+            </Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 pr-12 focus-visible:ring-primary font-medium"
+                required={!initialValues}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 transition-colors"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
+            <Select value={roleId} onValueChange={setRoleId}>
               <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="agent">Sales Agent</SelectItem>
-                <SelectItem value="manager">Operations Manager</SelectItem>
+                {activeRoles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
-            <Select>
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
+            <Select value={reportsTo} onValueChange={setReportsTo}>
               <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select Project" />
+                <SelectValue placeholder="Select reporting manager" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="twin-towers">VPG Twin Towers</SelectItem>
-                <SelectItem value="royce">VPG Royce</SelectItem>
-                <SelectItem value="grand">VPG Grand</SelectItem>
+                <SelectItem value="none">None / Self-Managed</SelectItem>
+                {potentialReportsTo.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-4 md:col-span-2 border-t border-zinc-50 pt-6">
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Building className="h-4 w-4 text-primary" /> Operating Units Selection
+            </Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {activeUnits.map((u) => {
+                const isSelected = selectedNodes.includes(u.id)
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleToggleNode(u.id)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-4 border rounded-2xl transition-all font-bold text-center gap-1 h-20 shadow-sm",
+                      isSelected
+                        ? "bg-primary border-primary text-white scale-[1.02]"
+                        : "bg-white border-zinc-100 text-zinc-700 hover:bg-zinc-50"
+                    )}
+                  >
+                    <span className="text-[13px] leading-tight">{u.label}</span>
+                    <span className={cn(
+                      "text-[9px] uppercase font-bold",
+                      isSelected ? "text-white/80" : "text-zinc-400"
+                    )}>
+                      {u.value}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {selectedNodes.length > 0 && (
+            <div className="space-y-2 md:col-span-2">
+              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Primary Operating Unit</Label>
+              <Select value={primaryNodeId} onValueChange={setPrimaryNodeId}>
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                  <SelectValue placeholder="Select primary operating unit" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                  {activeUnits
+                    .filter((u) => selectedNodes.includes(u.id))
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-4 mt-16 pt-8 border-t border-zinc-50">
           <Button
+            type="button"
             variant="outline"
             onClick={onSuccess}
             className="rounded-2xl h-14 px-8 border-zinc-100 font-bold hover:bg-zinc-50 min-w-[140px]"
+            disabled={isLoading}
           >
             Cancel
           </Button>
           <Button
-            onClick={onSuccess}
+            type="submit"
             className="rounded-2xl h-14 px-12 font-bold shadow-lg shadow-primary/20 min-w-[180px]"
+            disabled={isLoading}
           >
-            {initialValues ? "Update Member" : "Save Staff Member"}
+            {isLoading ? "Saving Profile..." : (initialValues ? "Update Member" : "Save Staff Member")}
           </Button>
         </div>
       </div>
-    </div>
-  )
-}
-
-function PlusIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
+    </form>
   )
 }

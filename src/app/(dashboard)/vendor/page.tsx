@@ -14,7 +14,8 @@ import {
   Edit,
   Trash,
   Phone,
-  Mail
+  Mail,
+  User
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -79,7 +80,7 @@ export default function VendorPage() {
   const columns = useMemo<ColumnDef<Vendor>[]>(() => [
     {
       accessorKey: "vendorCode",
-      header: "VENDOR CODE",
+      header: "CODE",
       cell: ({ row }) => (
         <div className="text-[13px] font-bold text-zinc-600 pl-4">
           {row.getValue("vendorCode") || "N/A"}
@@ -88,31 +89,42 @@ export default function VendorPage() {
     },
     {
       accessorKey: "name",
-      header: "VENDOR DETAILS",
+      header: "VENDOR",
       cell: ({ row }) => (
         <div className="flex items-center gap-3 pl-4">
-          <div className="h-9 w-9 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400 shrink-0">
-            <Building2 className="h-4 w-4" />
-          </div>
           <div className="flex flex-col">
             <span className="font-bold text-zinc-900 leading-tight">{row.getValue("name")}</span>
-            {row.original.companyName && (
-              <span className="text-[11px] text-zinc-500 font-medium leading-none mt-1">{row.original.companyName}</span>
-            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "companyName",
+      header: "Company",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3 pl-4">
+          <div className="flex flex-col">
+            <span className="font-bold text-zinc-900 leading-tight">{row.getValue("companyName")}</span>
           </div>
         </div>
       ),
     },
     {
       accessorKey: "contactNumber",
-      header: "CONTACT PARTNER",
+      header: "CONTACT",
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5 text-xs text-zinc-500 font-medium">
-          {row.original.contactPerson && (
-            <span className="font-bold text-zinc-800 text-[13px]">{row.original.contactPerson}</span>
-          )}
+           <span className="flex items-center gap-1.5 mt-0.5">
+            <User className="h-3.5 w-3.5 text-zinc-400" /> {row.getValue("contactPerson")}
+            {row.original.contactPerson && (
+              <span className="text-[11px] text-zinc-400">{row.original.contactPerson}</span>
+            )}
+          </span>
           <span className="flex items-center gap-1.5 mt-0.5">
             <Phone className="h-3.5 w-3.5 text-zinc-400" /> {row.getValue("contactNumber")}
+            {row.original.alternateNumber && (
+              <span className="text-[11px] text-zinc-400">/ {row.original.alternateNumber}</span>
+            )}
           </span>
           {row.original.email && (
             <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
@@ -144,7 +156,7 @@ export default function VendorPage() {
     },
     {
       accessorKey: "gstNumber",
-      header: "BUSINESS INFO",
+      header: "GST",
       cell: ({ row }) => {
         const hasBusinessInfo = row.original.gstNumber || row.original.panNumber;
         if (!hasBusinessInfo) return <span className="text-xs text-zinc-400">N/A</span>;
@@ -167,12 +179,42 @@ export default function VendorPage() {
       },
     },
     {
+      accessorKey: "bankName",
+      header: "BANK DETAILS",
+      cell: ({ row }) => {
+        const hasBank = row.original.bankName || row.original.accountNumber || row.original.ifscCode;
+        if (!hasBank) return <span className="text-xs text-zinc-400">N/A</span>;
+        return (
+          <div className="flex flex-col text-xs text-zinc-500 font-medium">
+            {row.original.bankName && (
+              <span className="text-zinc-800 font-bold">{row.original.bankName}</span>
+            )}
+            {row.original.accountNumber && (
+              <span className="font-mono text-[11px] text-zinc-600 mt-0.5">A/C: {row.original.accountNumber}</span>
+            )}
+            {row.original.ifscCode && (
+              <span className="font-mono text-[10px] text-zinc-400 uppercase">IFSC: {row.original.ifscCode}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "itemName",
       header: "SUPPLIED ITEM",
       cell: ({ row }) => (
         <Badge variant="outline" className="rounded-lg font-bold text-zinc-500 border-zinc-100 uppercase tracking-tighter text-[10px]">
           {row.getValue("itemName") || "General"}
         </Badge>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: "REGISTERED",
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold text-zinc-500">
+          {row.original.createdAt || "N/A"}
+        </span>
       ),
     },
     {
@@ -272,6 +314,7 @@ export default function VendorPage() {
           name: editingVendor.name,
           companyName: editingVendor.companyName,
           itemId: editingVendor.itemId,
+          itemName: editingVendor.itemName,
           contactPerson: editingVendor.contactPerson,
           contactNumber: editingVendor.contactNumber,
           alternateNumber: editingVendor.alternateNumber,

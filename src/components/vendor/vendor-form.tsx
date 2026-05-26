@@ -105,9 +105,12 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
     },
   })
 
+  const isFetchingRef = useRef(false)
+
   // Load first batch of items when component mounts or search changes
   const fetchItems = useCallback(async (pageToFetch: number, searchQuery: string, isAppend = false) => {
-    if (isFetchingItems) return
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
     setIsFetchingItems(true)
     try {
       const response = await itemService.getItems({
@@ -128,9 +131,10 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
     } catch (error) {
       console.error("Failed to load catalog items:", error)
     } finally {
+      isFetchingRef.current = false
       setIsFetchingItems(false)
     }
-  }, [isFetchingItems])
+  }, [])
 
   // Debounce search query
   useEffect(() => {
