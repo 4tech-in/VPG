@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Mail, Phone, User, Eye, EyeOff, Briefcase, Network, Building, Camera } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils"
 import { useRoles } from "@/hooks/use-roles"
 import { useUnits } from "@/hooks/use-units"
 import { useUsers, Staff } from "@/hooks/use-users"
+import { useAuthStore } from "@/store/use-auth-store"
+import { useOrganizations } from "@/hooks/use-organizations"
+import { geofenceService } from "@/service/geofenceService"
+import { projectService } from "@/service/projectService"
+import { attendancePolicyService } from "@/service/attendancePolicyService"
+import { MapPin, FolderGit, Clock } from "lucide-react"
 import { toast } from "sonner"
 
 type StaffFormProps = {
@@ -24,6 +30,157 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   const { roles, isLoading: rolesLoading } = useRoles()
   const { units, isLoading: unitsLoading } = useUnits(true)
   const { allUsers, addUser, editUser, isLoading: userActionLoading } = useUsers()
+  // Geofence Infinite Scroll State
+  const [geofencesList, setGeofencesList] = useState<any[]>([])
+  const [geofencePage, setGeofencePage] = useState(1)
+  const [hasMoreGeofences, setHasMoreGeofences] = useState(true)
+  const [isGeofencesLoading, setIsGeofencesLoading] = useState(false)
+  const geofenceObserverRef = useRef<HTMLDivElement | null>(null)
+
+  // Projects Infinite Scroll State
+  const [projectsList, setProjectsList] = useState<any[]>([])
+  const [projectPage, setProjectPage] = useState(1)
+  const [hasMoreProjects, setHasMoreProjects] = useState(true)
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false)
+  const projectObserverRef = useRef<HTMLDivElement | null>(null)
+
+  // Attendance Policies Infinite Scroll State
+  const [policiesList, setPoliciesList] = useState<any[]>([])
+  const [policyPage, setPolicyPage] = useState(1)
+  const [hasMorePolicies, setHasMorePolicies] = useState(true)
+  const [isPoliciesLoading, setIsPoliciesLoading] = useState(false)
+  const policyObserverRef = useRef<HTMLDivElement | null>(null)
+
+  // Fetch functions
+  const fetchGeofencesPage = async (page: number) => {
+    if (isGeofencesLoading) return
+    setIsGeofencesLoading(true)
+    try {
+      const response = await geofenceService.getGeofences({ page, limit: 10 })
+      const mapped = response.geofences.map((g: any) => ({
+        id: String(g._id || g.id || ""),
+        name: g.name,
+      }))
+      setGeofencesList(prev => page === 1 ? mapped : [...prev, ...mapped])
+      setHasMoreGeofences(page < response.pagination.totalPages)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsGeofencesLoading(false)
+    }
+  }
+
+  const fetchProjectsPage = async (page: number) => {
+    if (isProjectsLoading) return
+    setIsProjectsLoading(true)
+    try {
+      const response = await projectService.getProjects({ page, limit: 10 })
+      const mapped = response.projects.map((p: any) => ({
+        id: String(p._id || p.id || ""),
+        name: p.projectName,
+      }))
+      setProjectsList(prev => page === 1 ? mapped : [...prev, ...mapped])
+      setHasMoreProjects(page < response.pagination.totalPages)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsProjectsLoading(false)
+    }
+  }
+
+  const fetchPoliciesPage = async (page: number) => {
+    if (isPoliciesLoading) return
+    setIsPoliciesLoading(true)
+    try {
+      const response = await attendancePolicyService.getPolicies({ page, limit: 10 })
+      const mapped = response.data.map((ap: any) => ({
+        id: String(ap._id || ap.id || ""),
+        name: ap.name,
+      }))
+      setPoliciesList(prev => page === 1 ? mapped : [...prev, ...mapped])
+      const totalPages = response.pagination?.totalPages || 1
+      setHasMorePolicies(page < totalPages)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsPoliciesLoading(false)
+    }
+  }
+
+  // Load first page on mount
+  useEffect(() => {
+    fetchGeofencesPage(1)
+    fetchProjectsPage(1)
+    fetchPoliciesPage(1)
+  }, [])
+
+  // Observers for infinite scrolling
+  useEffect(() => {
+    if (!hasMoreGeofences || isGeofencesLoading) return
+    const currentRef = geofenceObserverRef.current
+    if (!currentRef) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setGeofencePage((prev) => {
+          const next = prev + 1
+          fetchGeofencesPage(next)
+          return next
+        })
+      }
+    }, { threshold: 0.1 })
+
+    observer.observe(currentRef)
+    return () => {
+      if (currentRef) observer.unobserve(currentRef)
+    }
+  }, [hasMoreGeofences, isGeofencesLoading, geofencePage])
+
+  useEffect(() => {
+    if (!hasMoreProjects || isProjectsLoading) return
+    const currentRef = projectObserverRef.current
+    if (!currentRef) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setProjectPage((prev) => {
+          const next = prev + 1
+          fetchProjectsPage(next)
+          return next
+        })
+      }
+    }, { threshold: 0.1 })
+
+    observer.observe(currentRef)
+    return () => {
+      if (currentRef) observer.unobserve(currentRef)
+    }
+  }, [hasMoreProjects, isProjectsLoading, projectPage])
+
+  useEffect(() => {
+    if (!hasMorePolicies || isPoliciesLoading) return
+    const currentRef = policyObserverRef.current
+    if (!currentRef) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setPolicyPage((prev) => {
+          const next = prev + 1
+          fetchPoliciesPage(next)
+          return next
+        })
+      }
+    }, { threshold: 0.1 })
+
+    observer.observe(currentRef)
+    return () => {
+      if (currentRef) observer.unobserve(currentRef)
+    }
+  }, [hasMorePolicies, isPoliciesLoading, policyPage])
+
+  const { user: loggedInUser, hasPermission } = useAuthStore()
+  const isSuperAdmin = hasPermission("organization:view")
+  const { allOrganizations } = useOrganizations()
 
   const [name, setName] = useState(initialValues?.name || "")
   const [email, setEmail] = useState(initialValues?.email || "")
@@ -32,6 +189,10 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   const [roleId, setRoleId] = useState(initialValues?.roleId || "")
   const [reportsTo, setReportsTo] = useState(initialValues?.reportsTo || "none")
   const [primaryNodeId, setPrimaryNodeId] = useState(initialValues?.primaryNodeId || "")
+  const [geofenceId, setGeofenceId] = useState(initialValues?.geofenceId || "none")
+  const [projectId, setProjectId] = useState(initialValues?.projectId || "none")
+  const [attendancePolicyId, setAttendancePolicyId] = useState(initialValues?.attendancePolicyId || "none")
+  const [organizationId, setOrganizationId] = useState(initialValues?.organizationId || "")
   
   // Custom multi-select or single selection list for nodeIds
   const [selectedNodes, setSelectedNodes] = useState<string[]>(initialValues?.nodeIds || [])
@@ -52,6 +213,10 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       setSelectedNodes(initialValues.nodeIds || [])
       setPreviewUrl(initialValues.avatarUrl || "")
       setProfileImageFile(null)
+      setGeofenceId(initialValues.geofenceId || "none")
+      setProjectId(initialValues.projectId || "none")
+      setAttendancePolicyId(initialValues.attendancePolicyId || "none")
+      setOrganizationId(initialValues.organizationId || "")
     }
   }, [initialValues])
 
@@ -80,6 +245,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
     if (!name.trim()) return toast.error("Full Name is required")
     if (!email.trim()) return toast.error("Email is required")
     if (!roleId) return toast.error("Role is required")
+    if (isSuperAdmin && !organizationId) return toast.error("Organization is required")
 
     try {
       const payload: any = {
@@ -89,7 +255,13 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         roleId,
         nodeIds: selectedNodes,
         primaryNodeId: primaryNodeId || null,
-        reportsTo: reportsTo === "none" || !reportsTo ? null : reportsTo,
+        reportsTo: isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
+        geofenceId: isSuperAdmin || geofenceId === "none" || !geofenceId ? null : geofenceId,
+        projectId: isSuperAdmin || projectId === "none" || !projectId ? null : projectId,
+        attendancePolicyId: isSuperAdmin || attendancePolicyId === "none" || !attendancePolicyId ? null : attendancePolicyId,
+      }
+      if (isSuperAdmin && organizationId) {
+        payload.organizationId = organizationId
       }
       if (profileImageFile) {
         payload.profileImage = profileImageFile
@@ -119,6 +291,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   // Filter out the user itself from reportsTo select dropdown list when editing
   const potentialReportsTo = allUsers.filter((u) => u.isActive && (!initialValues || u.id !== initialValues.id))
 
+
   const isLoading = rolesLoading || unitsLoading || userActionLoading
 
   return (
@@ -137,7 +310,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       )}
 
       <div className={cn(
-        "bg-white overflow-hidden",
+        " overflow-hidden",
         !isDialog && "border-none shadow-sm rounded-3xl p-8 sm:p-12"
       )}>
         <div className="flex flex-col sm:flex-row gap-12 mb-12 items-start">
@@ -201,7 +374,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+34 000 000 000"
+                placeholder="00 0000 0000"
                 className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
               />
               <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
@@ -231,6 +404,24 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
           </div>
 
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Organization <span className="text-destructive">*</span></Label>
+              <Select value={organizationId} onValueChange={setOrganizationId}>
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                  <SelectValue placeholder="Select organization" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                  {allOrganizations?.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
             <Select value={roleId} onValueChange={setRoleId}>
@@ -247,54 +438,95 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
-            <Select value={reportsTo} onValueChange={setReportsTo}>
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select reporting manager" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                <SelectItem value="none">None / Self-Managed</SelectItem>
-                {potentialReportsTo.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} ({u.role})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-4 md:col-span-2 border-t border-zinc-50 pt-6">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Building className="h-4 w-4 text-primary" /> Operating Units Selection
-            </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {activeUnits.map((u) => {
-                const isSelected = selectedNodes.includes(u.id)
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleToggleNode(u.id)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-4 border rounded-2xl transition-all font-bold text-center gap-1 h-20 shadow-sm",
-                      isSelected
-                        ? "bg-primary border-primary text-white scale-[1.02]"
-                        : "bg-white border-zinc-100 text-zinc-700 hover:bg-zinc-50"
-                    )}
-                  >
-                    <span className="text-[13px] leading-tight">{u.label}</span>
-                    <span className={cn(
-                      "text-[9px] uppercase font-bold",
-                      isSelected ? "text-white/80" : "text-zinc-400"
-                    )}>
-                      {u.value}
-                    </span>
-                  </button>
-                )
-              })}
+          {!isSuperAdmin && (
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
+              <Select value={reportsTo} onValueChange={setReportsTo}>
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                  <SelectValue placeholder="Select reporting manager" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                  <SelectItem value="none">None / Self-Managed</SelectItem>
+                  {potentialReportsTo.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          )}
+
+          {!isSuperAdmin && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
+                <Select value={geofenceId} onValueChange={setGeofenceId}>
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                    <SelectValue placeholder="Select geofence boundary" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                    <SelectItem value="none">None / No Geofence</SelectItem>
+                    {geofencesList.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                    {hasMoreGeofences && (
+                      <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                        {isGeofencesLoading ? "Loading..." : "Scroll for more"}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
+                <Select value={projectId} onValueChange={setProjectId}>
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                    <SelectValue placeholder="Select corporate project" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                    <SelectItem value="none">None / Unassigned</SelectItem>
+                    {projectsList.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                    {hasMoreProjects && (
+                      <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                        {isProjectsLoading ? "Loading..." : "Scroll for more"}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
+                <Select value={attendancePolicyId} onValueChange={setAttendancePolicyId}>
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                    <SelectValue placeholder="Select attendance ruleset" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                    <SelectItem value="none">None / System Default</SelectItem>
+                    {policiesList.map((ap) => (
+                      <SelectItem key={ap.id} value={ap.id}>
+                        {ap.name}
+                      </SelectItem>
+                    ))}
+                    {hasMorePolicies && (
+                      <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                        {isPoliciesLoading ? "Loading..." : "Scroll for more"}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
 
           {selectedNodes.length > 0 && (
             <div className="space-y-2 md:col-span-2">

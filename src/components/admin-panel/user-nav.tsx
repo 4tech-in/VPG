@@ -22,9 +22,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/use-auth-store";
 
 export function UserNav() {
   const router = useRouter();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+
+  const handleSignOut = () => {
+    clearAuth();
+    router.push("/login");
+  };
   return (
     <DropdownMenu>
       <TooltipProvider disableHoverableContent>
@@ -73,7 +80,7 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           className="hover:cursor-pointer" 
-          onClick={() => router.push("/login")}
+          onClick={handleSignOut}
         >
           <LogOut className="w-4 h-4 mr-3 text-muted-foreground" />
           Sign out

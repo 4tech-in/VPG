@@ -31,16 +31,21 @@ import { StaffForm } from "@/components/staff/staff-form"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { useUsers, Staff } from "@/hooks/use-users"
+import { useAuthStore } from "@/store/use-auth-store"
 
 export default function UserPage() {
   const router = useRouter()
+  const { user: loggedInUser, hasPermission } = useAuthStore()
+  const isSuperAdmin = hasPermission("organization:view")
+
   const {
     users,
     search,
     setSearch,
     toggleUserStatus,
     removeUser,
-    isLoading
+    isLoading,
+    refetch
   } = useUsers()
 
   const [view, setView] = useState<"grid" | "table">("table")
@@ -93,6 +98,11 @@ export default function UserPage() {
       accessorKey: "phone",
       header: "Phone",
       cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.phone || "-"}</span>,
+    },
+    {
+      accessorKey: "attendancePolicyName",
+      header: "Attendance Policy",
+      cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.attendancePolicyName || "-"}</span>,
     },
     {
       accessorKey: "status",
@@ -149,16 +159,18 @@ export default function UserPage() {
   ]
 
   return (
-    <ContentLayout title="Staff Members">
+    <ContentLayout title={isSuperAdmin ? "Users" : "Staff Members"}>
       <div className="flex flex-col gap-8 p-4 sm:p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Staff Members</h1>
+          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">
+            {isSuperAdmin ? "Users" : "Staff Members"}
+          </h1>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <Input
-                placeholder="Search team..."
+                placeholder={isSuperAdmin ? "Search users..." : "Search team..."}
                 className="pl-10 h-11 bg-white border-none shadow-sm rounded-xl focus-visible:ring-primary"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -188,14 +200,14 @@ export default function UserPage() {
               onClick={handleAddNew}
               className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20"
             >
-              <Plus className="mr-2 h-4 w-4" /> Add Member
+              <Plus className="mr-2 h-4 w-4" /> {isSuperAdmin ? "Add User" : "Add Member"}
             </Button>
           </div>
         </div>
 
         {isLoading && users.length === 0 ? (
           <div className="text-center py-12 text-zinc-400 font-bold">
-            Loading team profiles...
+            {isSuperAdmin ? "Loading user profiles..." : "Loading team profiles..."}
           </div>
         ) : view === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -218,17 +230,28 @@ export default function UserPage() {
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl">
             <DialogHeader className="pb-4 border-b border-zinc-100 mb-6">
-              <DialogTitle className="text-2xl font-black">{editingStaff ? "Update Staff Profile" : "Register New Staff"}</DialogTitle>
+              <DialogTitle className="text-2xl font-black">
+                {editingStaff 
+                  ? (isSuperAdmin ? "Update User Profile" : "Update Staff Profile") 
+                  : (isSuperAdmin ? "Register New User" : "Register New Staff")}
+              </DialogTitle>
               <DialogDescription className="font-medium text-zinc-500">
                 {editingStaff
-                  ? "Modify account permissions and professional details for this member."
-                  : "Onboard a new member to the VPG Estate team."}
+                  ? (isSuperAdmin 
+                      ? "Modify account permissions and professional details for this user." 
+                      : "Modify account permissions and professional details for this member.")
+                  : (isSuperAdmin 
+                      ? "Onboard a new user to the VPG Estate team." 
+                      : "Onboard a new member to the VPG Estate team.")}
               </DialogDescription>
             </DialogHeader>
             <div className="py-2">
               <StaffForm
                 isDialog
-                onSuccess={() => setIsDialogOpen(false)}
+                onSuccess={() => {
+                  setIsDialogOpen(false)
+                  refetch()
+                }}
                 initialValues={editingStaff || undefined}
               />
             </div>

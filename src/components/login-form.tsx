@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import apiClient from "@/lib/api-client"
 import { useAuthStore } from "@/store/use-auth-store"
+import { hasActiveSession } from "@/store/proxy"
 
 
 export function LoginForm({
@@ -17,6 +18,24 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"form">) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+
+  useEffect(() => {
+    // Check token existence and expiration in proxy file
+    if (hasActiveSession()) {
+      setIsRedirecting(true)
+      router.push("/dashboard")
+    }
+  }, [router])
+
+  if (isRedirecting) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 gap-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <p className="text-sm font-semibold text-zinc-500">Redirecting to dashboard...</p>
+      </div>
+    )
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

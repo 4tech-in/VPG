@@ -20,14 +20,7 @@ import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable } from "@/components/ui/data-table"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -455,12 +448,12 @@ export default function IndentPage() {
         </div> */}
 
         {/* Indent Board */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm">
+       
           <DataTable
             columns={columns}
             data={data}
           />
-        </div>
+        
       </div>
 
       {/* Reject Indent Dialog */}

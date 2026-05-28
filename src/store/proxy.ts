@@ -31,10 +31,10 @@ export function isTokenExpired(token: string): boolean {
 /**
  * Validates current session token and automatically logs out / redirects if expired
  */
-export function validateSession(): boolean {
+export function validateSession(forceLogout = false): boolean {
   const token = useAuthStore.getState().token
   
-  if (!token || isTokenExpired(token)) {
+  if (forceLogout || !token || isTokenExpired(token)) {
     // Session is invalid or expired
     useAuthStore.getState().clearAuth()
     
@@ -49,4 +49,12 @@ export function validateSession(): boolean {
   }
   
   return true
+}
+
+/**
+ * Checks if the user has an active, unexpired session token
+ */
+export function hasActiveSession(): boolean {
+  const token = useAuthStore.getState().token
+  return !!token && !isTokenExpired(token)
 }

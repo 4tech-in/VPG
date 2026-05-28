@@ -32,6 +32,9 @@ export type ApiUser = {
   reportsTo?: PopulatedUser | string | null
   isActive: boolean
   profileImage?: string | null
+  geofenceId?: any
+  projectId?: any
+  attendancePolicyId?: any
   createdAt?: string
   updatedAt?: string
 }
@@ -52,6 +55,10 @@ export type CreateUserPayload = {
   primaryNodeId?: string | null
   reportsTo?: string | null
   profileImage?: File | string | null
+  geofenceId?: string | null
+  projectId?: string | null
+  attendancePolicyId?: string | null
+  organizationId?: string | null
 }
 
 const convertToFormData = (obj: any): FormData => {

@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner"
 import { validateSession } from "@/store/proxy"
+import { useAuthStore } from "@/store/use-auth-store"
 
 
 // Define standard API response shape if required
@@ -23,12 +24,12 @@ const apiClient = axios.create({
 // 2. Request Interceptor: Attach authentication token, headers, logs, etc.
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Retrieve authentication token from localStorage or cookies if it exists
+    // Retrieve authentication token from auth store if it exists
     if (typeof window !== "undefined") {
       if (config.url !== "/auth/login") {
         validateSession()
       }
-      const token = localStorage.getItem("token")
+      const token = useAuthStore.getState().token
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -79,7 +80,7 @@ apiClient.interceptors.response.use(
           case 401:
             errorMessage = "Unauthorized. Please log in again."
             if (typeof window !== "undefined") {
-              validateSession()
+              validateSession(true)
             }
             break
           case 403:

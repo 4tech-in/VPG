@@ -108,6 +108,46 @@ export function DataTable<TData, TValue>({
     },
   })
 
+  // Native Virtualization Setup
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [scrollTop, setScrollTop] = React.useState(0)
+  const [containerHeight, setContainerHeight] = React.useState(600)
+
+  React.useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleScroll = () => {
+      setScrollTop(container.scrollTop)
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setContainerHeight(entry.contentRect.height || 600)
+      }
+    })
+
+    container.addEventListener("scroll", handleScroll, { passive: true })
+    resizeObserver.observe(container)
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll)
+      resizeObserver.disconnect()
+    }
+  }, [])
+
+  const rows = table.getRowModel().rows || []
+  const rowHeight = 72 // Typical row height including vertical paddings
+  const overscan = 5
+
+  const totalRows = rows.length
+  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
+  const endIndex = Math.min(totalRows, Math.ceil((scrollTop + containerHeight) / rowHeight) + overscan)
+
+  const visibleRows = rows.slice(startIndex, endIndex)
+  const paddingTop = startIndex * rowHeight
+  const paddingBottom = (totalRows - endIndex) * rowHeight
+
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -129,8 +169,8 @@ export function DataTable<TData, TValue>({
           )}
         </div>
       </div>
-      <div className="w-full overflow-hidden border border-slate-200 rounded-xl shadow-sm bg-white">
-        <Table>
+      <div ref={containerRef} className="w-full overflow-auto max-h-[600px] border border-slate-200 rounded-xl shadow-sm bg-white relative scrollbar-thin scrollbar-thumb-zinc-200 scrollbar-track-transparent">
+        <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-slate-200 bg-slate-50/50">
@@ -138,7 +178,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead 
                       key={header.id} 
-                      className="h-12 p-0 border-l border-slate-200 first:border-l-0 text-primary"
+                      className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm shadow-sm h-12 p-0 border-l border-slate-200 first:border-l-0 text-primary"
                     >
                       {header.isPlaceholder ? null : (
                         <div
@@ -164,8 +204,13 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+            {paddingTop > 0 && (
+              <tr style={{ height: `${paddingTop}px` }}>
+                <td colSpan={columns.length} className="p-0 border-none" />
+              </tr>
+            )}
+            {visibleRows.length ? (
+              visibleRows.map((row) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
@@ -192,8 +237,13 @@ export function DataTable<TData, TValue>({
                 </TableCell>
               </TableRow>
             )}
+            {paddingBottom > 0 && (
+              <tr style={{ height: `${paddingBottom}px` }}>
+                <td colSpan={columns.length} className="p-0 border-none" />
+              </tr>
+            )}
           </TableBody>
-        </Table>
+        </table>
       </div>
       <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 rounded-b-3xl border-t border-slate-100">
         <div className="flex-1 text-sm font-medium text-zinc-500">

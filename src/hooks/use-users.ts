@@ -17,6 +17,13 @@ export type Staff = {
   primaryNodeId: string
   reportsTo: string
   isActive: boolean
+  geofenceId: string
+  projectId: string
+  attendancePolicyId: string
+  geofenceName?: string
+  projectName?: string
+  attendancePolicyName?: string
+  organizationId?: string
 }
 
 const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
@@ -36,6 +43,30 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     ? apiUser.reportsTo._id
     : String(apiUser.reportsTo || "")
 
+  const geofenceId = typeof apiUser.geofenceId === "object" && apiUser.geofenceId
+    ? (apiUser.geofenceId._id || apiUser.geofenceId.id || String(apiUser.geofenceId))
+    : String(apiUser.geofenceId || "")
+
+  const geofenceName = typeof apiUser.geofenceId === "object" && apiUser.geofenceId
+    ? apiUser.geofenceId.name
+    : undefined
+
+  const projectId = typeof apiUser.projectId === "object" && apiUser.projectId
+    ? (apiUser.projectId._id || apiUser.projectId.id || String(apiUser.projectId))
+    : String(apiUser.projectId || "")
+
+  const projectName = typeof apiUser.projectId === "object" && apiUser.projectId
+    ? (apiUser.projectId.projectName || apiUser.projectId.name)
+    : undefined
+
+  const attendancePolicyId = typeof apiUser.attendancePolicyId === "object" && apiUser.attendancePolicyId
+    ? (apiUser.attendancePolicyId._id || apiUser.attendancePolicyId.id || String(apiUser.attendancePolicyId))
+    : String(apiUser.attendancePolicyId || "")
+
+  const attendancePolicyName = typeof apiUser.attendancePolicyId === "object" && apiUser.attendancePolicyId
+    ? apiUser.attendancePolicyId.name
+    : undefined
+
   return {
     id,
     name: apiUser.name,
@@ -50,6 +81,13 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     reportsTo,
     isActive: apiUser.isActive ?? true,
     avatarUrl: apiUser.profileImage ? `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/api$/, "")}${apiUser.profileImage}` : undefined,
+    geofenceId,
+    projectId,
+    attendancePolicyId,
+    geofenceName,
+    projectName,
+    attendancePolicyName,
+    organizationId: apiUser.organizationId,
   }
 }
 
