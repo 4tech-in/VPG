@@ -27,7 +27,8 @@ const mapApiRoleToRole = (apiRole: ApiRole): Role => {
   }
 }
 
-export function useRoles() {
+export function useRoles(options?: { skipFetch?: boolean }) {
+  const skipFetch = options?.skipFetch ?? false
   const [allRoles, setAllRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -159,10 +160,11 @@ export function useRoles() {
 
   // Fetch on mount
   useEffect(() => {
+    if (skipFetch) return
     if (calledRef.current) return
     calledRef.current = true
     fetchRoles()
-  }, [fetchRoles])
+  }, [fetchRoles, skipFetch])
 
   return {
     roles: paginatedRoles,

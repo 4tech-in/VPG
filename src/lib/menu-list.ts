@@ -40,7 +40,9 @@ type Group = {
   menus: Menu[];
 };
 
-export function getMenuList(pathname: string): Group[] {
+export function getMenuList(pathname: string, userRole?: string): Group[] {
+  const isSuperAdmin = userRole?.toLowerCase() === "superadmin";
+
   return [
     {
       groupLabel: "MAIN MENU",
@@ -115,12 +117,12 @@ export function getMenuList(pathname: string): Group[] {
           icon: Store,
           submenus: []
         },
-        {
-          href: "/calendar",
-          label: "Calendar",
-          icon: Calendar,
-          submenus: []
-        },
+        // {
+        //   href: "/calendar",
+        //   label: "Calendar",
+        //   icon: Calendar,
+        //   submenus: []
+        // },
         {
           href:"/leave",
           label:"Leave",
@@ -170,12 +172,16 @@ export function getMenuList(pathname: string): Group[] {
           icon: User,
           submenus: []
         },
-        {
-          href: "/buisiness-node",
-          label: "Buisiness Node",
-          icon: Briefcase,
-          submenus: []
-        },
+        ...(isSuperAdmin
+          ? [
+              {
+                href: "/buisiness-node",
+                label: "Buisiness Node",
+                icon: Briefcase,
+                submenus: []
+              }
+            ]
+          : []),
         {
           href: "/tasks",
           label: "Task Master",

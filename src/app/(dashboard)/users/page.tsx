@@ -200,7 +200,7 @@ export default function UserPage() {
               onClick={handleAddNew}
               className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20"
             >
-              <Plus className="mr-2 h-4 w-4" /> {isSuperAdmin ? "Add User" : "Add Member"}
+              {isSuperAdmin ? "Add User" : "Add Member"}
             </Button>
           </div>
         </div>

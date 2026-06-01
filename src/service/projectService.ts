@@ -77,6 +77,10 @@ export const projectService = {
     return apiClient.put<any, ApiProject>(`/projects/${id}`, payload)
   },
 
+  async getProjectById(id: string): Promise<ApiProject> {
+    return apiClient.get<any, ApiProject>(`/projects/${id}`)
+  },
+
   async deleteProject(id: string): Promise<void> {
     return apiClient.delete(`/projects/${id}`)
   },

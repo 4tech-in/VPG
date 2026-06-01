@@ -205,6 +205,20 @@ export function useProjects(autoFetch = true) {
     fetchProjects(debouncedSearch, page)
   }, [page, limit, debouncedSearch, fetchProjects, autoFetch])
 
+  const getProjectById = useCallback(async (id: string) => {
+    setIsLoading(true)
+    try {
+      const apiProject = await projectService.getProjectById(id)
+      return mapApiProjectToProject(apiProject)
+    } catch (err: any) {
+      const msg = err.message || "Failed to fetch project"
+      toast.error(msg)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   return {
     projects,
     isLoading,
@@ -217,6 +231,7 @@ export function useProjects(autoFetch = true) {
     editProject,
     removeProject,
     toggleProjectStatus,
+    getProjectById,
     page,
     setPage,
     limit,

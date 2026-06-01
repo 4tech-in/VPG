@@ -173,12 +173,12 @@ export function DataTable<TData, TValue>({
         <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-slate-200 bg-slate-50/50">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent bg-slate-50/50">
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead 
                       key={header.id} 
-                      className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm shadow-sm h-12 p-0 border-l border-slate-200 first:border-l-0 text-primary"
+                      className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-sm shadow-sm h-12 p-0 border-r border-b border-slate-200 last:border-r-0 text-primary"
                     >
                       {header.isPlaceholder ? null : (
                         <div
@@ -215,7 +215,7 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className={cn(
-                    "group border-b border-slate-200 last:border-b-0",
+                    "group",
                     onRowClick && "cursor-pointer"
                   )}
                   onClick={() => onRowClick?.(row.original)}
@@ -223,7 +223,7 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell 
                       key={cell.id} 
-                      className="py-4 px-6 group-hover:bg-slate-50/50 transition-colors border-l border-slate-200 first:border-l-0"
+                      className="py-4 px-6 group-hover:bg-slate-50/50 transition-colors border-r border-b border-slate-200 last:border-r-0"
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>

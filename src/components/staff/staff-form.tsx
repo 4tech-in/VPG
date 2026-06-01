@@ -27,9 +27,9 @@ type StaffFormProps = {
 }
 
 export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps) {
-  const { roles, isLoading: rolesLoading } = useRoles()
-  const { units, isLoading: unitsLoading } = useUnits(true)
-  const { allUsers, addUser, editUser, isLoading: userActionLoading } = useUsers()
+  const { roles, isLoading: rolesLoading, refetch: refetchRoles } = useRoles({ skipFetch: true })
+  const { units, isLoading: unitsLoading, refetch: refetchUnits } = useUnits(false)
+  const { allUsers, addUser, editUser, isLoading: userActionLoading, refetch: refetchUsers } = useUsers({ skipFetch: true })
   // Geofence Infinite Scroll State
   const [geofencesList, setGeofencesList] = useState<any[]>([])
   const [geofencePage, setGeofencePage] = useState(1)
@@ -107,12 +107,8 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
     }
   }
 
-  // Load first page on mount
-  useEffect(() => {
-    fetchGeofencesPage(1)
-    fetchProjectsPage(1)
-    fetchPoliciesPage(1)
-  }, [])
+  // No longer fetching on mount to prevent unnecessary API calls unless dropdowns are clicked
+
 
   // Observers for infinite scrolling
   useEffect(() => {
@@ -180,7 +176,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
   const { user: loggedInUser, hasPermission } = useAuthStore()
   const isSuperAdmin = hasPermission("organization:view")
-  const { allOrganizations } = useOrganizations()
+  const { allOrganizations, refetch: refetchOrganizations } = useOrganizations({ skipFetch: true })
 
   const [name, setName] = useState(initialValues?.name || "")
   const [email, setEmail] = useState(initialValues?.email || "")
@@ -404,10 +400,18 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
           </div>
 
-          {isSuperAdmin && (
+           {isSuperAdmin && (
             <div className="space-y-2">
               <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Organization <span className="text-destructive">*</span></Label>
-              <Select value={organizationId} onValueChange={setOrganizationId}>
+              <Select
+                value={organizationId}
+                onValueChange={setOrganizationId}
+                onOpenChange={(open) => {
+                  if (open && allOrganizations.length === 0) {
+                    refetchOrganizations()
+                  }
+                }}
+              >
                 <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
@@ -424,7 +428,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
           <div className="space-y-2">
             <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
-            <Select value={roleId} onValueChange={setRoleId}>
+            <Select
+              value={roleId}
+              onValueChange={setRoleId}
+              onOpenChange={(open) => {
+                if (open && roles.length === 0) {
+                  refetchRoles()
+                }
+              }}
+            >
               <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -441,7 +453,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
           {!isSuperAdmin && (
             <div className="space-y-2">
               <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
-              <Select value={reportsTo} onValueChange={setReportsTo}>
+              <Select
+                value={reportsTo}
+                onValueChange={setReportsTo}
+                onOpenChange={(open) => {
+                  if (open && allUsers.length === 0) {
+                    refetchUsers()
+                  }
+                }}
+              >
                 <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                   <SelectValue placeholder="Select reporting manager" />
                 </SelectTrigger>
@@ -461,7 +481,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             <>
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
-                <Select value={geofenceId} onValueChange={setGeofenceId}>
+                <Select
+                  value={geofenceId}
+                  onValueChange={setGeofenceId}
+                  onOpenChange={(open) => {
+                    if (open && geofencesList.length === 0) {
+                      fetchGeofencesPage(1)
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                     <SelectValue placeholder="Select geofence boundary" />
                   </SelectTrigger>
@@ -483,7 +511,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
-                <Select value={projectId} onValueChange={setProjectId}>
+                <Select
+                  value={projectId}
+                  onValueChange={setProjectId}
+                  onOpenChange={(open) => {
+                    if (open && projectsList.length === 0) {
+                      fetchProjectsPage(1)
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                     <SelectValue placeholder="Select corporate project" />
                   </SelectTrigger>
@@ -505,7 +541,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
-                <Select value={attendancePolicyId} onValueChange={setAttendancePolicyId}>
+                <Select
+                  value={attendancePolicyId}
+                  onValueChange={setAttendancePolicyId}
+                  onOpenChange={(open) => {
+                    if (open && policiesList.length === 0) {
+                      fetchPoliciesPage(1)
+                    }
+                  }}
+                >
                   <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                     <SelectValue placeholder="Select attendance ruleset" />
                   </SelectTrigger>
@@ -531,7 +575,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
           {selectedNodes.length > 0 && (
             <div className="space-y-2 md:col-span-2">
               <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Primary Operating Unit</Label>
-              <Select value={primaryNodeId} onValueChange={setPrimaryNodeId}>
+              <Select
+                value={primaryNodeId}
+                onValueChange={setPrimaryNodeId}
+                onOpenChange={(open) => {
+                  if (open && units.length === 0) {
+                    refetchUnits()
+                  }
+                }}
+              >
                 <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
                   <SelectValue placeholder="Select primary operating unit" />
                 </SelectTrigger>

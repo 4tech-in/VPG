@@ -27,7 +27,8 @@ const mapApiOrganizationToOrganization = (apiOrg: ApiOrganization): Organization
   }
 }
 
-export function useOrganizations() {
+export function useOrganizations(options?: { skipFetch?: boolean }) {
+  const skipFetch = options?.skipFetch ?? false
   const [allOrganizations, setAllOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,10 +156,11 @@ export function useOrganizations() {
 
   // Fetch on mount
   useEffect(() => {
+    if (skipFetch) return
     if (calledRef.current) return
     calledRef.current = true
     fetchOrganizations()
-  }, [fetchOrganizations])
+  }, [fetchOrganizations, skipFetch])
 
   return {
     organizations: paginatedOrganizations,

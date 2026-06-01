@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import Link from "next/link"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   Edit3,
@@ -44,48 +45,238 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useProjects } from "@/hooks/use-projects"
+import { toast } from "sonner"
+import { useTowers } from "@/hooks/use-towers"
+import { useOutsides } from "@/hooks/use-outsides"
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  // In a real app, you'd fetch this data based on the ID
-  const project = {
-    id: params.id,
-    name: "VPG Grande",
-    location: "Sector 82, Mohali",
-    status: "Active",
-    startDate: "01/01/2023",
-    description: "No additional notes provided."
-  }
-  const [towersData, setTowersData] = useState([
-    { id: 1, name: "Tower A", number: 1, status: "Active" },
-    { id: 2, name: "Tower B", number: 2, status: "Active" },
-    { id: 3, name: "Tower C", number: 3, status: "Inactive" },
-  ])
+  const { getProjectById } = useProjects(false)
+  const [project, setProject] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const calledRef = useRef(false)
+
+  useEffect(() => {
+    if (calledRef.current) return
+    calledRef.current = true
+
+    const loadProject = async () => {
+      try {
+        const fetched = await getProjectById(params.id)
+        setProject(fetched)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadProject()
+  }, [params.id, getProjectById])
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get("tab") || "details"
+
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const [hasLoadedTowers, setHasLoadedTowers] = useState(false)
+  const [hasLoadedOutsides, setHasLoadedOutsides] = useState(false)
+
+  const {
+    towers: towersData,
+    isLoading: towersLoading,
+    refetch: refetchTowers,
+    addTower,
+    editTower,
+    removeTower,
+    toggleTowerStatus,
+    page: towerPage,
+    setPage: setTowerPage,
+    search: towerSearch,
+    setSearch: setTowerSearch,
+    total: towerTotal,
+    pageCount: towerPageCount,
+  } = useTowers(params.id, { skipFetch: true })
+
+  // Debounced search for towers
+  useEffect(() => {
+    if (activeTab !== "towers") return
+    const delayDebounce = setTimeout(() => {
+      refetchTowers({ search: towerSearch, page: towerPage })
+    }, 300)
+    return () => clearTimeout(delayDebounce)
+  }, [towerSearch, towerPage, activeTab, refetchTowers])
+
+  const {
+    outsides: outsidesData,
+    isLoading: outsidesLoading,
+    refetch: refetchOutsides,
+    addOutside,
+    editOutside,
+    removeOutside,
+    toggleOutsideStatus,
+    page: outsidePage,
+    setPage: setOutsidePage,
+    search: outsideSearch,
+    setSearch: setOutsideSearch,
+    total: outsideTotal,
+    pageCount: outsidePageCount,
+  } = useOutsides(params.id, { skipFetch: true })
+
+  // Debounced search for outsides
+  useEffect(() => {
+    if (activeTab !== "non-tower") return
+    const delayDebounce = setTimeout(() => {
+      refetchOutsides({ search: outsideSearch, page: outsidePage })
+    }, 300)
+    return () => clearTimeout(delayDebounce)
+  }, [outsideSearch, outsidePage, activeTab, refetchOutsides])
+
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value)
+    router.push(`${pathname}?tab=${value}`, { scroll: false })
+    if (value === "towers" && !hasLoadedTowers) {
+      // Handled by debounced useEffect
+      setHasLoadedTowers(true)
+    }
+    if (value === "non-tower" && !hasLoadedOutsides) {
+      // Handled by debounced useEffect
+      setHasLoadedOutsides(true)
+    }
+  }, [hasLoadedTowers, hasLoadedOutsides, pathname, router])
+
+  // Automatically fetch towers/outsides on mount if active
+  useEffect(() => {
+    if (initialTab === "towers" && !hasLoadedTowers && !towersCalledRef.current) {
+      towersCalledRef.current = true
+      refetchTowers()
+      setHasLoadedTowers(true)
+    }
+    if (initialTab === "non-tower" && !hasLoadedOutsides && !outsidesCalledRef.current) {
+      outsidesCalledRef.current = true
+      refetchOutsides()
+      setHasLoadedOutsides(true)
+    }
+  }, [initialTab, hasLoadedTowers, refetchTowers, hasLoadedOutsides, refetchOutsides])
+
+  const towersCalledRef = useRef(false)
+  const outsidesCalledRef = useRef(false)
+
+  const [addTowerName, setAddTowerName] = useState("")
+  const [addTowerNumber, setAddTowerNumber] = useState("")
+  const [addTowerStatus, setAddTowerStatus] = useState("Active")
+
+  const [editTowerName, setEditTowerName] = useState("")
+  const [editTowerNumber, setEditTowerNumber] = useState("")
+  const [editTowerStatus, setEditTowerStatus] = useState("Active")
 
   const [isTowerDialogOpen, setIsTowerDialogOpen] = useState(false)
   const [isEditTowerDialogOpen, setIsEditTowerDialogOpen] = useState(false)
   const [editingTower, setEditingTower] = useState<any>(null)
 
-  const [areasData, setAreasData] = useState([
-    { id: 1, name: "Swimming Pool", status: "Active" },
-    { id: 2, name: "Central Garden", status: "Active" },
-    { id: 3, name: "Clubhouse", status: "Active" },
-    { id: 4, name: "Visitor Parking", status: "Active" },
-    { id: 5, name: "Jogging Track", status: "Active" },
-  ])
+  const [addAreaName, setAddAreaName] = useState("")
+  const [addAreaStatus, setAddAreaStatus] = useState("Active")
+
+  const [editAreaName, setEditAreaName] = useState("")
+  const [editAreaStatus, setEditAreaStatus] = useState("Active")
 
   const [isEditAreaDialogOpen, setIsEditAreaDialogOpen] = useState(false)
   const [isAddAreaDialogOpen, setIsAddAreaDialogOpen] = useState(false)
   const [editingArea, setEditingArea] = useState<any>(null)
 
-  const handleTowerStatusToggle = useCallback((id: number) => {
-    setTowersData((prev) =>
-      prev.map((tower) =>
-        tower.id === id
-          ? { ...tower, status: tower.status === "Active" ? "Inactive" : "Active" }
-          : tower
-      )
-    )
-  }, [])
+  const handleTowerStatusToggle = useCallback(async (id: string) => {
+    try {
+      await toggleTowerStatus(id)
+    } catch (err) { }
+  }, [toggleTowerStatus])
+
+  const handleEditTowerClick = (tower: any) => {
+    setEditingTower(tower)
+    setEditTowerName(tower.name)
+    setEditTowerNumber(tower.number)
+    setEditTowerStatus(tower.status)
+    setIsEditTowerDialogOpen(true)
+  }
+
+  const handleAddTowerSubmit = async () => {
+    if (!addTowerName.trim() || !addTowerNumber.trim()) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+    try {
+      await addTower({
+        towerName: addTowerName,
+        towerNumber: addTowerNumber,
+        status: addTowerStatus === "Active" ? "active" : "inactive"
+      })
+      setAddTowerName("")
+      setAddTowerNumber("")
+      setAddTowerStatus("Active")
+      setIsTowerDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleEditTowerSubmit = async () => {
+    if (!editingTower) return
+    if (!editTowerName.trim() || !editTowerNumber.trim()) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+    try {
+      await editTower(editingTower.id, {
+        towerName: editTowerName,
+        towerNumber: editTowerNumber,
+        status: editTowerStatus === "Active" ? "active" : "inactive"
+      })
+      setIsEditTowerDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleAddAreaSubmit = async () => {
+    if (!addAreaName.trim()) {
+      toast.error("Area Name is required")
+      return
+    }
+    try {
+      await addOutside({
+        outsideName: addAreaName,
+        status: addAreaStatus === "Active" ? "active" : "inactive"
+      })
+      setAddAreaName("")
+      setAddAreaStatus("Active")
+      setIsAddAreaDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleEditAreaClick = (area: any) => {
+    setEditingArea(area)
+    setEditAreaName(area.name)
+    setEditAreaStatus(area.status)
+    setIsEditAreaDialogOpen(true)
+  }
+
+  const handleEditAreaSubmit = async () => {
+    if (!editingArea) return
+    if (!editAreaName.trim()) {
+      toast.error("Area Name is required")
+      return
+    }
+    try {
+      await editOutside(editingArea.id, {
+        outsideName: editAreaName,
+        status: editAreaStatus === "Active" ? "active" : "inactive"
+      })
+      setIsEditAreaDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleAreaDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this area?")) {
+      try {
+        await removeOutside(id)
+      } catch (err) { }
+    }
+  }
 
   const towerColumns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -93,7 +284,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       header: "Tower Name",
       cell: ({ row }) => (
         <Link
-          href={`/project/${project.id}/tower/${row.original.id}`}
+          href={`/project/${params.id}/tower/${row.original.id}`}
           className="font-bold text-zinc-900 hover:text-primary transition-colors"
         >
           {row.getValue("name")}
@@ -105,7 +296,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       header: "Tower Number",
       cell: ({ row }) => (
         <Link
-          href={`/project/${project.id}/tower/${row.original.id}`}
+          href={`/project/${params.id}/tower/${row.original.id}`}
           className="text-blue-600 font-bold hover:underline cursor-pointer"
         >
           {row.getValue("number")}
@@ -139,7 +330,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       header: "Action",
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Link href={`/project/${project.id}/tower/${row.original.id}`}>
+          <Link href={`/project/${params.id}/tower/${row.original.id}`}>
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all">
               <Eye className="h-4 w-4" />
             </Button>
@@ -147,18 +338,27 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setEditingTower(row.original)
-              setIsEditTowerDialogOpen(true)
-            }}
+            onClick={() => handleEditTowerClick(row.original)}
             className="h-9 w-9 rounded-xl text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
           >
             <Edit3 className="h-4 w-4" />
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (confirm("Are you sure you want to delete this tower?")) {
+                removeTower(row.original.id)
+              }
+            }}
+            className="h-9 w-9 rounded-xl text-zinc-400 hover:text-destructive hover:bg-destructive/5 transition-all"
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
-  ], [handleTowerStatusToggle, project.id])
+  ], [handleTowerStatusToggle, handleEditTowerClick, removeTower, params.id])
 
   const nonTowerColumns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -169,7 +369,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
             <MapPin className="h-4 w-4 text-emerald-500" />
           </div>
-          <span className="font-bold text-zinc-900">{row.getValue("name")}</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-zinc-900">{row.getValue("name")}</span>
+            {row.original.towerName && (
+              <span className="text-[10px] text-zinc-400 font-bold">
+                Tower: {row.original.towerName}
+              </span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -202,10 +409,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setEditingArea(row.original)
-              setIsEditAreaDialogOpen(true)
-            }}
+            onClick={() => handleEditAreaClick(row.original)}
             className="h-8 w-8 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
           >
             <Edit3 className="h-4 w-4" />
@@ -213,6 +417,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => handleAreaDelete(row.original.id)}
             className="h-8 w-8 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
           >
             <Trash className="h-4 w-4" />
@@ -220,7 +425,43 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         </div>
       ),
     },
-  ], [])
+  ], [handleEditAreaClick, handleAreaDelete])
+
+  if (isLoading) {
+    return (
+      <ContentLayout title="Project Details">
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-zinc-50/50">
+          <div className="text-zinc-400 font-bold">Loading project details...</div>
+        </div>
+      </ContentLayout>
+    )
+  }
+
+  if (!project) {
+    return (
+      <ContentLayout title="Project Details">
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-64px)] bg-zinc-50/50 gap-4">
+          <div className="text-red-500 font-bold">Project not found</div>
+          <Link href="/project">
+            <Button>Back to Projects</Button>
+          </Link>
+        </div>
+      </ContentLayout>
+    )
+  }
+
+  const formattedDate = project.startDate instanceof Date
+    ? project.startDate.toLocaleDateString()
+    : new Date(project.startDate).toLocaleDateString()
+
+  const addressParts = [
+    project.streetAddress,
+    project.city,
+    project.state,
+    project.country,
+    project.postalCode
+  ].filter(Boolean)
+  const completeAddress = addressParts.length > 0 ? addressParts.join(", ") : "N/A"
 
   return (
     <ContentLayout title="Project Details">
@@ -235,14 +476,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
             </Link>
             <h1 className="text-2xl font-black tracking-tight text-zinc-900">Project Details</h1>
           </div>
-          <Button variant="outline" className="rounded-xl border-zinc-200 gap-2 h-10 px-4 bg-white shadow-sm hover:bg-zinc-50">
+          {/* <Button variant="outline" className="rounded-xl border-zinc-200 gap-2 h-10 px-4 bg-white shadow-sm hover:bg-zinc-50">
             <Edit3 className="h-4 w-4" />
             <span className="font-bold text-sm">Edit Project</span>
-          </Button>
+          </Button> */}
         </div>
 
         {/* Tabs Section */}
-        <Tabs defaultValue="details" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="details" className="w-full">
           <TabsList className="bg-zinc-100/80 p-1.5 rounded-2xl h-auto mb-6 flex-wrap justify-start border border-zinc-200/50 backdrop-blur-sm">
             <TabsTrigger
               value="details"
@@ -297,7 +538,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <Calendar className="h-4 w-4" />
                       <span className="text-xs font-bold uppercase tracking-wider">Start Date</span>
                     </div>
-                    <p className="text-lg font-black text-zinc-900">{project.startDate}</p>
+                    <p className="text-lg font-black text-zinc-900">{formattedDate}</p>
                   </div>
 
                   <div className="space-y-3">
@@ -313,7 +554,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <MapPin className="h-4 w-4" />
                       <span className="text-xs font-bold uppercase tracking-wider">Address</span>
                     </div>
-                    <p className="text-lg font-black text-zinc-900">{project.location}</p>
+                    <p className="text-lg font-black text-zinc-900">{completeAddress}</p>
                   </div>
                 </div>
 
@@ -325,7 +566,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   </div>
                   <div className="bg-zinc-50/50 rounded-2xl p-6 border border-zinc-100/50">
                     <p className="text-zinc-600 font-medium leading-relaxed">
-                      {project.description}
+                      {project.notes || "No additional notes provided."}
                     </p>
                   </div>
                 </div>
@@ -343,12 +584,23 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   onClick={() => setIsTowerDialogOpen(true)}
                   className="rounded-xl h-10 px-4 gap-2 bg-[#00A991] hover:bg-[#008F7A] text-white font-bold border-none shadow-lg shadow-[#00A991]/20"
                 >
-                  <Plus className="h-4 w-4" />
                   <span>Add Tower</span>
                 </Button>
               </div>
 
-              <DataTable columns={towerColumns} data={towersData} searchKey="name" />
+              <DataTable 
+                columns={towerColumns} 
+                data={towersData} 
+                searchKey="name" 
+                isServerSide={true}
+                searchValue={towerSearch}
+                onSearchChange={setTowerSearch}
+                pageIndex={towerPage - 1}
+                pageSize={10}
+                pageCount={towerPageCount}
+                totalItems={towerTotal}
+                onPageChange={(page) => setTowerPage(page + 1)}
+              />
             </div>
           </TabsContent>
 
@@ -360,24 +612,28 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                   <p className="text-sm font-medium text-zinc-500">Manage general areas and amenities for this project</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-primary transition-colors" />
-                    <Input
-                      placeholder="Search areas..."
-                      className="h-10 w-[250px] pl-10 rounded-xl border-zinc-200 focus-visible:ring-primary/20 bg-white shadow-sm"
-                    />
-                  </div>
                   <Button
                     onClick={() => setIsAddAreaDialogOpen(true)}
                     className="rounded-xl h-10 px-4 gap-2 bg-[#00A991] hover:bg-[#008F7A] text-white font-bold border-none shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
                   >
-                    <Plus className="h-4 w-4" />
                     <span>Add Non Tower Area</span>
                   </Button>
                 </div>
               </div>
 
-              <DataTable columns={nonTowerColumns} data={areasData} searchKey="name" />
+              <DataTable 
+                columns={nonTowerColumns} 
+                data={outsidesData} 
+                searchKey="name" 
+                isServerSide={true}
+                searchValue={outsideSearch}
+                onSearchChange={setOutsideSearch}
+                pageIndex={outsidePage - 1}
+                pageSize={10}
+                pageCount={outsidePageCount}
+                totalItems={outsideTotal}
+                onPageChange={(page) => setOutsidePage(page + 1)}
+              />
             </div>
           </TabsContent>
 
@@ -402,20 +658,42 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           </TabsContent>
         </Tabs>
 
-        {/* Bulk Create Towers Dialog */}
+        {/* Add Tower Dialog */}
         <Dialog open={isTowerDialogOpen} onOpenChange={setIsTowerDialogOpen}>
           <DialogContent className="sm:max-w-[500px] p-0 rounded-[32px] border-none shadow-2xl overflow-hidden">
             <DialogHeader className="p-8 pb-0">
-              <DialogTitle className="text-3xl font-black text-zinc-900 tracking-tight">Bulk Create Towers</DialogTitle>
+              <DialogTitle className="text-3xl font-black text-zinc-900 tracking-tight">Add New Tower</DialogTitle>
             </DialogHeader>
             <div className="p-8 space-y-6">
-              <div className="space-y-3">
-                <label className="text-sm font-bold text-zinc-600">How many towers would you like to create?</label>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-700">Tower Name</label>
                 <Input
-                  type="number"
-                  placeholder="e.g. 10"
+                  placeholder="e.g. Tower A"
+                  value={addTowerName}
+                  onChange={(e) => setAddTowerName(e.target.value)}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-700">Tower Number</label>
+                <Input
+                  placeholder="e.g. A"
+                  value={addTowerNumber}
+                  onChange={(e) => setAddTowerNumber(e.target.value)}
+                  className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-700">Status</label>
+                <Select value={addTowerStatus} onValueChange={setAddTowerStatus}>
+                  <SelectTrigger className="h-14 rounded-2xl border-zinc-200 border-2 text-lg font-bold px-6">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-zinc-200 border-2">
+                    <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                    <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex items-center justify-end gap-4 p-8 bg-zinc-50/50 border-t border-zinc-100">
@@ -427,9 +705,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 Cancel
               </Button>
               <Button
+                onClick={handleAddTowerSubmit}
                 className="rounded-2xl h-12 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
-                Create Towers
+                Create Tower
               </Button>
             </div>
           </DialogContent>
@@ -446,7 +725,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <label className="text-sm font-bold text-zinc-700">Tower Name</label>
                 <Input
                   placeholder="e.g. Tower A"
-                  defaultValue={editingTower?.name}
+                  value={editTowerName}
+                  onChange={(e) => setEditTowerName(e.target.value)}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
                 />
               </div>
@@ -454,13 +734,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <label className="text-sm font-bold text-zinc-700">Tower Number</label>
                 <Input
                   placeholder="e.g. A1"
-                  defaultValue={editingTower?.number}
+                  value={editTowerNumber}
+                  onChange={(e) => setEditTowerNumber(e.target.value)}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-zinc-200 text-lg font-bold transition-all px-6"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-700">Status</label>
-                <Select defaultValue={editingTower?.status}>
+                <Select value={editTowerStatus} onValueChange={setEditTowerStatus}>
                   <SelectTrigger className="h-14 rounded-2xl border-zinc-200 border-2 text-lg font-bold px-6">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -480,6 +761,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 Cancel
               </Button>
               <Button
+                onClick={handleEditTowerSubmit}
                 className="rounded-2xl h-14 px-10 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Update Tower
@@ -498,18 +780,19 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-600">Area Name</label>
                 <Input
-                  defaultValue={editingArea?.name}
+                  value={editAreaName}
+                  onChange={(e) => setEditAreaName(e.target.value)}
                   placeholder="e.g. Swimming Pool"
                   className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-600">Status</label>
-                <Select defaultValue={editingArea?.status}>
+                <Select value={editAreaStatus} onValueChange={setEditAreaStatus}>
                   <SelectTrigger className="h-12 rounded-xl border-zinc-200 border-2 font-bold px-4">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-200">
+                  <SelectContent className="rounded-xl border-zinc-200 bg-white">
                     <SelectItem value="Active" className="font-bold">Active</SelectItem>
                     <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
                   </SelectContent>
@@ -525,7 +808,8 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 Cancel
               </Button>
               <Button
-                className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all"
+                onClick={handleEditAreaSubmit}
+                className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Update Area
               </Button>
@@ -544,16 +828,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 <label className="text-sm font-bold text-zinc-600">Area Name</label>
                 <Input
                   placeholder="e.g. Swimming Pool, Garden"
+                  value={addAreaName}
+                  onChange={(e) => setAddAreaName(e.target.value)}
                   className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-zinc-600">Status</label>
-                <Select defaultValue="Active">
+                <Select value={addAreaStatus} onValueChange={setAddAreaStatus}>
                   <SelectTrigger className="h-12 rounded-xl border-zinc-200 border-2 font-bold px-4">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-200">
+                  <SelectContent className="rounded-xl border-zinc-200 bg-white">
                     <SelectItem value="Active" className="font-bold">Active</SelectItem>
                     <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
                   </SelectContent>
@@ -569,6 +855,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 Cancel
               </Button>
               <Button
+                onClick={handleAddAreaSubmit}
                 className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Add Area

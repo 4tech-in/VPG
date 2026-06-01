@@ -20,6 +20,7 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useAuthStore } from "@/store/use-auth-store";
 
 interface MenuProps {
   isOpen: boolean | undefined;
@@ -27,7 +28,8 @@ interface MenuProps {
 
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
-  const menuList = getMenuList(pathname);
+  const { user } = useAuthStore();
+  const menuList = getMenuList(pathname, user?.roleId?.name);
   const sidebar = useStore(useSidebar, (x) => x);
 
   if (!sidebar) return null;
