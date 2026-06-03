@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiTask = {
   id?: string
@@ -43,8 +43,16 @@ export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
 
 export const taskService = {
   async getTasks(params?: Record<string, any>): Promise<GetTasksResponse> {
-    const response = await apiClient.get<any, any>("/tasks", { params })
-    if (response.success && response.data) {
+    const query = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) query.append(key, String(value))
+      })
+    }
+    const queryString = query.toString()
+    const response = await apiRequest<any>(`task${queryString ? `?${queryString}` : ""}`)
+    
+    if (response && response.success && response.data) {
       return response as GetTasksResponse;
     }
     // Fallback if structure differs
@@ -52,7 +60,7 @@ export const taskService = {
     return {
       success: true,
       data: tasks,
-      pagination: response.pagination || {
+      pagination: response?.pagination || {
         page: 1,
         limit: tasks.length || 10,
         totalItems: tasks.length,
@@ -62,21 +70,27 @@ export const taskService = {
   },
 
   async getTaskById(id: string): Promise<ApiTask> {
-    const response = await apiClient.get<any, any>(`/tasks/${id}`)
-    return response.data || response
+    const response = await apiRequest<any>(`task/${id}`)
+    return response?.data || response
   },
 
   async createTask(payload: CreateTaskPayload): Promise<ApiTask> {
-    const response = await apiClient.post<any, any>("/tasks", payload)
-    return response.data || response
+    const response = await apiRequest<any>("task", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
+    return response?.data || response
   },
 
   async updateTask(id: string, payload: UpdateTaskPayload): Promise<ApiTask> {
-    const response = await apiClient.put<any, any>(`/tasks/${id}`, payload)
-    return response.data || response
+    const response = await apiRequest<any>(`task/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
+    return response?.data || response
   },
 
   async deleteTask(id: string): Promise<void> {
-    return apiClient.delete(`/tasks/${id}`)
+    return apiRequest(`task/${id}`, { method: "DELETE" })
   },
 }

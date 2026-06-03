@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiFlat = {
   _id?: string
@@ -45,22 +45,28 @@ export const flatService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiClient.get<any, GetFlatsResponse>(`/flats${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetFlatsResponse>(`/flats${queryString ? `?${queryString}` : ""}`)
   },
 
   async getFlatById(id: string): Promise<ApiFlat> {
-    return apiClient.get<any, ApiFlat>(`/flats/${id}`)
+    return apiRequest<ApiFlat>(`/flats/${id}`)
   },
 
   async createFlat(payload: CreateFlatPayload): Promise<ApiFlat> {
-    return apiClient.post<any, ApiFlat>("/flats", payload)
+    return apiRequest<ApiFlat>("/flats", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateFlat(id: string, payload: Partial<CreateFlatPayload>): Promise<ApiFlat> {
-    return apiClient.put<any, ApiFlat>(`/flats/${id}`, payload)
+    return apiRequest<ApiFlat>(`/flats/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteFlat(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.delete(`/flats/${id}`)
+    return apiRequest(`/flats/${id}`, { method: "DELETE" })
   },
 }

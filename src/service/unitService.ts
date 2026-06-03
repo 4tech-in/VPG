@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiUnit = {
   id?: string
@@ -32,7 +32,7 @@ export const unitService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    const response = await apiClient.get<any, any>(`/units${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`/units${queryString ? `?${queryString}` : ""}`)
     
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -61,14 +61,20 @@ export const unitService = {
   },
 
   async createUnit(payload: CreateUnitPayload): Promise<ApiUnit> {
-    return apiClient.post<any, ApiUnit>("/units", payload)
+    return apiRequest<ApiUnit>("/units", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateUnit(id: string, payload: Partial<CreateUnitPayload>): Promise<ApiUnit> {
-    return apiClient.put<any, ApiUnit>(`/units/${id}`, payload)
+    return apiRequest<ApiUnit>(`/units/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteUnit(id: string): Promise<void> {
-    return apiClient.delete(`/units/${id}`)
+    return apiRequest(`/units/${id}`, { method: "DELETE" })
   },
 }

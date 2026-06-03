@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiSubGroup = {
   id?: string
@@ -33,7 +33,7 @@ export const subGroupService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    const response = await apiClient.get<any, any>(`/sub-groups${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`/sub-groups${queryString ? `?${queryString}` : ""}`)
     
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -62,14 +62,20 @@ export const subGroupService = {
   },
 
   async createSubGroup(payload: CreateSubGroupPayload): Promise<ApiSubGroup> {
-    return apiClient.post<any, ApiSubGroup>("/sub-groups", payload)
+    return apiRequest<ApiSubGroup>("/sub-groups", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateSubGroup(id: string, payload: Partial<CreateSubGroupPayload>): Promise<ApiSubGroup> {
-    return apiClient.put<any, ApiSubGroup>(`/sub-groups/${id}`, payload)
+    return apiRequest<ApiSubGroup>(`/sub-groups/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteSubGroup(id: string): Promise<void> {
-    return apiClient.delete(`/sub-groups/${id}`)
+    return apiRequest(`/sub-groups/${id}`, { method: "DELETE" })
   },
 }

@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiGeofence = {
   _id?: string
@@ -45,7 +45,7 @@ export const geofenceService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    const response = await apiClient.get<any, any>(`/geofence${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`/geofence${queryString ? `?${queryString}` : ""}`)
 
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -74,14 +74,20 @@ export const geofenceService = {
   },
 
   async createGeofence(payload: CreateGeofencePayload): Promise<ApiGeofence> {
-    return apiClient.post<any, any>("/geofence", payload).then(res => res.data || res)
+    return apiRequest<ApiGeofence>("/geofence", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }).then((res: any) => res.data || res)
   },
 
   async updateGeofence(id: string, payload: Partial<CreateGeofencePayload>): Promise<ApiGeofence> {
-    return apiClient.put<any, any>(`/geofence/${id}`, payload).then(res => res.data || res)
+    return apiRequest<ApiGeofence>(`/geofence/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }).then((res: any) => res.data || res)
   },
 
   async deleteGeofence(id: string): Promise<void> {
-    return apiClient.delete(`/geofence/${id}`)
+    return apiRequest(`/geofence/${id}`, { method: "DELETE" })
   }
 }

@@ -1,113 +1,114 @@
-import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios"
 import { toast } from "sonner"
 import { validateSession } from "@/store/proxy"
 import { useAuthStore } from "@/store/use-auth-store"
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-// Define standard API response shape if required
-export interface ApiResponse<T = any> {
-  data: T
-  message?: string
-  success: boolean
+type ApiOptions = RequestInit & {
+  token?: string | null;
+  isFormData?: boolean;
+};
+
+export async function apiRequest<T>(
+  path: string,
+  options: ApiOptions = {}
+): Promise<T> {
+  let token = options.token;
+
+  if (typeof window !== "undefined") {
+    if (path !== "/auth/login") {
+      validateSession()
+    }
+    if (!token) {
+      token = useAuthStore.getState().token
+    }
+  }
+
+  const headers = new Headers(options.headers);
+
+  if (!options.isFormData && options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+
+    const contentType = response.headers.get("content-type");
+    let data: any = null;
+    
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json().catch(() => null);
+    }
+
+    if (!response.ok) {
+      const message = data?.message || data?.error || `Request failed with status ${response.status}`;
+      
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          validateSession(true);
+        }
+      } else if (response.status === 403) {
+        toast.error("Forbidden. You do not have permission to access this resource.");
+      } else {
+        toast.error(message);
+      }
+      throw new Error(message);
+    }
+
+    if (data && typeof data === "object") {
+      if (data.pagination !== undefined && data.data !== undefined) {
+        return {
+          data: data.data,
+          pagination: data.pagination,
+        } as unknown as T;
+      }
+      if (data.token !== undefined) {
+        return data as T;
+      }
+      if (data.data !== undefined) {
+        return data.data as T;
+      }
+    }
+
+    return data as T;
+  } catch (error: any) {
+    if (error.name !== "Error") {
+      toast.error(error.message || "An unexpected error occurred. Please try again.");
+    }
+    throw error;
+  }
 }
 
-// 1. Create a configured Axios instance
-const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BASE_URL,
-  timeout: 10000, // 10 seconds timeout
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-})
+// Keep a backward compatible object if some components are importing `apiClient.get` etc.
+// But ideally, everything will migrate to `apiRequest`.
+const apiClient = {
+  get: <T = any, R = any>(url: string, config?: any) => apiRequest<R>(url, { method: 'GET', ...config }),
+  post: <T = any, R = any>(url: string, data?: any, config?: any) => apiRequest<R>(url, { 
+    method: 'POST', 
+    body: data instanceof FormData ? data : JSON.stringify(data),
+    isFormData: data instanceof FormData,
+    ...config 
+  }),
+  patch: <T = any, R = any>(url: string, data?: any, config?: any) => apiRequest<R>(url, { 
+    method: 'PATCH', 
+    body: data instanceof FormData ? data : JSON.stringify(data),
+    isFormData: data instanceof FormData,
+    ...config 
+  }),
+  put: <T = any, R = any>(url: string, data?: any, config?: any) => apiRequest<R>(url, { 
+    method: 'PUT', 
+    body: data instanceof FormData ? data : JSON.stringify(data),
+    isFormData: data instanceof FormData,
+    ...config 
+  }),
+  delete: <T = any, R = any>(url: string, config?: any) => apiRequest<R>(url, { method: 'DELETE', ...config })
+};
 
-// 2. Request Interceptor: Attach authentication token, headers, logs, etc.
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Retrieve authentication token from auth store if it exists
-    if (typeof window !== "undefined") {
-      if (config.url !== "/auth/login") {
-        validateSession()
-      }
-      const token = useAuthStore.getState().token
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
-    return config
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error)
-  }
-)
-
-// 3. Response Interceptor: Format output, manage global loader or toast error responses
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
-    // You can directly return response.data to simplify client service consumption
-    const res = response.data
-    if (res && typeof res === "object") {
-      if (res.pagination !== undefined && res.data !== undefined) {
-        return {
-          data: res.data,
-          pagination: res.pagination,
-        }
-      }
-      if (res.token !== undefined) {
-        return res
-      }
-      if (res.data !== undefined) {
-        return res.data
-      }
-    }
-    return res
-  },
-  (error: AxiosError) => {
-    let errorMessage = "An unexpected error occurred. Please try again."
-
-    if (error.response) {
-      const status = error.response.status
-      const responseData = error.response.data as any
-
-      // Extract specific error messages returned from server if available
-      if (responseData && responseData.message) {
-        errorMessage = responseData.message
-      } else {
-        switch (status) {
-          case 400:
-            errorMessage = "Bad Request. Please check your inputs."
-            break
-          case 401:
-            errorMessage = "Unauthorized. Please log in again."
-            if (typeof window !== "undefined") {
-              validateSession(true)
-            }
-            break
-          case 403:
-            errorMessage = "Forbidden. You do not have permission to access this resource."
-            break
-          case 404:
-            errorMessage = "Requested resource not found."
-            break
-          case 500:
-            errorMessage = "Internal Server Error. Please contact support."
-            break
-          default:
-            errorMessage = `Request failed with status ${status}`
-        }
-      }
-    } else if (error.request) {
-      // The request was made but no response was received
-      errorMessage = "No response received from server. Please verify your connection."
-    } else {
-      errorMessage = error.message
-    }
-
-    // Trigger gorgeous toast alert for errors
-    toast.error(errorMessage)
-
-    return Promise.reject(new Error(errorMessage))
-  }
-)
-
-export default apiClient
+export default apiClient;

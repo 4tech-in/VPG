@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type PopulatedRole = {
   _id: string
@@ -83,36 +83,38 @@ const convertToFormData = (obj: any): FormData => {
 }
 
 export const userService = {
-  async getUsers(): Promise<ApiUser[]> {
-    const response = await apiClient.get<any, any>("/user")
+  async getUsers(params?: Record<string, string>): Promise<ApiUser[]> {
+    const query = new URLSearchParams(params).toString()
+    const response = await apiRequest<any>(query ? `user?${query}` : "user")
     return Array.isArray(response) ? response : (response?.data || [])
   },
+  
   async getUserById(id: string): Promise<ApiUser> {
-    const response = await apiClient.get<any, any>(`/user/${id}`)
+    const response = await apiRequest<any>(`user/${id}`)
     return response?.data || response
   },
 
   async createUser(payload: CreateUserPayload): Promise<ApiUser> {
     const formData = convertToFormData(payload)
-    const response = await apiClient.post<any, any>("/user", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await apiRequest<any>("user", {
+      method: "POST",
+      body: formData,
+      isFormData: true,
     })
     return response?.data || response
   },
 
   async updateUser(id: string, payload: Partial<CreateUserPayload> & { isActive?: boolean }): Promise<ApiUser> {
     const formData = convertToFormData(payload)
-    const response = await apiClient.patch<any, any>(`/user/${id}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    const response = await apiRequest<any>(`user/${id}`, {
+      method: "PATCH",
+      body: formData,
+      isFormData: true,
     })
     return response?.data || response
   },
 
   async deleteUser(id: string): Promise<void> {
-    await apiClient.delete(`/user/${id}`)
+    await apiRequest(`user/${id}`, { method: "DELETE" })
   },
 }

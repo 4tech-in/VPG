@@ -175,8 +175,8 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
         ...(isSuperAdmin
           ? [
               {
-                href: "/buisiness-node",
-                label: "Buisiness Node",
+                href: "/business-nodes",
+                label: "Business Node",
                 icon: Briefcase,
                 submenus: []
               }

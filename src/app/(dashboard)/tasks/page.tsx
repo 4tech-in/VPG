@@ -247,7 +247,6 @@ export default function TasksPage() {
             <DataTable
               columns={columns}
               data={filteredData}
-              isLoading={isLoading}
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
             />
           </div>

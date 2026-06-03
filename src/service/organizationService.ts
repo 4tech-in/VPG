@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiOrganization = {
   id?: string
@@ -33,8 +33,9 @@ export type CreateOrganizationPayload = {
 }
 
 export const organizationService = {
-  async getOrganizations(): Promise<GetOrganizationsResponse> {
-    const response = await apiClient.get<any, any>("/organizations")
+  async getOrganizations(params?: Record<string, string>): Promise<GetOrganizationsResponse> {
+    const query = new URLSearchParams(params).toString()
+    const response = await apiRequest<any>(query ? `/organizations?${query}` : "/organizations")
     
     const organizations = Array.isArray(response) ? response : (response?.data || [])
     return {
@@ -49,14 +50,20 @@ export const organizationService = {
   },
 
   async createOrganization(payload: CreateOrganizationPayload): Promise<ApiOrganization> {
-    return apiClient.post<any, ApiOrganization>("/organizations", payload)
+    return apiRequest<ApiOrganization>("/organizations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateOrganization(id: string, payload: Partial<CreateOrganizationPayload>): Promise<ApiOrganization> {
-    return apiClient.patch<any, ApiOrganization>(`/organizations/${id}`, payload)
+    return apiRequest<ApiOrganization>(`/organizations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteOrganization(id: string): Promise<void> {
-    return apiClient.delete(`/organizations/${id}`)
+    return apiRequest(`/organizations/${id}`, { method: "DELETE" })
   },
 }

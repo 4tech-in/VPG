@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiRole = {
   id?: string
@@ -33,8 +33,9 @@ export type CreateRolePayload = {
 }
 
 export const roleService = {
-  async getRoles(): Promise<GetRolesResponse> {
-    const response = await apiClient.get<any, any>("/role")
+  async getRoles(params?: Record<string, string>): Promise<GetRolesResponse> {
+    const query = new URLSearchParams(params).toString()
+    const response = await apiRequest<any>(query ? `/role?${query}` : "/role")
     
     const roles = Array.isArray(response) ? response : (response?.data || [])
     return {
@@ -49,14 +50,20 @@ export const roleService = {
   },
 
   async createRole(payload: CreateRolePayload): Promise<ApiRole> {
-    return apiClient.post<any, ApiRole>("/role", payload)
+    return apiRequest<ApiRole>("/role", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateRole(id: string, payload: Partial<CreateRolePayload> & { isActive?: boolean }): Promise<ApiRole> {
-    return apiClient.patch<any, ApiRole>(`/role/${id}`, payload)
+    return apiRequest<ApiRole>(`/role/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteRole(id: string): Promise<void> {
-    return apiClient.delete(`/role/${id}`)
+    return apiRequest(`/role/${id}`, { method: "DELETE" })
   },
 }

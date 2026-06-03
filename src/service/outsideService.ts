@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiOutside = {
   _id?: string
@@ -45,22 +45,28 @@ export const outsideService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiClient.get<any, GetOutsidesResponse>(`/outsides${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetOutsidesResponse>(`/outsides${queryString ? `?${queryString}` : ""}`)
   },
 
   async getOutsideById(id: string): Promise<ApiOutside> {
-    return apiClient.get<any, ApiOutside>(`/outsides/${id}`)
+    return apiRequest<ApiOutside>(`/outsides/${id}`)
   },
 
   async createOutside(payload: CreateOutsidePayload): Promise<ApiOutside> {
-    return apiClient.post<any, ApiOutside>("/outsides", payload)
+    return apiRequest<ApiOutside>("/outsides", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateOutside(id: string, payload: Partial<CreateOutsidePayload>): Promise<ApiOutside> {
-    return apiClient.put<any, ApiOutside>(`/outsides/${id}`, payload)
+    return apiRequest<ApiOutside>(`/outsides/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteOutside(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.delete(`/outsides/${id}`)
+    return apiRequest(`/outsides/${id}`, { method: "DELETE" })
   },
 }

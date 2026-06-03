@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiItem = {
   id?: string
@@ -71,7 +71,7 @@ export const itemService = {
     if (params?.subGroupId) query.append("subGroupId", params.subGroupId)
 
     const queryString = query.toString()
-    const response = await apiClient.get<any, any>(`/items${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`/items${queryString ? `?${queryString}` : ""}`)
 
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -100,14 +100,20 @@ export const itemService = {
   },
 
   async createItem(payload: CreateItemPayload): Promise<ApiItem> {
-    return apiClient.post<any, ApiItem>("/items", payload)
+    return apiRequest<ApiItem>("/items", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateItem(id: string, payload: Partial<CreateItemPayload>): Promise<ApiItem> {
-    return apiClient.put<any, ApiItem>(`/items/${id}`, payload)
+    return apiRequest<ApiItem>(`/items/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteItem(id: string): Promise<void> {
-    return apiClient.delete(`/items/${id}`)
+    return apiRequest(`/items/${id}`, { method: "DELETE" })
   },
 }

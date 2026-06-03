@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiTower = {
   _id?: string
@@ -45,22 +45,28 @@ export const towerService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiClient.get<any, GetTowersResponse>(`/towers${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetTowersResponse>(`/towers${queryString ? `?${queryString}` : ""}`)
   },
 
   async getTowerById(id: string): Promise<ApiTower> {
-    return apiClient.get<any, ApiTower>(`/towers/${id}`)
+    return apiRequest<ApiTower>(`/towers/${id}`)
   },
 
   async createTower(payload: CreateTowerPayload): Promise<ApiTower> {
-    return apiClient.post<any, ApiTower>("/towers", payload)
+    return apiRequest<ApiTower>("/towers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateTower(id: string, payload: Partial<CreateTowerPayload>): Promise<ApiTower> {
-    return apiClient.put<any, ApiTower>(`/towers/${id}`, payload)
+    return apiRequest<ApiTower>(`/towers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteTower(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.delete(`/towers/${id}`)
+    return apiRequest(`/towers/${id}`, { method: "DELETE" })
   },
 }

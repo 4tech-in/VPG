@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiProjectDocument = {
   _id?: string
@@ -37,26 +37,26 @@ export const projectDocumentService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    return apiClient.get<any, GetProjectDocumentsResponse>(`/projects/documents/${projectId}${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetProjectDocumentsResponse>(`/projects/documents/${projectId}${queryString ? `?${queryString}` : ""}`)
   },
 
   async createProjectDocument(projectId: string, payload: CreateProjectDocumentPayload): Promise<ApiProjectDocument> {
-    return apiClient.post<any, ApiProjectDocument>(`/projects/documents/${projectId}`, payload, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    return apiRequest<ApiProjectDocument>(`/projects/documents/${projectId}`, {
+      method: "POST",
+      body: payload,
+      isFormData: true,
     })
   },
 
   async updateProjectDocument(id: string, payload: CreateProjectDocumentPayload): Promise<ApiProjectDocument> {
-    return apiClient.patch<any, ApiProjectDocument>(`/projects/documents/${id}`, payload, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    return apiRequest<ApiProjectDocument>(`/projects/documents/${id}`, {
+      method: "PATCH",
+      body: payload,
+      isFormData: true,
     })
   },
 
   async deleteProjectDocument(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.delete(`/projects/documents/${id}`)
+    return apiRequest(`/projects/documents/${id}`, { method: "DELETE" })
   },
 }

@@ -139,7 +139,7 @@ export function TaskDialog({ onSuccess }: TaskDialogProps) {
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
                   {users.map(u => (
-                    <SelectItem key={u.id} value={u.id}>{u.name} - {u.mobile}</SelectItem>
+                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

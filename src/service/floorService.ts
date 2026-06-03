@@ -1,4 +1,4 @@
-import apiClient from "@/lib/api-client"
+import { apiRequest } from "@/lib/api-client"
 
 export type ApiFloor = {
   _id?: string
@@ -45,22 +45,28 @@ export const floorService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiClient.get<any, GetFloorsResponse>(`/floors${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetFloorsResponse>(`/floors${queryString ? `?${queryString}` : ""}`)
   },
 
   async getFloorById(id: string): Promise<ApiFloor> {
-    return apiClient.get<any, ApiFloor>(`/floors/${id}`)
+    return apiRequest<ApiFloor>(`/floors/${id}`)
   },
 
   async createFloor(payload: CreateFloorPayload): Promise<ApiFloor> {
-    return apiClient.post<any, ApiFloor>("/floors", payload)
+    return apiRequest<ApiFloor>("/floors", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    })
   },
 
   async updateFloor(id: string, payload: Partial<CreateFloorPayload>): Promise<ApiFloor> {
-    return apiClient.put<any, ApiFloor>(`/floors/${id}`, payload)
+    return apiRequest<ApiFloor>(`/floors/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
   },
 
   async deleteFloor(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiClient.delete(`/floors/${id}`)
+    return apiRequest(`/floors/${id}`, { method: "DELETE" })
   },
 }
