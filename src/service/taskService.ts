@@ -1,0 +1,82 @@
+import apiClient from "@/lib/api-client"
+
+export type ApiTask = {
+  id?: string
+  _id?: string
+  organizationId: string
+  nodeId?: any
+  title: string
+  description?: string
+  assignedToId: any
+  createdById: any
+  priority: "low" | "medium" | "high" | "urgent"
+  status: "pending" | "in_progress" | "review" | "completed" | "cancelled"
+  dueDate?: string
+  completedAt?: string
+  isActive: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type GetTasksResponse = {
+  success: boolean
+  data: ApiTask[]
+  pagination: {
+    page: number
+    limit: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
+export type CreateTaskPayload = {
+  title: string
+  description?: string
+  assignedToId: string
+  priority?: string
+  dueDate?: string
+}
+
+export type UpdateTaskPayload = Partial<CreateTaskPayload> & {
+  status?: string
+}
+
+export const taskService = {
+  async getTasks(params?: Record<string, any>): Promise<GetTasksResponse> {
+    const response = await apiClient.get<any, any>("/tasks", { params })
+    if (response.success && response.data) {
+      return response as GetTasksResponse;
+    }
+    // Fallback if structure differs
+    const tasks = Array.isArray(response) ? response : (response?.data || [])
+    return {
+      success: true,
+      data: tasks,
+      pagination: response.pagination || {
+        page: 1,
+        limit: tasks.length || 10,
+        totalItems: tasks.length,
+        totalPages: 1
+      }
+    }
+  },
+
+  async getTaskById(id: string): Promise<ApiTask> {
+    const response = await apiClient.get<any, any>(`/tasks/${id}`)
+    return response.data || response
+  },
+
+  async createTask(payload: CreateTaskPayload): Promise<ApiTask> {
+    const response = await apiClient.post<any, any>("/tasks", payload)
+    return response.data || response
+  },
+
+  async updateTask(id: string, payload: UpdateTaskPayload): Promise<ApiTask> {
+    const response = await apiClient.put<any, any>(`/tasks/${id}`, payload)
+    return response.data || response
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    return apiClient.delete(`/tasks/${id}`)
+  },
+}

@@ -38,34 +38,51 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
-// Mock projects and users for the "automatic assignment" demo
-const PROJECTS = [
-  { id: "p1", name: "VPG Twin Towers", users: ["Julian Casablancas", "Sofia Rodriguez"] },
-  { id: "p2", name: "VPG Royce", users: ["Marcus Aurelius", "Elena Gilbert"] },
-  { id: "p3", name: "VPG Grand", users: ["Julian Casablancas", "Marcus Aurelius"] },
-]
+import { useUsers } from "@/hooks/use-users"
+import { useTasks } from "@/hooks/use-tasks"
 
-export function TaskDialog() {
+interface TaskDialogProps {
+  onSuccess?: () => void
+}
+
+export function TaskDialog({ onSuccess }: TaskDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<string>("")
-  const [assignedUsers, setAssignedUsers] = useState<string[]>([])
+  
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [assignedToId, setAssignedToId] = useState("")
+  const [dueDate, setDueDate] = useState("")
+  const [priority, setPriority] = useState("medium")
+  
+  const { users } = useUsers()
+  const { addTask } = useTasks({ skipFetch: true })
 
-  // Handle automatic user assignment based on project
-  useEffect(() => {
-    if (selectedProject) {
-      const project = PROJECTS.find(p => p.id === selectedProject)
-      if (project) {
-        setAssignedUsers(project.users)
-      }
-    } else {
-      setAssignedUsers([])
-    }
-  }, [selectedProject])
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success("Task created successfully and team notified!")
-    setIsOpen(false)
+    if (!title || !assignedToId) {
+      toast.error("Please fill in all required fields")
+      return
+    }
+    
+    try {
+      await addTask({
+        title,
+        description,
+        assignedToId,
+        priority,
+        dueDate
+      })
+      if (onSuccess) onSuccess()
+      setIsOpen(false)
+      // reset form
+      setTitle("")
+      setDescription("")
+      setAssignedToId("")
+      setDueDate("")
+      setPriority("medium")
+    } catch (error) {
+      // toast is handled by useTasks
+    }
   }
 
   return (
@@ -95,6 +112,8 @@ export function TaskDialog() {
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Task Name</Label>
               <Input
                 required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Finalize Sale for Unit 402"
                 className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-bold"
               />
@@ -104,30 +123,32 @@ export function TaskDialog() {
             <div className="space-y-2 md:col-span-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Description</Label>
               <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the task in detail..."
                 className="min-h-[100px] rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-medium p-4"
               />
             </div>
 
-            {/* Project Selection */}
+            {/* Assignee Selection */}
             <div className="space-y-2">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Project</Label>
-              <Select onValueChange={setSelectedProject} required>
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Assign To</Label>
+              <Select onValueChange={setAssignedToId} value={assignedToId} required>
                 <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 font-bold">
-                  <SelectValue placeholder="Choose Project" />
+                  <SelectValue placeholder="Select User" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                  {PROJECTS.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.name} - {u.mobile}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Priority */}
-            {/* <div className="space-y-2">
+            <div className="space-y-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Priority</Label>
-              <Select defaultValue="medium">
+              <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 font-bold">
                   <SelectValue />
                 </SelectTrigger>
@@ -150,36 +171,27 @@ export function TaskDialog() {
                       High Priority
                     </div>
                   </SelectItem>
+                  <SelectItem value="urgent">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-red-700" />
+                      Urgent
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
-            </div> */}
+            </div>
 
             {/* Due Date */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Due Date</Label>
               <div className="relative">
                 <Input
                   type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
                   className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary font-bold pl-4"
                 />
                 <CalendarIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Automatic Assignees */}
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Assigned Team (Auto)</Label>
-              <div className="h-14 rounded-2xl bg-white border border-dashed border-zinc-200 flex items-center px-4 gap-2 overflow-x-auto">
-                {assignedUsers.length > 0 ? (
-                  assignedUsers.map(user => (
-                    <Badge key={user} variant="secondary" className="rounded-lg py-1 px-3 gap-2 bg-zinc-100 text-zinc-600 border-none shrink-0">
-                      <User className="h-3 w-3" />
-                      {user}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-xs text-zinc-400 italic">Select a project first</span>
-                )}
               </div>
             </div>
           </div>

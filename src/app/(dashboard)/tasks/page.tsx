@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TaskDialog } from "@/components/tasks/task-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
+import { useTasks, Task } from "@/hooks/use-tasks";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,64 +34,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Task = {
-  id: string;
-  title: string;
-  description: string;
-  project: string;
-  projectId: string;
-  priority: "High" | "Medium" | "Low";
-  status: "Completed" | "Pending";
-  dueDate: string;
-  assignees: string[];
-};
-
-const mockTasks: Task[] = [
-  {
-    id: "t1",
-    title: "Update Project Renderings",
-    description:
-      "Prepare the latest high-res renderings for the penthouse levels.",
-    project: "VPG Twin Towers",
-    projectId: "p1",
-    priority: "High",
-    status: "Pending",
-    dueDate: "2024-05-20",
-    assignees: ["Julian Casablancas", "Sofia Rodriguez"],
-  },
-  {
-    id: "t2",
-    title: "Client Site Visit",
-    description:
-      "Escort the investor group for a walk-through of the Royce showroom.",
-    project: "VPG Royce",
-    projectId: "p2",
-    priority: "Medium",
-    status: "Pending",
-    dueDate: "2024-05-22",
-    assignees: ["Marcus Aurelius"],
-  },
-  {
-    id: "t3",
-    title: "Contract Review",
-    description: "Legal review of the master sale agreement for Phase 2.",
-    project: "VPG Grand",
-    projectId: "p3",
-    priority: "High",
-    status: "Completed",
-    dueDate: "2024-05-15",
-    assignees: ["Elena Gilbert"],
-  },
-];
-
 export default function TasksPage() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("All");
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const { tasks, isLoading, removeTask, refetch } = useTasks({ filterStatus: activeFilter });
 
-  const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    toast.success("Task deleted successfully");
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await removeTask(id);
+    } catch(err) { }
   };
 
   const columns: ColumnDef<Task>[] = [
@@ -102,9 +54,9 @@ export default function TasksPage() {
           <div
             className={cn(
               "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-              row.original.priority === "High"
+              row.original.priority === "urgent" || row.original.priority === "high"
                 ? "bg-rose-50 text-rose-500"
-                : row.original.priority === "Medium"
+                : row.original.priority === "medium"
                   ? "bg-amber-50 text-amber-500"
                   : "bg-emerald-50 text-emerald-500",
             )}
@@ -124,7 +76,7 @@ export default function TasksPage() {
     },
     {
       accessorKey: "project",
-      header: "Project",
+      header: "Project Node",
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -135,13 +87,10 @@ export default function TasksPage() {
               <div className="flex flex-col items-start gap-0.5">
                 <div className="flex items-center gap-1">
                   <span className="font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                    {row.original.project}
+                    {row.original.nodeName}
                   </span>
                   <ChevronDown className="h-3 w-3 text-zinc-400 group-hover:text-primary transition-colors" />
                 </div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">
-                  Real Estate
-                </span>
               </div>
             </Button>
           </DropdownMenuTrigger>
@@ -151,10 +100,9 @@ export default function TasksPage() {
           >
             <DropdownMenuItem
               className="rounded-lg gap-2 cursor-pointer py-2"
-              onClick={() => router.push(`/project/${row.original.projectId}`)}
             >
               <ExternalLink className="h-4 w-4 text-zinc-400" />
-              <span className="font-semibold text-sm">View Project</span>
+              <span className="font-semibold text-sm">View Node</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -168,13 +116,13 @@ export default function TasksPage() {
         return (
           <Badge
             variant={
-              status === "Completed"
+              status === "completed"
                 ? "success"
                 : "secondary"
             }
-            className="rounded-full px-4 py-1 font-bold whitespace-nowrap shadow-sm border-none"
+            className="rounded-full px-4 py-1 font-bold whitespace-nowrap shadow-sm border-none uppercase"
           >
-            {status}
+            {status.replace("_", " ")}
           </Badge>
         );
       },
@@ -184,19 +132,13 @@ export default function TasksPage() {
       header: "Team",
       cell: ({ row }) => (
         <div className="flex -space-x-3 overflow-hidden">
-          {row.original.assignees.map((name, i) => (
-            <Avatar
-              key={i}
-              className="inline-block h-8 w-8 rounded-full ring-2 ring-white shadow-sm"
-            >
-              <AvatarFallback className="bg-zinc-100 text-[10px] font-bold text-zinc-600">
-                {name[0]}
-              </AvatarFallback>
-            </Avatar>
-          ))}
-          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-zinc-50 border border-dashed border-zinc-200 ring-2 ring-white">
-            <UserPlus className="h-3 w-3 text-zinc-400" />
-          </div>
+          <Avatar
+            className="inline-block h-8 w-8 rounded-full ring-2 ring-white shadow-sm"
+          >
+            <AvatarFallback className="bg-zinc-100 text-[10px] font-bold text-zinc-600">
+              {row.original.assignedToName[0]}
+            </AvatarFallback>
+          </Avatar>
         </div>
       ),
     },
@@ -207,11 +149,8 @@ export default function TasksPage() {
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2 text-zinc-900 font-bold text-sm">
             <Clock className="h-3.5 w-3.5 text-zinc-400" />
-            {row.original.dueDate}
+            {row.original.dueDate || "No Due Date"}
           </div>
-          <span className="text-[9px] font-bold text-rose-500 uppercase tracking-tight ml-5">
-            Due in 2 days
-          </span>
         </div>
       ),
     },
@@ -261,10 +200,7 @@ export default function TasksPage() {
     },
   ];
 
-  const filteredData = useMemo(() => {
-    if (activeFilter === "All") return tasks;
-    return tasks.filter((t) => t.status === activeFilter);
-  }, [activeFilter, tasks]);
+  const filteredData = tasks;
 
   return (
     <ContentLayout title="Task Management">
@@ -283,13 +219,13 @@ export default function TasksPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <TaskDialog />
+            <TaskDialog onSuccess={refetch} />
           </div>
         </div>
 
         <div className="flex flex-col gap-8">
           <div className="flex items-center gap-2 p-1.5 bg-zinc-100/50 backdrop-blur-sm w-fit rounded-[1.25rem] border border-zinc-100">
-            {["All", "Pending", "Completed"].map((filter) => (
+            {["All", "Pending", "In_Progress", "Review", "Completed", "Cancelled"].map((filter) => (
               <Button
                 key={filter}
                 variant={activeFilter === filter ? "white" : "ghost"}
@@ -302,7 +238,7 @@ export default function TasksPage() {
                 )}
                 onClick={() => setActiveFilter(filter)}
               >
-                {filter}
+                {filter.replace("_", " ")}
               </Button>
             ))}
           </div>
@@ -311,6 +247,7 @@ export default function TasksPage() {
             <DataTable
               columns={columns}
               data={filteredData}
+              isLoading={isLoading}
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
             />
           </div>

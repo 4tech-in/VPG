@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Checkbox } from "./ui/checkbox"
-// import { Checkbox } from "@/components/ui/checkbox"
+import { useOrganizations } from "@/hooks/use-organizations"
 
 const formSchema = z.object({
   name: z.string().min(1, {
@@ -57,6 +57,7 @@ const formSchema = z.object({
     message: "Access scope is required.",
   }),
   permissions: z.array(z.string()),
+  organizationId: z.string().optional(),
 })
 
 interface RoleManageFormProps {
@@ -65,8 +66,10 @@ interface RoleManageFormProps {
     name: string
     scope: string
     permissions: string[]
+    organizationId?: string
   }
   onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>
+  showOrganizationSelect?: boolean
 }
 
 // Module configuration mapping icons and permission base keys
@@ -93,9 +96,11 @@ const MODULES_CONFIG = [
   { prefix: "settings", label: "Setting", icon: Settings, category: "SETTING & OTHERS" },
 ]
 
-export function RoleManageForm({ initialValues, onSubmit: onSubmitProp }: RoleManageFormProps) {
+export function RoleManageForm({ initialValues, onSubmit: onSubmitProp, showOrganizationSelect }: RoleManageFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  const { allOrganizations, isLoading: isOrgsLoading } = useOrganizations({ skipFetch: !showOrganizationSelect })
 
   // Helper to fetch all available permission string keys
   const getAllAvailablePermissions = () => {
@@ -122,6 +127,7 @@ export function RoleManageForm({ initialValues, onSubmit: onSubmitProp }: RoleMa
       name: initialValues?.name || "",
       scope: initialValues?.scope || "self",
       permissions: initialValues?.permissions || [],
+      organizationId: initialValues?.organizationId || "",
     },
   })
 
@@ -139,6 +145,7 @@ export function RoleManageForm({ initialValues, onSubmit: onSubmitProp }: RoleMa
         name: initialValues.name,
         scope: initialValues.scope,
         permissions: initialPerms,
+        organizationId: initialValues.organizationId || "",
       })
     }
   }, [initialValues, form])
@@ -362,6 +369,33 @@ export function RoleManageForm({ initialValues, onSubmit: onSubmitProp }: RoleMa
               </FormItem>
             )}
           />
+
+          {showOrganizationSelect && (
+            <FormField
+              control={form.control}
+              name="organizationId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-zinc-700 font-bold">Organization <span className="text-destructive">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={isOrgsLoading}>
+                    <FormControl>
+                      <SelectTrigger className="rounded-xl focus:ring-primary/20">
+                        <SelectValue placeholder={isOrgsLoading ? "Loading organizations..." : "Select organization"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="rounded-xl">
+                      {allOrganizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Global Override Card */}

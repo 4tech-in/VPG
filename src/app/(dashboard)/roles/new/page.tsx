@@ -11,6 +11,7 @@ export default function NewRolePage() {
     name: string; 
     scope: string; 
     permissions: string[]; 
+    organizationId?: string;
   }) => {
     await addRole({
       ...values,
@@ -21,7 +22,7 @@ export default function NewRolePage() {
   return (
     <ContentLayout title="New Role">
       <div className="p-4 sm:p-8 max-w-[1200px] mx-auto animate-in fade-in duration-200">
-        <RoleManageForm onSubmit={handleSave} />
+        <RoleManageForm onSubmit={handleSave} showOrganizationSelect={true} />
       </div>
     </ContentLayout>
   )

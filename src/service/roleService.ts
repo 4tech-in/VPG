@@ -29,6 +29,7 @@ export type CreateRolePayload = {
   permissions: string[]
   scope: string
   canCreateRoles?: string[]
+  organizationId?: string
 }
 
 export const roleService = {

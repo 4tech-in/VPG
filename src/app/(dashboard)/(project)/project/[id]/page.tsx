@@ -49,6 +49,7 @@ import { useProjects } from "@/hooks/use-projects"
 import { toast } from "sonner"
 import { useTowers } from "@/hooks/use-towers"
 import { useOutsides } from "@/hooks/use-outsides"
+import { useProjectDocuments } from "@/hooks/use-project-documents"
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const { getProjectById } = useProjects(false)
@@ -81,6 +82,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [activeTab, setActiveTab] = useState(initialTab)
   const [hasLoadedTowers, setHasLoadedTowers] = useState(false)
   const [hasLoadedOutsides, setHasLoadedOutsides] = useState(false)
+  const [hasLoadedDocuments, setHasLoadedDocuments] = useState(false)
 
   const {
     towers: towersData,
@@ -132,6 +134,30 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     return () => clearTimeout(delayDebounce)
   }, [outsideSearch, outsidePage, activeTab, refetchOutsides])
 
+  const {
+    documents: documentsData,
+    isLoading: documentsLoading,
+    refetch: refetchDocuments,
+    addDocument,
+    editDocument,
+    removeDocument,
+    page: documentPage,
+    setPage: setDocumentPage,
+    search: documentSearch,
+    setSearch: setDocumentSearch,
+    total: documentTotal,
+    pageCount: documentPageCount,
+  } = useProjectDocuments(params.id, { skipFetch: true })
+
+  // Debounced search for documents
+  useEffect(() => {
+    if (activeTab !== "documents") return
+    const delayDebounce = setTimeout(() => {
+      refetchDocuments({ search: documentSearch, page: documentPage })
+    }, 300)
+    return () => clearTimeout(delayDebounce)
+  }, [documentSearch, documentPage, activeTab, refetchDocuments])
+
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value)
     router.push(`${pathname}?tab=${value}`, { scroll: false })
@@ -143,9 +169,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       // Handled by debounced useEffect
       setHasLoadedOutsides(true)
     }
-  }, [hasLoadedTowers, hasLoadedOutsides, pathname, router])
+    if (value === "documents" && !hasLoadedDocuments) {
+      setHasLoadedDocuments(true)
+    }
+  }, [hasLoadedTowers, hasLoadedOutsides, hasLoadedDocuments, pathname, router])
 
-  // Automatically fetch towers/outsides on mount if active
+  // Automatically fetch towers/outsides/documents on mount if active
   useEffect(() => {
     if (initialTab === "towers" && !hasLoadedTowers && !towersCalledRef.current) {
       towersCalledRef.current = true
@@ -157,10 +186,16 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       refetchOutsides()
       setHasLoadedOutsides(true)
     }
-  }, [initialTab, hasLoadedTowers, refetchTowers, hasLoadedOutsides, refetchOutsides])
+    if (initialTab === "documents" && !hasLoadedDocuments && !documentsCalledRef.current) {
+      documentsCalledRef.current = true
+      refetchDocuments()
+      setHasLoadedDocuments(true)
+    }
+  }, [initialTab, hasLoadedTowers, refetchTowers, hasLoadedOutsides, refetchOutsides, hasLoadedDocuments, refetchDocuments])
 
   const towersCalledRef = useRef(false)
   const outsidesCalledRef = useRef(false)
+  const documentsCalledRef = useRef(false)
 
   const [addTowerName, setAddTowerName] = useState("")
   const [addTowerNumber, setAddTowerNumber] = useState("")
@@ -183,6 +218,18 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const [isEditAreaDialogOpen, setIsEditAreaDialogOpen] = useState(false)
   const [isAddAreaDialogOpen, setIsAddAreaDialogOpen] = useState(false)
   const [editingArea, setEditingArea] = useState<any>(null)
+
+  const [addDocTitle, setAddDocTitle] = useState("")
+  const [addDocFiles, setAddDocFiles] = useState<File[]>([])
+  const [addDocNote, setAddDocNote] = useState("")
+
+  const [editDocTitle, setEditDocTitle] = useState("")
+  const [editDocFiles, setEditDocFiles] = useState<File[]>([])
+  const [editDocNote, setEditDocNote] = useState("")
+
+  const [isAddDocDialogOpen, setIsAddDocDialogOpen] = useState(false)
+  const [isEditDocDialogOpen, setIsEditDocDialogOpen] = useState(false)
+  const [editingDoc, setEditingDoc] = useState<any>(null)
 
   const handleTowerStatusToggle = useCallback(async (id: string) => {
     try {
@@ -274,6 +321,64 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     if (confirm("Are you sure you want to delete this area?")) {
       try {
         await removeOutside(id)
+      } catch (err) { }
+    }
+  }
+
+  const handleAddDocSubmit = async () => {
+    if (!addDocTitle.trim() || addDocFiles.length === 0) {
+      toast.error("Please provide a title and at least one file")
+      return
+    }
+    try {
+      const formData = new FormData()
+      formData.append("title", addDocTitle)
+      if (addDocNote) formData.append("note", addDocNote)
+      addDocFiles.forEach(file => {
+        formData.append("files", file)
+      })
+
+      await addDocument(formData)
+      setAddDocTitle("")
+      setAddDocFiles([])
+      setAddDocNote("")
+      setIsAddDocDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleEditDocClick = (doc: any) => {
+    setEditingDoc(doc)
+    setEditDocTitle(doc.title)
+    setEditDocFiles([])
+    setEditDocNote(doc.note || "")
+    setIsEditDocDialogOpen(true)
+  }
+
+  const handleEditDocSubmit = async () => {
+    if (!editingDoc) return
+    if (!editDocTitle.trim()) {
+      toast.error("Please provide a title")
+      return
+    }
+    try {
+      const formData = new FormData()
+      formData.append("title", editDocTitle)
+      if (editDocNote) formData.append("note", editDocNote)
+      if (editDocFiles.length > 0) {
+        editDocFiles.forEach(file => {
+          formData.append("files", file)
+        })
+      }
+
+      await editDocument(editingDoc.id, formData)
+      setIsEditDocDialogOpen(false)
+    } catch (err) { }
+  }
+
+  const handleDocDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this document?")) {
+      try {
+        await removeDocument(id)
       } catch (err) { }
     }
   }
@@ -426,6 +531,68 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       ),
     },
   ], [handleEditAreaClick, handleAreaDelete])
+
+  const documentColumns = useMemo<ColumnDef<any>[]>(() => [
+    {
+      accessorKey: "title",
+      header: "Title",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-zinc-900">{row.getValue("title")}</span>
+          {row.original.note && (
+            <span className="text-xs text-zinc-500 font-medium mt-1">
+              Note: {row.original.note}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "files",
+      header: "Files",
+      cell: ({ row }) => {
+        const files = row.original.files;
+        if (!files || files.length === 0) return <span className="text-zinc-400 text-sm">No File</span>
+        
+        const backendBase = process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || 'http://localhost:3001'
+
+        return (
+          <div className="flex flex-col gap-1">
+            {files.map((f: any, idx: number) => (
+              <a key={idx} href={`${backendBase}${f.filePath}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                {f.fileName}
+              </a>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEditDocClick(row.original)}
+            className="h-8 w-8 rounded-lg text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+          >
+            <Edit3 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleDocDelete(row.original.id)}
+            className="h-8 w-8 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-all"
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ], [handleEditDocClick, handleDocDelete])
 
   if (isLoading) {
     return (
@@ -638,18 +805,48 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           </TabsContent>
 
           <TabsContent value="documents" className="mt-0 focus-visible:outline-none">
-            <div className="bg-white border-2 border-dashed border-zinc-200 rounded-[32px] p-20 text-center flex flex-col items-center justify-center space-y-6 shadow-sm">
-              <div className="h-20 w-20 rounded-3xl bg-zinc-50 flex items-center justify-center shadow-inner">
-                <FileStack className="h-10 w-10 text-zinc-300" />
+            <div className="bg-white border border-zinc-200 rounded-[32px] p-6 shadow-sm overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-black text-zinc-900 tracking-tight">Project Documents</h2>
+                  <p className="text-sm font-medium text-zinc-500">Manage documents for this project</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => setIsAddDocDialogOpen(true)}
+                    className="rounded-xl h-10 px-4 gap-2 bg-[#00A991] hover:bg-[#008F7A] text-white font-bold border-none shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Upload Document</span>
+                  </Button>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl font-black text-zinc-900 tracking-tight">Project Documents</h3>
-                <p className="text-zinc-500 font-medium max-w-xs mx-auto">No documents uploaded for this project yet.</p>
-              </div>
-              <Button className="rounded-2xl h-14 px-10 gap-3 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95">
-                <Plus className="h-5 w-5" />
-                <span>Upload Document</span>
-              </Button>
+
+              {documentsData?.length > 0 ? (
+                <DataTable 
+                  columns={documentColumns} 
+                  data={documentsData} 
+                  searchKey="title" 
+                  isServerSide={true}
+                  searchValue={documentSearch}
+                  onSearchChange={setDocumentSearch}
+                  pageIndex={documentPage - 1}
+                  pageSize={10}
+                  pageCount={documentPageCount}
+                  totalItems={documentTotal}
+                  onPageChange={(page) => setDocumentPage(page + 1)}
+                />
+              ) : (
+                <div className="border-2 border-dashed border-zinc-200 rounded-[24px] p-12 text-center flex flex-col items-center justify-center space-y-4">
+                  <div className="h-16 w-16 rounded-2xl bg-zinc-50 flex items-center justify-center shadow-inner">
+                    <FileStack className="h-8 w-8 text-zinc-300" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-zinc-900 tracking-tight">No Documents</h3>
+                    <p className="text-zinc-500 font-medium">Upload a document to get started.</p>
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -859,6 +1056,165 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >
                 Add Area
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Document Dialog */}
+        <Dialog open={isAddDocDialogOpen} onOpenChange={setIsAddDocDialogOpen}>
+          <DialogContent className="sm:max-w-[450px] p-0 rounded-[24px] border-none shadow-2xl overflow-hidden">
+            <DialogHeader className="p-6 pb-0">
+              <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Upload Document</DialogTitle>
+            </DialogHeader>
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Document Title</label>
+                <Input
+                  placeholder="e.g. Site Plan"
+                  value={addDocTitle}
+                  onChange={(e) => setAddDocTitle(e.target.value)}
+                  className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Document Files</label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const filesArray = Array.from(e.target.files || [])
+                      setAddDocFiles(prev => [...prev, ...filesArray])
+                      e.target.value = ''
+                    }}
+                    className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                  />
+                  {addDocFiles.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-2 bg-zinc-50 rounded-xl p-3 border border-zinc-100 max-h-32 overflow-y-auto">
+                      {addDocFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-zinc-100 shadow-sm">
+                          <span className="text-sm font-medium text-zinc-700 truncate mr-2">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                            onClick={() => setAddDocFiles(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Note (Optional)</label>
+                <Input
+                  placeholder="e.g. Approved by management"
+                  value={addDocNote}
+                  onChange={(e) => setAddDocNote(e.target.value)}
+                  className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3 p-6 border-t border-zinc-100 bg-white">
+              <Button
+                variant="outline"
+                onClick={() => setIsAddDocDialogOpen(false)}
+                className="rounded-xl h-11 px-8 font-black text-zinc-900 border-zinc-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddDocSubmit}
+                className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
+              >
+                Upload
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Document Dialog */}
+        <Dialog open={isEditDocDialogOpen} onOpenChange={setIsEditDocDialogOpen}>
+          <DialogContent className="sm:max-w-[450px] p-0 rounded-[24px] border-none shadow-2xl overflow-hidden">
+            <DialogHeader className="p-6 pb-0">
+              <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Edit Document</DialogTitle>
+            </DialogHeader>
+            <div className="p-6 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Document Title</label>
+                <Input
+                  value={editDocTitle}
+                  onChange={(e) => setEditDocTitle(e.target.value)}
+                  placeholder="e.g. Site Plan"
+                  className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Document Files (Leave empty to keep existing)</label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const filesArray = Array.from(e.target.files || [])
+                      setEditDocFiles(prev => [...prev, ...filesArray])
+                      e.target.value = ''
+                    }}
+                    className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                  />
+                  {editDocFiles.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-2 bg-zinc-50 rounded-xl p-3 border border-zinc-100 max-h-32 overflow-y-auto">
+                      {editDocFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-zinc-100 shadow-sm">
+                          <span className="text-sm font-medium text-zinc-700 truncate mr-2">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-md text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                            onClick={() => setEditDocFiles(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {editDocFiles.length === 0 && editingDoc?.files && editingDoc.files.length > 0 && (
+                    <div className="text-xs text-zinc-500 mt-1">
+                      Current files will be kept if no new files are uploaded.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-600">Note (Optional)</label>
+                <Input
+                  value={editDocNote}
+                  onChange={(e) => setEditDocNote(e.target.value)}
+                  placeholder="e.g. Approved by management"
+                  className="h-12 rounded-xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] font-bold px-4"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-3 p-6 border-t border-zinc-100 bg-white">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditDocDialogOpen(false)}
+                className="rounded-xl h-11 px-8 font-black text-zinc-900 border-zinc-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEditDocSubmit}
+                className="rounded-xl h-11 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
+              >
+                Update
               </Button>
             </div>
           </DialogContent>

@@ -27,6 +27,7 @@ import { useAuthStore } from "@/store/use-auth-store";
 export function UserNav() {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const user = useAuthStore((state) => state.user);
 
   const handleSignOut = () => {
     clearAuth();
@@ -44,7 +45,7 @@ export function UserNav() {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="#" alt="Avatar" />
-                  <AvatarFallback className="bg-transparent">FT</AvatarFallback>
+                  <AvatarFallback className="bg-transparent">{user?.name?.charAt(0)?.toUpperCase() || "FT"}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -56,9 +57,9 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Four Tech</p>
+            <p className="text-sm font-medium leading-none">{user?.name || "Four Tech"}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              fourtech@gmail.com
+              {user?.email || "fourtech@gmail.com"}
             </p>
           </div>
         </DropdownMenuLabel>
