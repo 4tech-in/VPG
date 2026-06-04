@@ -237,13 +237,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     } catch (err) { }
   }, [toggleTowerStatus])
 
-  const handleEditTowerClick = (tower: any) => {
+  const handleEditTowerClick = useCallback((tower: any) => {
     setEditingTower(tower)
     setEditTowerName(tower.name)
     setEditTowerNumber(tower.number)
     setEditTowerStatus(tower.status)
     setIsEditTowerDialogOpen(true)
-  }
+  }, [])
 
   const handleAddTowerSubmit = async () => {
     if (!addTowerName.trim() || !addTowerNumber.trim()) {
@@ -295,12 +295,12 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     } catch (err) { }
   }
 
-  const handleEditAreaClick = (area: any) => {
+  const handleEditAreaClick = useCallback((area: any) => {
     setEditingArea(area)
     setEditAreaName(area.name)
     setEditAreaStatus(area.status)
     setIsEditAreaDialogOpen(true)
-  }
+  }, [])
 
   const handleEditAreaSubmit = async () => {
     if (!editingArea) return
@@ -317,13 +317,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     } catch (err) { }
   }
 
-  const handleAreaDelete = async (id: string) => {
+  const handleAreaDelete = useCallback(async (id: string) => {
     if (confirm("Are you sure you want to delete this area?")) {
       try {
         await removeOutside(id)
       } catch (err) { }
     }
-  }
+  }, [removeOutside])
 
   const handleAddDocSubmit = async () => {
     if (!addDocTitle.trim() || addDocFiles.length === 0) {
@@ -346,13 +346,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     } catch (err) { }
   }
 
-  const handleEditDocClick = (doc: any) => {
+  const handleEditDocClick = useCallback((doc: any) => {
     setEditingDoc(doc)
     setEditDocTitle(doc.title)
     setEditDocFiles([])
     setEditDocNote(doc.note || "")
     setIsEditDocDialogOpen(true)
-  }
+  }, [])
 
   const handleEditDocSubmit = async () => {
     if (!editingDoc) return
@@ -375,13 +375,13 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
     } catch (err) { }
   }
 
-  const handleDocDelete = async (id: string) => {
+  const handleDocDelete = useCallback(async (id: string) => {
     if (confirm("Are you sure you want to delete this document?")) {
       try {
         await removeDocument(id)
       } catch (err) { }
     }
-  }
+  }, [removeDocument])
 
   const towerColumns = useMemo<ColumnDef<any>[]>(() => [
     {
@@ -553,7 +553,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       cell: ({ row }) => {
         const files = row.original.files;
         if (!files || files.length === 0) return <span className="text-zinc-400 text-sm">No File</span>
-        
+
         const backendBase = process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || 'http://localhost:3001'
 
         return (
@@ -755,10 +755,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </Button>
               </div>
 
-              <DataTable 
-                columns={towerColumns} 
-                data={towersData} 
-                searchKey="name" 
+              <DataTable
+                columns={towerColumns}
+                data={towersData}
+                searchKey="name"
                 isServerSide={true}
                 searchValue={towerSearch}
                 onSearchChange={setTowerSearch}
@@ -788,10 +788,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               </div>
 
-              <DataTable 
-                columns={nonTowerColumns} 
-                data={outsidesData} 
-                searchKey="name" 
+              <DataTable
+                columns={nonTowerColumns}
+                data={outsidesData}
+                searchKey="name"
                 isServerSide={true}
                 searchValue={outsideSearch}
                 onSearchChange={setOutsideSearch}
@@ -823,10 +823,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
               </div>
 
               {documentsData?.length > 0 ? (
-                <DataTable 
-                  columns={documentColumns} 
-                  data={documentsData} 
-                  searchKey="title" 
+                <DataTable
+                  columns={documentColumns}
+                  data={documentsData}
+                  searchKey="title"
                   isServerSide={true}
                   searchValue={documentSearch}
                   onSearchChange={setDocumentSearch}

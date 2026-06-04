@@ -16,7 +16,7 @@ export async function apiRequest<T>(
   let token = options.token;
 
   if (typeof window !== "undefined") {
-    if (path !== "/auth/login") {
+    if (path !== "auth/login") {
       validateSession()
     }
     if (!token) {

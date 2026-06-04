@@ -37,6 +37,7 @@ export type ApiUser = {
   attendancePolicyId?: any
   createdAt?: string
   updatedAt?: string
+  password?: string
 }
 
 export type GetUsersResponse = {

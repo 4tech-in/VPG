@@ -41,7 +41,7 @@ export const projectService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    const response = await apiRequest<any>(`/projects${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`projects${queryString ? `?${queryString}` : ""}`)
 
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -70,31 +70,31 @@ export const projectService = {
   },
 
   async createProject(payload: CreateProjectPayload): Promise<ApiProject> {
-    return apiRequest<ApiProject>("/projects", {
+    return apiRequest<ApiProject>("projects", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateProject(id: string, payload: Partial<CreateProjectPayload>): Promise<ApiProject> {
-    return apiRequest<ApiProject>(`/projects/${id}`, {
+    return apiRequest<ApiProject>(`projects/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async getProjectById(id: string): Promise<ApiProject> {
-    return apiRequest<ApiProject>(`/projects/${id}`)
+    return apiRequest<ApiProject>(`projects/${id}`)
   },
 
   async getProjectStructure(projectId: string, params?: { organizationId?: string }): Promise<any> {
     const query = new URLSearchParams()
     if (params?.organizationId) query.append("organizationId", params.organizationId)
     const queryString = query.toString()
-    return apiRequest<any>(`/projects/structure/${projectId}${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<any>(`projects/structure/${projectId}${queryString ? `?${queryString}` : ""}`)
   },
 
   async deleteProject(id: string): Promise<void> {
-    return apiRequest(`/projects/${id}`, { method: "DELETE" })
+    return apiRequest(`projects/${id}`, { method: "DELETE" })
   },
 }

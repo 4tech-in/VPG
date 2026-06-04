@@ -48,14 +48,14 @@ export function LoginForm({
     const password = formData.get("password") as string
 
     try {
-      const response: any = await apiClient.post("/auth/login", {
+      const response: any = await apiClient.post("auth/login", {
         emailOrMobile,
         password,
       })
 
       if (response && response.token) {
         useAuthStore.getState().setAuth(response.token, response.data)
-        
+
         toast.success("Login successful! Redirecting...")
         router.push("/dashboard")
       } else {
@@ -70,9 +70,9 @@ export function LoginForm({
   }
 
   return (
-    <form 
+    <form
       onSubmit={handleSubmit}
-      className={cn("flex flex-col gap-6", className)} 
+      className={cn("flex flex-col gap-6", className)}
       {...props}
     >
       <div className="flex flex-col items-center gap-2 text-center">
@@ -84,12 +84,12 @@ export function LoginForm({
       <div className="grid gap-6">
         <div className="grid gap-2">
           <Label htmlFor="email">Email or Mobile</Label>
-          <Input 
-            id="email" 
+          <Input
+            id="email"
             name="email"
-            type="text" 
-            placeholder="macro@gmail.com" 
-            required 
+            type="text"
+            placeholder="macro@gmail.com"
+            required
             disabled={isLoading}
           />
         </div>
@@ -104,12 +104,12 @@ export function LoginForm({
             </a>
           </div>
           <div className="relative">
-            <Input 
-              id="password" 
+            <Input
+              id="password"
               name="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
-              required 
+              required
               disabled={isLoading}
               className="pr-10"
             />

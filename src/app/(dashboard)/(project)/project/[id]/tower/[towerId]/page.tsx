@@ -222,7 +222,7 @@ export default function TowerDetailsPage({
       accessorKey: "name",
       header: "Floor Name",
       cell: ({ row }) => (
-        <Link 
+        <Link
           href={`/project/${params.id}/tower/${params.towerId}/floor/${row.original.id}`}
           className="font-bold text-[#00A991] hover:underline cursor-pointer"
         >
@@ -272,14 +272,14 @@ export default function TowerDetailsPage({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-zinc-100 bg-white p-1">
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => handleEditClick(row.original)}
               className="gap-2 font-bold cursor-pointer text-zinc-700 py-2 rounded-lg"
             >
               <Edit3 className="h-4 w-4 text-zinc-500" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={() => handleFloorDelete(row.original.id)}
               className="gap-2 font-bold cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 py-2 rounded-lg"
             >
@@ -290,7 +290,7 @@ export default function TowerDetailsPage({
         </DropdownMenu>
       ),
     },
-  ], [handleFloorStatusToggle, handleFloorDelete, handleEditClick])
+  ], [handleFloorStatusToggle, handleFloorDelete, handleEditClick, params.id, params.towerId])
 
   return (
     <ContentLayout title="Tower Details">
@@ -424,10 +424,10 @@ export default function TowerDetailsPage({
                   </Button>
                 </div>
 
-                <DataTable 
-                  columns={floorColumns} 
-                  data={floorsData} 
-                  searchKey="name" 
+                <DataTable
+                  columns={floorColumns}
+                  data={floorsData}
+                  searchKey="name"
                   isServerSide={true}
                   searchValue={floorSearch}
                   onSearchChange={setFloorSearch}
@@ -507,8 +507,8 @@ export default function TowerDetailsPage({
             <div className="p-8 space-y-6">
               <div className="space-y-3">
                 <label className="text-sm font-bold text-zinc-600">Floor Name</label>
-                <Input 
-                  placeholder="e.g. Ground Floor" 
+                <Input
+                  placeholder="e.g. Ground Floor"
                   value={editFloorName}
                   onChange={(e) => setEditFloorName(e.target.value)}
                   className="h-14 rounded-2xl border-zinc-200 border-2 focus-visible:ring-[#00A991]/20 focus-visible:border-[#00A991] text-lg font-bold transition-all px-6"
@@ -516,9 +516,9 @@ export default function TowerDetailsPage({
               </div>
               <div className="space-y-3">
                 <label className="text-sm font-bold text-zinc-600">Floor Number</label>
-                <Input 
+                <Input
                   type="number"
-                  placeholder="e.g. 0" 
+                  placeholder="e.g. 0"
                   value={editFloorNumber ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -530,8 +530,8 @@ export default function TowerDetailsPage({
               </div>
               <div className="space-y-3">
                 <label className="text-sm font-bold text-zinc-600">Status</label>
-                <Select 
-                  value={editFloorStatus} 
+                <Select
+                  value={editFloorStatus}
                   onValueChange={(val) => setEditFloorStatus(val as "active" | "inactive")}
                 >
                   <SelectTrigger className="h-14 rounded-2xl border-zinc-200 border-2 text-lg font-bold px-6">
@@ -545,14 +545,14 @@ export default function TowerDetailsPage({
               </div>
             </div>
             <div className="flex items-center justify-center gap-4 p-8 border-t border-zinc-100">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsEditFloorDialogOpen(false)}
                 className="rounded-2xl h-12 px-8 font-black text-zinc-900 border-zinc-200 hover:bg-zinc-50"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleUpdateFloor}
                 className="rounded-2xl h-12 px-8 bg-[#00A991] hover:bg-[#008F7A] text-white font-black shadow-lg shadow-[#00A991]/20 transition-all active:scale-95"
               >

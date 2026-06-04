@@ -35,7 +35,7 @@ export type CreateRolePayload = {
 export const roleService = {
   async getRoles(params?: Record<string, string>): Promise<GetRolesResponse> {
     const query = new URLSearchParams(params).toString()
-    const response = await apiRequest<any>(query ? `/role?${query}` : "/role")
+    const response = await apiRequest<any>(query ? `role?${query}` : "role")
     
     const roles = Array.isArray(response) ? response : (response?.data || [])
     return {
@@ -50,20 +50,20 @@ export const roleService = {
   },
 
   async createRole(payload: CreateRolePayload): Promise<ApiRole> {
-    return apiRequest<ApiRole>("/role", {
+    return apiRequest<ApiRole>("role", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateRole(id: string, payload: Partial<CreateRolePayload> & { isActive?: boolean }): Promise<ApiRole> {
-    return apiRequest<ApiRole>(`/role/${id}`, {
+    return apiRequest<ApiRole>(`role/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteRole(id: string): Promise<void> {
-    return apiRequest(`/role/${id}`, { method: "DELETE" })
+    return apiRequest(`role/${id}`, { method: "DELETE" })
   },
 }

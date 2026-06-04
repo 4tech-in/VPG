@@ -11,6 +11,7 @@ export type Staff = {
   properties: number
   status: "Active" | "Inactive"
   avatarUrl?: string
+  password?: string
   // Full API bindings
   roleId: string
   nodeIds: string[]
@@ -88,6 +89,7 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     projectName,
     attendancePolicyName,
     organizationId: apiUser.organizationId,
+    password: apiUser.password,
   }
 }
 

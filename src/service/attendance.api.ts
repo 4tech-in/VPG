@@ -27,11 +27,11 @@ export const attendanceService = {
       })
     }
     const queryString = query.toString()
-    return apiRequest<any>(`/attendance${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<any>(`attendance${queryString ? `?${queryString}` : ""}`)
   },
 
   async getAttendanceById(id: string): Promise<ApiAttendance> {
-    return apiRequest<ApiAttendance>(`/attendance/${id}`)
+    return apiRequest<ApiAttendance>(`attendance/${id}`)
   },
 
   async getMyAttendance(params?: { page?: number; limit?: number }): Promise<any> {
@@ -42,26 +42,40 @@ export const attendanceService = {
       })
     }
     const queryString = query.toString()
-    return apiRequest<any>(`/attendance/me${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<any>(`attendance/me${queryString ? `?${queryString}` : ""}`)
   },
 
   async checkIn(payload: any): Promise<ApiAttendance> {
-    return apiRequest<ApiAttendance>("/attendance/check-in", {
+    return apiRequest<ApiAttendance>("attendance/check-in", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async checkOut(payload: any): Promise<ApiAttendance> {
-    return apiRequest<ApiAttendance>("/attendance/check-out", {
+    return apiRequest<ApiAttendance>("attendance/check-out", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateAttendance(id: string, payload: any): Promise<ApiAttendance> {
-    return apiRequest<ApiAttendance>(`/attendance/${id}`, {
+    return apiRequest<ApiAttendance>(`attendance/${id}`, {
       method: "PATCH",
+      body: JSON.stringify(payload),
+    })
+  },
+
+  async markAttendance(payload: {
+    userId: string
+    date: string
+    status: string
+    punchInTime?: string
+    punchOutTime?: string
+    note?: string
+  }): Promise<any> {
+    return apiRequest<any>("attendance/mark", {
+      method: "POST",
       body: JSON.stringify(payload),
     })
   },

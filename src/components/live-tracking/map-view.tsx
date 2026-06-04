@@ -8,9 +8,11 @@ import "leaflet/dist/leaflet.css"
 interface MapViewProps {
   center: [number, number]
   zoom: number
+  mapType?: "roadmap" | "satellite"
+  showTraffic?: boolean
 }
 
-function ChangeView({ center, zoom }: MapViewProps) {
+function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
   useEffect(() => {
     if (map) {
@@ -20,7 +22,7 @@ function ChangeView({ center, zoom }: MapViewProps) {
   return null
 }
 
-export default function MapView({ center, zoom }: MapViewProps) {
+export default function MapView({ center, zoom, mapType = "roadmap", showTraffic = false }: MapViewProps) {
   const [isMounted, setIsMounted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -41,8 +43,14 @@ export default function MapView({ center, zoom }: MapViewProps) {
     }
   }, [])
 
-  // Force re-render with a unique key if the coordinates change significantly
-  const mapKey = useMemo(() => `map-${center[0].toFixed(4)}-${center[1].toFixed(4)}`, [center])
+  // Force re-render with a unique key if the coordinates or layer changes significantly
+  const mapKey = useMemo(() => `map-${center[0].toFixed(4)}-${center[1].toFixed(4)}-${mapType}-${showTraffic}`, [center, mapType, showTraffic])
+
+  const tileUrl = useMemo(() => {
+    const layerType = mapType === "satellite" ? "y" : "m"
+    const trafficSuffix = showTraffic ? ",traffic" : ""
+    return `https://mt1.google.com/vt/lyrs=${layerType}${trafficSuffix}&x={x}&y={y}&z={z}`
+  }, [mapType, showTraffic])
 
   if (!isMounted) {
     return (
@@ -64,7 +72,7 @@ export default function MapView({ center, zoom }: MapViewProps) {
         attributionControl={false}
       >
         <TileLayer
-          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          url={tileUrl}
           attribution='&copy; Google Maps'
         />
         

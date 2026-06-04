@@ -7,7 +7,10 @@ import {
   Plus,
   Search,
   Edit,
-  Trash
+  Trash,
+  Eye,
+  EyeOff,
+  ArrowRight
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -19,19 +22,103 @@ import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { StaffForm } from "@/components/staff/staff-form"
+import { StaffDialog } from "@/components/staff/staff-dialog"
 
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { useUsers, Staff } from "@/hooks/use-users"
 import { useAuthStore } from "@/store/use-auth-store"
+import { authService } from "@/service/auth.api"
+import { toast } from "sonner"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+const PasswordCell = ({ password }: { password?: string }) => {
+  const [showPassword, setShowPassword] = useState(false)
+  if (!password) return <span className="text-zinc-500 font-medium">-</span>
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-zinc-500 font-medium font-mono text-sm min-w-[60px]">
+        {showPassword ? password : "••••••••"}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all"
+        onClick={(e) => {
+          e.stopPropagation()
+          setShowPassword(!showPassword)
+        }}
+      >
+        {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+      </Button>
+    </div>
+  )
+}
+
+const MemberCell = ({ staff }: { staff: Staff }) => {
+  const { clearAuth, setAuth } = useAuthStore()
+
+  const handleLoginAs = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const email = staff.email
+    const password = staff.password
+    if (!password) {
+      toast.error("No password stored for this user.")
+      return
+    }
+    try {
+      const response = await authService.login({
+        emailOrMobile: email,
+        password: password
+      })
+      // Clear storage and state, then immediately update with new credentials
+      clearAuth()
+      setAuth(response.token, response.data as any)
+      toast.success(`Logged in as ${staff.name}`)
+      window.location.href = "/"
+    } catch (err: any) {
+      toast.error(err.message || "Failed to login as user")
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between w-full gap-3">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-8 w-8 rounded-xl">
+          <AvatarImage src={staff.avatarUrl} />
+          <AvatarFallback className="rounded-xl bg-primary/5 text-primary font-bold">{staff.name[0]}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <span className="font-bold text-zinc-900 leading-none mb-1">{staff.name}</span>
+          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">{staff.role}</span>
+        </div>
+      </div>
+
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-lg text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
+              onClick={handleLoginAs}
+            >
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="rounded-xl border border-zinc-100 bg-white/95 px-3 py-2 text-xs font-bold text-zinc-900 shadow-xl backdrop-blur-md">
+            <span>Login as user {staff.name}</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  )
+}
 
 export default function UserPage() {
   const router = useRouter()
@@ -76,18 +163,7 @@ export default function UserPage() {
     {
       accessorKey: "name",
       header: "Member",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8 rounded-xl">
-            <AvatarImage src={row.original.avatarUrl} />
-            <AvatarFallback className="rounded-xl bg-primary/5 text-primary font-bold">{row.original.name[0]}</AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="font-bold text-zinc-900 leading-none mb-1">{row.original.name}</span>
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">{row.original.role}</span>
-          </div>
-        </div>
-      ),
+      cell: ({ row }) => <MemberCell staff={row.original} />,
     },
     {
       accessorKey: "email",
@@ -98,6 +174,16 @@ export default function UserPage() {
       accessorKey: "phone",
       header: "Phone",
       cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.phone || "-"}</span>,
+    },
+    {
+      accessorKey: "password",
+      header: "Password",
+      cell: ({ row }) => <PasswordCell password={row.original.password} />,
+    },
+    {
+      accessorKey: "geofenceName",
+      header: "Geofence",
+      cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.geofenceName || "-"}</span>,
     },
     {
       accessorKey: "attendancePolicyName",
@@ -227,36 +313,15 @@ export default function UserPage() {
         )}
 
         {/* Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl">
-            <DialogHeader className="pb-4 border-b border-zinc-100 mb-6">
-              <DialogTitle className="text-2xl font-black">
-                {editingStaff 
-                  ? (isSuperAdmin ? "Update User Profile" : "Update Staff Profile") 
-                  : (isSuperAdmin ? "Register New User" : "Register New Staff")}
-              </DialogTitle>
-              <DialogDescription className="font-medium text-zinc-500">
-                {editingStaff
-                  ? (isSuperAdmin 
-                      ? "Modify account permissions and professional details for this user." 
-                      : "Modify account permissions and professional details for this member.")
-                  : (isSuperAdmin 
-                      ? "Onboard a new user to the VPG Estate team." 
-                      : "Onboard a new member to the VPG Estate team.")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-2">
-              <StaffForm
-                isDialog
-                onSuccess={() => {
-                  setIsDialogOpen(false)
-                  refetch()
-                }}
-                initialValues={editingStaff || undefined}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        <StaffDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          editingStaff={editingStaff}
+          isSuperAdmin={isSuperAdmin}
+          onSuccess={() => {
+            setIsDialogOpen(false)
+          }}
+        />
       </div>
     </ContentLayout>
   )

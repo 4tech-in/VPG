@@ -20,7 +20,7 @@ export type LoginResponse = {
 
 export const authService = {
   async login(payload: LoginPayload): Promise<LoginResponse> {
-    return apiRequest<LoginResponse>("/auth/login", {
+    return apiRequest<LoginResponse>("auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     })

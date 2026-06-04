@@ -17,7 +17,6 @@ import { useOrganizations } from "@/hooks/use-organizations"
 import { geofenceService } from "@/service/geofenceService"
 import { projectService } from "@/service/projectService"
 import { attendancePolicyService } from "@/service/attendancePolicyService"
-import { MapPin, FolderGit, Clock } from "lucide-react"
 import { toast } from "sonner"
 
 type StaffFormProps = {
@@ -32,28 +31,37 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   const { allUsers, addUser, editUser, isLoading: userActionLoading, refetch: refetchUsers } = useUsers({ skipFetch: true })
   // Geofence Infinite Scroll State
   const [geofencesList, setGeofencesList] = useState<any[]>([])
-  const [geofencePage, setGeofencePage] = useState(1)
   const [hasMoreGeofences, setHasMoreGeofences] = useState(true)
   const [isGeofencesLoading, setIsGeofencesLoading] = useState(false)
   const geofenceObserverRef = useRef<HTMLDivElement | null>(null)
 
   // Projects Infinite Scroll State
   const [projectsList, setProjectsList] = useState<any[]>([])
-  const [projectPage, setProjectPage] = useState(1)
   const [hasMoreProjects, setHasMoreProjects] = useState(true)
   const [isProjectsLoading, setIsProjectsLoading] = useState(false)
   const projectObserverRef = useRef<HTMLDivElement | null>(null)
 
   // Attendance Policies Infinite Scroll State
   const [policiesList, setPoliciesList] = useState<any[]>([])
-  const [policyPage, setPolicyPage] = useState(1)
   const [hasMorePolicies, setHasMorePolicies] = useState(true)
   const [isPoliciesLoading, setIsPoliciesLoading] = useState(false)
   const policyObserverRef = useRef<HTMLDivElement | null>(null)
 
+  // Refs to track current page for scroll-based pagination
+  const geofencePageRef = useRef(1)
+  const projectPageRef = useRef(1)
+  const policyPageRef = useRef(1)
+  const isGeofenceFetchingRef = useRef(false)
+  const isProjectFetchingRef = useRef(false)
+  const isPolicyFetchingRef = useRef(false)
+  const hasFetchedGeofences = useRef(false)
+  const hasFetchedProjects = useRef(false)
+  const hasFetchedPolicies = useRef(false)
+
   // Fetch functions
   const fetchGeofencesPage = async (page: number) => {
-    if (isGeofencesLoading) return
+    if (isGeofenceFetchingRef.current) return
+    isGeofenceFetchingRef.current = true
     setIsGeofencesLoading(true)
     try {
       const response = await geofenceService.getGeofences({ page, limit: 10 })
@@ -63,15 +71,19 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       }))
       setGeofencesList(prev => page === 1 ? mapped : [...prev, ...mapped])
       setHasMoreGeofences(page < response.pagination.totalPages)
+      geofencePageRef.current = page
     } catch (e) {
       console.error(e)
+      setHasMoreGeofences(false)
     } finally {
+      isGeofenceFetchingRef.current = false
       setIsGeofencesLoading(false)
     }
   }
 
   const fetchProjectsPage = async (page: number) => {
-    if (isProjectsLoading) return
+    if (isProjectFetchingRef.current) return
+    isProjectFetchingRef.current = true
     setIsProjectsLoading(true)
     try {
       const response = await projectService.getProjects({ page, limit: 10 })
@@ -81,15 +93,19 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       }))
       setProjectsList(prev => page === 1 ? mapped : [...prev, ...mapped])
       setHasMoreProjects(page < response.pagination.totalPages)
+      projectPageRef.current = page
     } catch (e) {
       console.error(e)
+      setHasMoreProjects(false)
     } finally {
+      isProjectFetchingRef.current = false
       setIsProjectsLoading(false)
     }
   }
 
   const fetchPoliciesPage = async (page: number) => {
-    if (isPoliciesLoading) return
+    if (isPolicyFetchingRef.current) return
+    isPolicyFetchingRef.current = true
     setIsPoliciesLoading(true)
     try {
       const response = await attendancePolicyService.getPolicies({ page, limit: 10 })
@@ -100,9 +116,12 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       setPoliciesList(prev => page === 1 ? mapped : [...prev, ...mapped])
       const totalPages = response.pagination?.totalPages || 1
       setHasMorePolicies(page < totalPages)
+      policyPageRef.current = page
     } catch (e) {
       console.error(e)
+      setHasMorePolicies(false)
     } finally {
+      isPolicyFetchingRef.current = false
       setIsPoliciesLoading(false)
     }
   }
@@ -110,27 +129,21 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   // No longer fetching on mount to prevent unnecessary API calls unless dropdowns are clicked
 
 
-  // Observers for infinite scrolling
+  // Observers for infinite scrolling — deps do NOT include page to avoid re-trigger loops
   useEffect(() => {
     if (!hasMoreGeofences || isGeofencesLoading) return
     const currentRef = geofenceObserverRef.current
     if (!currentRef) return
 
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setGeofencePage((prev) => {
-          const next = prev + 1
-          fetchGeofencesPage(next)
-          return next
-        })
+      if (entries[0].isIntersecting && !isGeofenceFetchingRef.current) {
+        fetchGeofencesPage(geofencePageRef.current + 1)
       }
     }, { threshold: 0.1 })
 
     observer.observe(currentRef)
-    return () => {
-      if (currentRef) observer.unobserve(currentRef)
-    }
-  }, [hasMoreGeofences, isGeofencesLoading, geofencePage])
+    return () => observer.disconnect()
+  }, [hasMoreGeofences, isGeofencesLoading])
 
   useEffect(() => {
     if (!hasMoreProjects || isProjectsLoading) return
@@ -138,20 +151,14 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
     if (!currentRef) return
 
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setProjectPage((prev) => {
-          const next = prev + 1
-          fetchProjectsPage(next)
-          return next
-        })
+      if (entries[0].isIntersecting && !isProjectFetchingRef.current) {
+        fetchProjectsPage(projectPageRef.current + 1)
       }
     }, { threshold: 0.1 })
 
     observer.observe(currentRef)
-    return () => {
-      if (currentRef) observer.unobserve(currentRef)
-    }
-  }, [hasMoreProjects, isProjectsLoading, projectPage])
+    return () => observer.disconnect()
+  }, [hasMoreProjects, isProjectsLoading])
 
   useEffect(() => {
     if (!hasMorePolicies || isPoliciesLoading) return
@@ -159,20 +166,14 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
     if (!currentRef) return
 
     const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setPolicyPage((prev) => {
-          const next = prev + 1
-          fetchPoliciesPage(next)
-          return next
-        })
+      if (entries[0].isIntersecting && !isPolicyFetchingRef.current) {
+        fetchPoliciesPage(policyPageRef.current + 1)
       }
     }, { threshold: 0.1 })
 
     observer.observe(currentRef)
-    return () => {
-      if (currentRef) observer.unobserve(currentRef)
-    }
-  }, [hasMorePolicies, isPoliciesLoading, policyPage])
+    return () => observer.disconnect()
+  }, [hasMorePolicies, isPoliciesLoading])
 
   const { user: loggedInUser, hasPermission } = useAuthStore()
   const isSuperAdmin = hasPermission("organization:view")
@@ -252,9 +253,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         nodeIds: selectedNodes,
         primaryNodeId: primaryNodeId || null,
         reportsTo: isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
-        geofenceId: isSuperAdmin || geofenceId === "none" || !geofenceId ? null : geofenceId,
-        projectId: isSuperAdmin || projectId === "none" || !projectId ? null : projectId,
-        attendancePolicyId: isSuperAdmin || attendancePolicyId === "none" || !attendancePolicyId ? null : attendancePolicyId,
+        geofenceId: geofenceId === "none" || !geofenceId ? null : geofenceId,
+        projectId: projectId === "none" || !projectId ? null : projectId,
+        attendancePolicyId: attendancePolicyId === "none" || !attendancePolicyId ? null : attendancePolicyId,
       }
       if (isSuperAdmin && organizationId) {
         payload.organizationId = organizationId
@@ -477,99 +478,98 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
           )}
 
-          {!isSuperAdmin && (
-            <>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
-                <Select
-                  value={geofenceId}
-                  onValueChange={setGeofenceId}
-                  onOpenChange={(open) => {
-                    if (open && geofencesList.length === 0) {
-                      fetchGeofencesPage(1)
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                    <SelectValue placeholder="Select geofence boundary" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                    <SelectItem value="none">None / No Geofence</SelectItem>
-                    {geofencesList.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                    {hasMoreGeofences && (
-                      <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                        {isGeofencesLoading ? "Loading..." : "Scroll for more"}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
+            <Select
+              value={geofenceId}
+              onValueChange={setGeofenceId}
+              onOpenChange={(open) => {
+                if (open && !hasFetchedGeofences.current && !isGeofenceFetchingRef.current) {
+                  hasFetchedGeofences.current = true
+                  fetchGeofencesPage(1)
+                }
+              }}
+            >
+              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                <SelectValue placeholder="Select geofence boundary" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                <SelectItem value="none">None / No Geofence</SelectItem>
+                {geofencesList.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
+                {hasMoreGeofences && (
+                  <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                    {isGeofencesLoading ? "Loading..." : "Scroll for more"}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
-                <Select
-                  value={projectId}
-                  onValueChange={setProjectId}
-                  onOpenChange={(open) => {
-                    if (open && projectsList.length === 0) {
-                      fetchProjectsPage(1)
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                    <SelectValue placeholder="Select corporate project" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                    <SelectItem value="none">None / Unassigned</SelectItem>
-                    {projectsList.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                    {hasMoreProjects && (
-                      <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                        {isProjectsLoading ? "Loading..." : "Scroll for more"}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
+            <Select
+              value={projectId}
+              onValueChange={setProjectId}
+              onOpenChange={(open) => {
+                if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
+                  hasFetchedProjects.current = true
+                  fetchProjectsPage(1)
+                }
+              }}
+            >
+              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                <SelectValue placeholder="Select corporate project" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                <SelectItem value="none">None / Unassigned</SelectItem>
+                {projectsList.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+                {hasMoreProjects && (
+                  <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                    {isProjectsLoading ? "Loading..." : "Scroll for more"}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
-                <Select
-                  value={attendancePolicyId}
-                  onValueChange={setAttendancePolicyId}
-                  onOpenChange={(open) => {
-                    if (open && policiesList.length === 0) {
-                      fetchPoliciesPage(1)
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                    <SelectValue placeholder="Select attendance ruleset" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                    <SelectItem value="none">None / System Default</SelectItem>
-                    {policiesList.map((ap) => (
-                      <SelectItem key={ap.id} value={ap.id}>
-                        {ap.name}
-                      </SelectItem>
-                    ))}
-                    {hasMorePolicies && (
-                      <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                        {isPoliciesLoading ? "Loading..." : "Scroll for more"}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
+            <Select
+              value={attendancePolicyId}
+              onValueChange={setAttendancePolicyId}
+              onOpenChange={(open) => {
+                if (open && !hasFetchedPolicies.current && !isPolicyFetchingRef.current) {
+                  hasFetchedPolicies.current = true
+                  fetchPoliciesPage(1)
+                }
+              }}
+            >
+              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
+                <SelectValue placeholder="Select attendance ruleset" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                <SelectItem value="none">None / System Default</SelectItem>
+                {policiesList.map((ap) => (
+                  <SelectItem key={ap.id} value={ap.id}>
+                    {ap.name}
+                  </SelectItem>
+                ))}
+                {hasMorePolicies && (
+                  <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
+                    {isPoliciesLoading ? "Loading..." : "Scroll for more"}
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
 
           {selectedNodes.length > 0 && (

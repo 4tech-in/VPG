@@ -35,7 +35,7 @@ export type CreateOrganizationPayload = {
 export const organizationService = {
   async getOrganizations(params?: Record<string, string>): Promise<GetOrganizationsResponse> {
     const query = new URLSearchParams(params).toString()
-    const response = await apiRequest<any>(query ? `/organizations?${query}` : "/organizations")
+    const response = await apiRequest<any>(query ? `organizations?${query}` : "organizations")
     
     const organizations = Array.isArray(response) ? response : (response?.data || [])
     return {
@@ -50,20 +50,20 @@ export const organizationService = {
   },
 
   async createOrganization(payload: CreateOrganizationPayload): Promise<ApiOrganization> {
-    return apiRequest<ApiOrganization>("/organizations", {
+    return apiRequest<ApiOrganization>("organizations", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateOrganization(id: string, payload: Partial<CreateOrganizationPayload>): Promise<ApiOrganization> {
-    return apiRequest<ApiOrganization>(`/organizations/${id}`, {
+    return apiRequest<ApiOrganization>(`organizations/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteOrganization(id: string): Promise<void> {
-    return apiRequest(`/organizations/${id}`, { method: "DELETE" })
+    return apiRequest(`organizations/${id}`, { method: "DELETE" })
   },
 }
