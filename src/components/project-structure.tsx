@@ -281,8 +281,8 @@ export function ProjectStructure({ projectId }: { projectId: string }) {
       setError(null)
       try {
         const response = await projectService.getProjectStructure(projectId)
-        if (response.success && response.data) {
-          setTreeData(mapStructureToTree(response.data))
+        if (response && response.project) {
+          setTreeData(mapStructureToTree(response))
         } else {
           setError("Failed to load project structure")
         }

@@ -45,28 +45,28 @@ export const floorService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiRequest<GetFloorsResponse>(`/floors${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetFloorsResponse>(`floors${queryString ? `?${queryString}` : ""}`)
   },
 
   async getFloorById(id: string): Promise<ApiFloor> {
-    return apiRequest<ApiFloor>(`/floors/${id}`)
+    return apiRequest<ApiFloor>(`floors/${id}`)
   },
 
   async createFloor(payload: CreateFloorPayload): Promise<ApiFloor> {
-    return apiRequest<ApiFloor>("/floors", {
+    return apiRequest<ApiFloor>("floors", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateFloor(id: string, payload: Partial<CreateFloorPayload>): Promise<ApiFloor> {
-    return apiRequest<ApiFloor>(`/floors/${id}`, {
+    return apiRequest<ApiFloor>(`floors/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteFloor(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiRequest(`/floors/${id}`, { method: "DELETE" })
+    return apiRequest(`floors/${id}`, { method: "DELETE" })
   },
 }
