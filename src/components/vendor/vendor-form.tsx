@@ -376,7 +376,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                           <span className={cn(
                                             "text-[10px] uppercase font-medium tracking-tight",
                                             field.value === (item._id || item.id) ? "text-zinc-300" : "text-zinc-400"
-                                          )}>{item.itemCode.split("-").pop()}</span>
+                                          )}>{(item.itemCode || "").split("-").pop()}</span>
                                         </button>
                                       ))
                                     )}

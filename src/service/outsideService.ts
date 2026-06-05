@@ -45,28 +45,28 @@ export const outsideService = {
     if (params?.status) query.append("status", params.status)
 
     const queryString = query.toString()
-    return apiRequest<GetOutsidesResponse>(`/outsides${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetOutsidesResponse>(`outsides${queryString ? `?${queryString}` : ""}`)
   },
 
   async getOutsideById(id: string): Promise<ApiOutside> {
-    return apiRequest<ApiOutside>(`/outsides/${id}`)
+    return apiRequest<ApiOutside>(`outsides/${id}`)
   },
 
   async createOutside(payload: CreateOutsidePayload): Promise<ApiOutside> {
-    return apiRequest<ApiOutside>("/outsides", {
+    return apiRequest<ApiOutside>("outsides", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateOutside(id: string, payload: Partial<CreateOutsidePayload>): Promise<ApiOutside> {
-    return apiRequest<ApiOutside>(`/outsides/${id}`, {
+    return apiRequest<ApiOutside>(`outsides/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteOutside(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiRequest(`/outsides/${id}`, { method: "DELETE" })
+    return apiRequest(`outsides/${id}`, { method: "DELETE" })
   },
 }

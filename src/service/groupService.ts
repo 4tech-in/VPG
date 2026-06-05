@@ -30,7 +30,7 @@ export const groupService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    const response = await apiRequest<any>(`/groups${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`groups${queryString ? `?${queryString}` : ""}`)
     
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -59,20 +59,20 @@ export const groupService = {
   },
 
   async createGroup(payload: CreateGroupPayload): Promise<ApiGroup> {
-    return apiRequest<ApiGroup>("/groups", {
+    return apiRequest<ApiGroup>("groups", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateGroup(id: string, payload: Partial<CreateGroupPayload>): Promise<ApiGroup> {
-    return apiRequest<ApiGroup>(`/groups/${id}`, {
+    return apiRequest<ApiGroup>(`groups/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteGroup(id: string): Promise<void> {
-    return apiRequest(`/groups/${id}`, { method: "DELETE" })
+    return apiRequest(`groups/${id}`, { method: "DELETE" })
   },
 }

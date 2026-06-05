@@ -71,7 +71,7 @@ export const itemService = {
     if (params?.subGroupId) query.append("subGroupId", params.subGroupId)
 
     const queryString = query.toString()
-    const response = await apiRequest<any>(`/items${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`items${queryString ? `?${queryString}` : ""}`)
 
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -100,20 +100,20 @@ export const itemService = {
   },
 
   async createItem(payload: CreateItemPayload): Promise<ApiItem> {
-    return apiRequest<ApiItem>("/items", {
+    return apiRequest<ApiItem>("items", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateItem(id: string, payload: Partial<CreateItemPayload>): Promise<ApiItem> {
-    return apiRequest<ApiItem>(`/items/${id}`, {
+    return apiRequest<ApiItem>(`items/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteItem(id: string): Promise<void> {
-    return apiRequest(`/items/${id}`, { method: "DELETE" })
+    return apiRequest(`items/${id}`, { method: "DELETE" })
   },
 }

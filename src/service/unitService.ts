@@ -32,7 +32,7 @@ export const unitService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    const response = await apiRequest<any>(`/units${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`units${queryString ? `?${queryString}` : ""}`)
     
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -61,20 +61,20 @@ export const unitService = {
   },
 
   async createUnit(payload: CreateUnitPayload): Promise<ApiUnit> {
-    return apiRequest<ApiUnit>("/units", {
+    return apiRequest<ApiUnit>("units", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateUnit(id: string, payload: Partial<CreateUnitPayload>): Promise<ApiUnit> {
-    return apiRequest<ApiUnit>(`/units/${id}`, {
+    return apiRequest<ApiUnit>(`units/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteUnit(id: string): Promise<void> {
-    return apiRequest(`/units/${id}`, { method: "DELETE" })
+    return apiRequest(`units/${id}`, { method: "DELETE" })
   },
 }

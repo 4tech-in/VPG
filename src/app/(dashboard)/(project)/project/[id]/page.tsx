@@ -851,7 +851,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           </TabsContent>
 
           <TabsContent value="structure" className="mt-0 focus-visible:outline-none">
-            <ProjectStructure />
+            <ProjectStructure projectId={params.id} />
           </TabsContent>
         </Tabs>
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import {
   ChevronDown,
   ChevronRight,
@@ -9,9 +9,11 @@ import {
   Building2,
   Layers,
   Home,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { projectService } from "@/service/projectService"
 
 interface Node {
   id: string
@@ -196,7 +198,104 @@ const TreeNode = ({ node, isLast, level }: { node: Node, isLast: boolean, level:
   )
 }
 
-export function ProjectStructure() {
+const mapStructureToTree = (data: any): Node => {
+  const projectNode: Node = {
+    id: data.project._id || "project-root",
+    type: "Project",
+    name: data.project.name,
+    isOpen: true,
+    children: []
+  }
+
+  // Non Tower Area
+  if (data.nonTowerArea && data.nonTowerArea.areas && data.nonTowerArea.areas.length > 0) {
+    projectNode.children?.push({
+      id: "non-tower-group",
+      type: "Outside",
+      name: data.nonTowerArea.name,
+      isOpen: true,
+      children: data.nonTowerArea.areas.map((area: any) => ({
+        id: area._id,
+        type: "Outside",
+        name: area.name
+      }))
+    })
+  }
+
+  // Towers
+  if (data.towers && data.towers.length > 0) {
+    data.towers.forEach((tower: any) => {
+      const towerNode: Node = {
+        id: tower._id,
+        type: "Tower",
+        name: tower.name,
+        subtext: tower.towerNumber ? `T-${tower.towerNumber}` : undefined,
+        metadata: `${tower.totalFloors} Floors`,
+        isOpen: false,
+        children: []
+      }
+
+      if (tower.floors && tower.floors.length > 0) {
+        tower.floors.forEach((floor: any) => {
+          const floorNode: Node = {
+            id: floor._id,
+            type: "Floor",
+            name: floor.name,
+            subtext: floor.floorNumber ? String(floor.floorNumber) : undefined,
+            metadata: `${floor.totalFlats} Flats`,
+            isOpen: false,
+            children: []
+          }
+
+          if (floor.flats && floor.flats.length > 0) {
+            floor.flats.forEach((flat: any) => {
+              floorNode.children?.push({
+                id: flat._id,
+                type: "Flat",
+                name: flat.name,
+                subtext: flat.flatNumber ? String(flat.flatNumber) : undefined
+              })
+            })
+          }
+
+          towerNode.children?.push(floorNode)
+        })
+      }
+
+      projectNode.children?.push(towerNode)
+    })
+  }
+
+  return projectNode
+}
+
+export function ProjectStructure({ projectId }: { projectId: string }) {
+  const [treeData, setTreeData] = useState<Node | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadStructure() {
+      if (!projectId) return
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await projectService.getProjectStructure(projectId)
+        if (response.success && response.data) {
+          setTreeData(mapStructureToTree(response.data))
+        } else {
+          setError("Failed to load project structure")
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to load project structure")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadStructure()
+  }, [projectId])
+
   return (
     <div className="bg-white border border-zinc-200 rounded-[32px] p-6 sm:p-10 shadow-sm text-left">
       <div className="flex items-center gap-3 mb-10 pb-6 border-b border-zinc-100">
@@ -207,7 +306,18 @@ export function ProjectStructure() {
       </div>
 
       <div className="max-w-full">
-        <TreeNode node={structureData} level={0} isLast={true} />
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            <p className="text-zinc-500 font-medium text-sm">Building structure tree...</p>
+          </div>
+        ) : error ? (
+          <p className="text-red-500 font-medium text-center py-6">{error}</p>
+        ) : treeData ? (
+          <TreeNode key={treeData.id} node={treeData} level={0} isLast={true} />
+        ) : (
+          <p className="text-zinc-400 font-medium text-center py-6">No structure data found.</p>
+        )}
       </div>
     </div>
   )

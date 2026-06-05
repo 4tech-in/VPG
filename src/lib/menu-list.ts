@@ -161,12 +161,6 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
       groupLabel: "MANAGEMENT",
       menus: [
         {
-          href: "/orgnization",
-          label: "Organization Master",
-          icon: Workflow,
-          submenus: []
-        },
-        {
           href: "/roles",
           label: "Role Master",
           icon: User,
@@ -174,6 +168,12 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
         },
         ...(isSuperAdmin
           ? [
+              {
+                href: "/orgnization",
+                label: "Organization Master",
+                icon: Workflow,
+                submenus: []
+              },
               {
                 href: "/business-nodes",
                 label: "Business Node",

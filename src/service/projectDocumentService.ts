@@ -37,11 +37,11 @@ export const projectDocumentService = {
     if (params?.search) query.append("search", params.search)
 
     const queryString = query.toString()
-    return apiRequest<GetProjectDocumentsResponse>(`/projects/documents/${projectId}${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<GetProjectDocumentsResponse>(`projects/documents/${projectId}${queryString ? `?${queryString}` : ""}`)
   },
 
   async createProjectDocument(projectId: string, payload: CreateProjectDocumentPayload): Promise<ApiProjectDocument> {
-    return apiRequest<ApiProjectDocument>(`/projects/documents/${projectId}`, {
+    return apiRequest<ApiProjectDocument>(`projects/documents/${projectId}`, {
       method: "POST",
       body: payload,
       isFormData: true,
@@ -49,7 +49,7 @@ export const projectDocumentService = {
   },
 
   async updateProjectDocument(id: string, payload: CreateProjectDocumentPayload): Promise<ApiProjectDocument> {
-    return apiRequest<ApiProjectDocument>(`/projects/documents/${id}`, {
+    return apiRequest<ApiProjectDocument>(`projects/documents/${id}`, {
       method: "PATCH",
       body: payload,
       isFormData: true,
@@ -57,6 +57,6 @@ export const projectDocumentService = {
   },
 
   async deleteProjectDocument(id: string): Promise<{ success: boolean; message?: string }> {
-    return apiRequest(`/projects/documents/${id}`, { method: "DELETE" })
+    return apiRequest(`projects/documents/${id}`, { method: "DELETE" })
   },
 }
