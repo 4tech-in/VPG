@@ -72,7 +72,7 @@ export const vendorService = {
     if (params?.itemId) query.append("itemId", params.itemId)
 
     const queryString = query.toString()
-    const response = await apiRequest<any>(`/vendors${queryString ? `?${queryString}` : ""}`)
+    const response = await apiRequest<any>(`vendors${queryString ? `?${queryString}` : ""}`)
 
     if (response && typeof response === "object" && "pagination" in response) {
       const total = response.pagination.total || 0
@@ -101,20 +101,20 @@ export const vendorService = {
   },
 
   async createVendor(payload: CreateVendorPayload): Promise<ApiVendor> {
-    return apiRequest<ApiVendor>("/vendors", {
+    return apiRequest<ApiVendor>("vendors", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateVendor(id: string, payload: Partial<CreateVendorPayload>): Promise<ApiVendor> {
-    return apiRequest<ApiVendor>(`/vendors/${id}`, {
+    return apiRequest<ApiVendor>(`vendors/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteVendor(id: string): Promise<void> {
-    return apiRequest(`/vendors/${id}`, { method: "DELETE" })
+    return apiRequest(`vendors/${id}`, { method: "DELETE" })
   },
 }

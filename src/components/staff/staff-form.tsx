@@ -176,7 +176,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   }, [hasMorePolicies, isPoliciesLoading])
 
   const { user: loggedInUser, hasPermission } = useAuthStore()
-  const isSuperAdmin = hasPermission("organization:view")
+  const isSuperAdmin = loggedInUser?.roleId?.name === "superAdmin"
   const { allOrganizations, refetch: refetchOrganizations } = useOrganizations({ skipFetch: true })
 
   const [name, setName] = useState(initialValues?.name || "")

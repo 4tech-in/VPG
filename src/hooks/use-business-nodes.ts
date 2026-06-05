@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { businessNodeService, ApiBusinessNode, CreateBusinessNodePayload } from "@/service/businessNodes.api"
 
@@ -19,8 +19,15 @@ export function useBusinessNodes(initialPage = 1, initialLimit = 10, skipFetch =
     totalPages: 1,
   })
 
-  const fetchBusinessNodes = useCallback(async () => {
+  const lastFetchedRef = useRef<string>("")
+
+  const fetchBusinessNodes = useCallback(async (force = false) => {
     if (skipFetch) return
+
+    const paramsKey = JSON.stringify({ page, limit, search })
+    if (!force && lastFetchedRef.current === paramsKey) return
+    lastFetchedRef.current = paramsKey
+
     setIsLoading(true)
     try {
       const response = await businessNodeService.getBusinessNodes({
@@ -58,7 +65,7 @@ export function useBusinessNodes(initialPage = 1, initialLimit = 10, skipFetch =
     try {
       await businessNodeService.createBusinessNode(payload)
       toast.success("Business Node created successfully")
-      fetchBusinessNodes()
+      fetchBusinessNodes(true)
     } catch (error: any) {
       toast.error(error.message || "Failed to create business node")
       throw error
@@ -69,7 +76,7 @@ export function useBusinessNodes(initialPage = 1, initialLimit = 10, skipFetch =
     try {
       await businessNodeService.updateBusinessNode(id, payload)
       toast.success("Business Node updated successfully")
-      fetchBusinessNodes()
+      fetchBusinessNodes(true)
     } catch (error: any) {
       toast.error(error.message || "Failed to update business node")
       throw error
@@ -80,7 +87,7 @@ export function useBusinessNodes(initialPage = 1, initialLimit = 10, skipFetch =
     try {
       await businessNodeService.deleteBusinessNode(id)
       toast.success("Business Node deleted successfully")
-      fetchBusinessNodes()
+      fetchBusinessNodes(true)
     } catch (error: any) {
       toast.error(error.message || "Failed to delete business node")
       throw error
@@ -94,7 +101,7 @@ export function useBusinessNodes(initialPage = 1, initialLimit = 10, skipFetch =
       
       await businessNodeService.updateBusinessNode(id, { isActive: !node.isActive })
       toast.success(`Business Node ${node.isActive ? "deactivated" : "activated"} successfully`)
-      fetchBusinessNodes()
+      fetchBusinessNodes(true)
     } catch (error: any) {
       toast.error(error.message || "Failed to toggle status")
       throw error

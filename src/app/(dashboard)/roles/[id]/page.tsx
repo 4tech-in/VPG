@@ -21,6 +21,7 @@ export default function EditRolePage() {
     name: string; 
     scope: string; 
     permissions: string[]; 
+    organizationId?: string;
   }) => {
     if (!roleId) return
     await editRole(roleId, values)
@@ -61,8 +62,10 @@ export default function EditRolePage() {
             name: activeRole.name,
             scope: activeRole.scope,
             permissions: activeRole.permissions,
+            organizationId: activeRole.organizationId,
           }}
           onSubmit={handleSave} 
+          showOrganizationSelect={true}
         />
       </div>
     </ContentLayout>

@@ -11,6 +11,7 @@ export type Role = {
   isSystemRole: boolean
   isActive: boolean
   status: "Active" | "Inactive"
+  organizationId?: string
 }
 
 const mapApiRoleToRole = (apiRole: ApiRole): Role => {
@@ -24,6 +25,7 @@ const mapApiRoleToRole = (apiRole: ApiRole): Role => {
     isSystemRole: apiRole.isSystemRole ?? false,
     isActive: apiRole.isActive ?? true,
     status: apiRole.isActive ? "Active" : "Inactive",
+    organizationId: apiRole.organizationId,
   }
 }
 

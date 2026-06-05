@@ -123,7 +123,7 @@ const MemberCell = ({ staff }: { staff: Staff }) => {
 export default function UserPage() {
   const router = useRouter()
   const { user: loggedInUser, hasPermission } = useAuthStore()
-  const isSuperAdmin = hasPermission("organization:view")
+  const isSuperAdmin = loggedInUser?.roleId?.name === "superAdmin"
 
   const {
     users,

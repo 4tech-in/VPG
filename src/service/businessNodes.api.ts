@@ -29,7 +29,7 @@ export type CreateBusinessNodePayload = {
 export const businessNodeService = {
   async getBusinessNodes(params?: Record<string, string>): Promise<GetBusinessNodesResponse> {
     const query = new URLSearchParams(params).toString()
-    const response = await apiRequest<any>(query ? `/business-nodes?${query}` : "/business-nodes")
+    const response = await apiRequest<any>(query ? `business-nodes?${query}` : "business-nodes")
     const nodes = Array.isArray(response) ? response : (response?.data || [])
     return {
       nodes,
@@ -38,25 +38,25 @@ export const businessNodeService = {
   },
 
   async getBusinessNodeById(id: string): Promise<ApiBusinessNode> {
-    const response = await apiRequest<any>(`/business-nodes/${id}`)
+    const response = await apiRequest<any>(`business-nodes/${id}`)
     return response?.data || response
   },
 
   async createBusinessNode(payload: CreateBusinessNodePayload): Promise<ApiBusinessNode> {
-    return apiRequest<ApiBusinessNode>("/business-nodes", {
+    return apiRequest<ApiBusinessNode>("business-nodes", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
   async updateBusinessNode(id: string, payload: Partial<CreateBusinessNodePayload> & { isActive?: boolean }): Promise<ApiBusinessNode> {
-    return apiRequest<ApiBusinessNode>(`/business-nodes/${id}`, {
+    return apiRequest<ApiBusinessNode>(`business-nodes/${id}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     })
   },
 
   async deleteBusinessNode(id: string): Promise<void> {
-    return apiRequest(`/business-nodes/${id}`, { method: "DELETE" })
+    return apiRequest(`business-nodes/${id}`, { method: "DELETE" })
   },
 }
