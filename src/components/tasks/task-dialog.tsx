@@ -39,23 +39,50 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
 import { useUsers } from "@/hooks/use-users"
-import { useTasks } from "@/hooks/use-tasks"
+import { useTasks, Task } from "@/hooks/use-tasks"
+import { cn } from "@/lib/utils"
 
 interface TaskDialogProps {
   onSuccess?: () => void
+  task?: Task | null
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function TaskDialog({ onSuccess }: TaskDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  
+export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open !== undefined ? open : internalOpen
+  const setIsOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen
+
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [assignedToId, setAssignedToId] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [priority, setPriority] = useState("medium")
-  
+  const [status, setStatus] = useState("pending")
+
   const { users } = useUsers()
-  const { addTask } = useTasks({ skipFetch: true })
+  const { addTask, editTask } = useTasks({ skipFetch: true })
+
+  useEffect(() => {
+    if (isOpen) {
+      if (task) {
+        setTitle(task.title)
+        setDescription(task.description || "")
+        setAssignedToId(task.assignedToId)
+        setDueDate(task.dueDate || "")
+        setPriority(task.priority)
+        setStatus(task.status)
+      } else {
+        setTitle("")
+        setDescription("")
+        setAssignedToId("")
+        setDueDate("")
+        setPriority("medium")
+        setStatus("pending")
+      }
+    }
+  }, [task, isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -63,23 +90,36 @@ export function TaskDialog({ onSuccess }: TaskDialogProps) {
       toast.error("Please fill in all required fields")
       return
     }
-    
+
     try {
-      await addTask({
-        title,
-        description,
-        assignedToId,
-        priority,
-        dueDate
-      })
+      if (task) {
+        await editTask(task.id, {
+          title,
+          description,
+          assignedToId,
+          priority,
+          dueDate,
+          status,
+        })
+      } else {
+        await addTask({
+          title,
+          description,
+          assignedToId,
+          priority,
+          dueDate,
+        })
+      }
       if (onSuccess) onSuccess()
       setIsOpen(false)
-      // reset form
-      setTitle("")
-      setDescription("")
-      setAssignedToId("")
-      setDueDate("")
-      setPriority("medium")
+      if (!task) {
+        setTitle("")
+        setDescription("")
+        setAssignedToId("")
+        setDueDate("")
+        setPriority("medium")
+        setStatus("pending")
+      }
     } catch (error) {
       // toast is handled by useTasks
     }
@@ -87,21 +127,27 @@ export function TaskDialog({ onSuccess }: TaskDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary">
-          <Plus className="mr-2 h-4 w-4" /> Create Task
-        </Button>
-      </DialogTrigger>
+      {open === undefined && (
+        <DialogTrigger asChild>
+          <Button className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary">
+            <Plus className="mr-2 h-4 w-4" /> Create Task
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
         <DialogHeader className="p-8 pb-4 bg-zinc-50/50">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-primary/10 rounded-xl">
               <CheckCircle2 className="h-5 w-5 text-primary" />
             </div>
-            <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Create New Task</DialogTitle>
+            <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">
+              {task ? "Edit Task Details" : "Create New Task"}
+            </DialogTitle>
           </div>
           <DialogDescription className="text-zinc-400 font-medium">
-            Fill in the details to assign a new mission to your team.
+            {task
+              ? "Modify the details of this operational mission below."
+              : "Fill in the details to assign a new mission to your team."}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +228,7 @@ export function TaskDialog({ onSuccess }: TaskDialogProps) {
             </div>
 
             {/* Due Date */}
-            <div className="space-y-2 md:col-span-2">
+            <div className={cn("space-y-2", task ? "md:col-span-1" : "md:col-span-2")}>
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Due Date</Label>
               <div className="relative">
                 <Input
@@ -194,15 +240,33 @@ export function TaskDialog({ onSuccess }: TaskDialogProps) {
                 <CalendarIcon className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
               </div>
             </div>
-          </div>
 
+            {/* Status (Only when editing) */}
+            {task && (
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-zinc-100 font-bold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="review">Review</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           <DialogFooter className="pt-8 border-t border-zinc-50 gap-4">
             <Button type="button" variant="ghost" className="h-14 rounded-2xl px-8 font-bold text-zinc-400" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" className="h-14 rounded-2xl px-12 font-black shadow-xl shadow-primary/20 bg-primary text-sm tracking-wider uppercase">
-              Create Task
+              {task ? "Save Changes" : "Create Task"}
             </Button>
           </DialogFooter>
         </form>

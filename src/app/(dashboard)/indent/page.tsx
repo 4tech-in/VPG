@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import {
   Plus,
@@ -39,157 +39,62 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { indentService } from "@/service/indents.api"
+import { exportIndentReceipt } from "@/lib/export-receipt"
 
-type Indent = {
-  id: string
-  requester: {
-    name: string
-    role: string
-  }
-  project: {
-    name: string
-    area: string
-  }
-  items: {
-    count: number
-    preview: string
-  }
-  status: "PENDING MANAGER" | "QUOTATION RECEIVED" | "PO CREATED" | "REJECTED"
-  created: string
-  rejectionReason?: string
-  usage?: {
-    received: number
-    used: number
-    unit: string
+const mapBackendStatusToUI = (status: string) => {
+  switch (status) {
+    case "Pending": return "PENDING MANAGER"
+    case "Approved": return "APPROVED"
+    case "ConvertedToPO": return "PO CREATED"
+    case "Rejected": return "REJECTED"
+    default: return status
   }
 }
 
-const MOCK_INDENTS: Indent[] = [
-  {
-    id: "IND-001",
-    requester: { name: "Ravi Kumar", role: "Worker" },
-    project: { name: "VPG Grande", area: "Tower A" },
-    items: { count: 2, preview: "Cement Bag, Sand" },
-    status: "PENDING MANAGER",
-    created: "2024-05-01",
-    usage: { received: 0, used: 0, unit: "Bags" }
-  },
-  {
-    id: "IND-002",
-    requester: { name: "Ravi Kumar", role: "Worker" },
-    project: { name: "VPG Grande", area: "Tower A" },
-    items: { count: 1, preview: "Steel Rods" },
-    status: "PO CREATED",
-    created: "2024-05-02",
-    usage: { received: 100, used: 25, unit: "Tons" }
-  },
-  {
-    id: "IND-003",
-    requester: { name: "Amit Foreman", role: "Worker" },
-    project: { name: "VPG Twin Towers", area: "Tower D" },
-    items: { count: 2, preview: "Paint Cans, Brushes" },
-    status: "PO CREATED",
-    created: "2024-05-03",
-    usage: { received: 50, used: 50, unit: "Litres" }
-  },
-  {
-    id: "IND-007",
-    requester: { name: "Amit Foreman", role: "Worker" },
-    project: { name: "VPG Twin Towers", area: "Tower D" },
-    items: { count: 1, preview: "LED Panel Lights" },
-    status: "QUOTATION RECEIVED",
-    created: "2024-04-30",
-    usage: { received: 0, used: 0, unit: "Pcs" }
-  },
-  {
-    id: "IND-008",
-    requester: { name: "Sanjay Plumber", role: "Worker" },
-    project: { name: "VPG Grande", area: "Tower A" },
-    items: { count: 1, preview: "PVC Glue (Large)" },
-    status: "PO CREATED",
-    created: "2024-04-29",
-    usage: { received: 10, used: 7, unit: "Cans" }
-  },
-  {
-    id: "IND-009",
-    requester: { name: "Rajesh Saini", role: "Worker" },
-    project: { name: "VPG Grande", area: "Tower B" },
-    items: { count: 3, preview: "Bricks, Sand, Steel Rods" },
-    status: "REJECTED",
-    created: "2024-04-28",
-    rejectionReason: "Duplicate request for VPG Grande Tower B",
-    usage: { received: 0, used: 0, unit: "Units" }
-  },
-  {
-    id: "IND-010",
-    requester: { name: "Suresh Carpenter", role: "Contractor" },
-    project: { name: "VPG Greens", area: "Villa 12" },
-    items: { count: 4, preview: "Plywood Sheets, Wood Glue, Screws, Hinges" },
-    status: "QUOTATION RECEIVED",
-    created: "2024-05-04",
-    usage: { received: 0, used: 0, unit: "Sheets" }
-  },
-  {
-    id: "IND-011",
-    requester: { name: "Vikram Electrician", role: "Technician" },
-    project: { name: "VPG Twin Towers", area: "Tower C" },
-    items: { count: 2, preview: "Copper Wire Roll, Conduit Pipes" },
-    status: "PO CREATED",
-    created: "2024-05-05",
-    usage: { received: 80, used: 65, unit: "Rolls" }
-  },
-  {
-    id: "IND-012",
-    requester: { name: "Deepak Mason", role: "Worker" },
-    project: { name: "VPG Grande", area: "Basement 2" },
-    items: { count: 1, preview: "Waterproofing Compound" },
-    status: "PENDING MANAGER",
-    created: "2024-05-06",
-    usage: { received: 0, used: 0, unit: "Litres" }
-  },
-  {
-    id: "IND-013",
-    requester: { name: "Harish Painter", role: "Worker" },
-    project: { name: "VPG Greens", area: "Villa 05" },
-    items: { count: 2, preview: "Wall Putty, White Primer" },
-    status: "PO CREATED",
-    created: "2024-05-07",
-    usage: { received: 120, used: 12, unit: "Bags" }
-  },
-  {
-    id: "IND-014",
-    requester: { name: "Manoj Tiler", role: "Contractor" },
-    project: { name: "VPG Twin Towers", area: "Lobby A" },
-    items: { count: 3, preview: "Granite Slabs, Marble Tiles, Grout" },
-    status: "REJECTED",
-    created: "2024-05-08",
-    rejectionReason: "Exceeds monthly material budget allocation",
-    usage: { received: 0, used: 0, unit: "Slabs" }
-  },
-  {
-    id: "IND-015",
-    requester: { name: "Karan Steelworker", role: "Worker" },
-    project: { name: "VPG Grande", area: "Tower C Floor 14" },
-    items: { count: 1, preview: "Reinforcement Bars (12mm)" },
-    status: "PO CREATED",
-    created: "2024-05-09",
-    usage: { received: 250, used: 250, unit: "Rods" }
-  }
-]
-
 export default function IndentPage() {
-  const [data, setData] = useState<Indent[]>(MOCK_INDENTS)
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
 
-  const handleStatusChange = (id: string, newStatus: Indent["status"], reason?: string) => {
-    setData(prev => prev.map(item =>
-      item.id === id ? { ...item, status: newStatus, rejectionReason: reason } : item
-    ))
-    if (newStatus === "REJECTED") {
-      toast.error(`Indent ${id} has been rejected${reason ? `: "${reason}"` : ""}`)
-    } else {
-      toast.success(`Indent ${id} status updated to ${newStatus}`)
+  const fetchIndents = async (search = "") => {
+    try {
+      setLoading(true)
+      const res = await indentService.getIndents({ search })
+      if (Array.isArray(res)) {
+        setData(res)
+      } else if (res && res.data) {
+        setData(res.data)
+      } else {
+        setData([])
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch indents")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchIndents(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounce)
+  }, [searchTerm])
+
+  const handleStatusChange = async (id: string, newStatus: string, reason?: string) => {
+    try {
+      await indentService.updateIndentStatus(id, { status: newStatus, rejectionReason: reason })
+      if (newStatus === "Rejected") {
+        toast.error(`Indent has been rejected${reason ? `: "${reason}"` : ""}`)
+      } else {
+        toast.success(`Indent status updated to ${newStatus}`)
+      }
+      fetchIndents(searchTerm)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update indent status")
     }
   }
 
@@ -199,7 +104,7 @@ export default function IndentPage() {
       toast.error("Please enter a reason for rejection")
       return
     }
-    handleStatusChange(rejectingId, "REJECTED", rejectionReason)
+    handleStatusChange(rejectingId, "Rejected", rejectionReason)
     setRejectingId(null)
     setRejectionReason("")
   }
@@ -209,21 +114,21 @@ export default function IndentPage() {
     setRejectionReason("")
   }
 
-  const columns: ColumnDef<Indent>[] = [
+  const columns: ColumnDef<any>[] = [
     {
-      accessorKey: "id",
+      accessorKey: "indentId",
       header: "Indent ID",
-      cell: ({ row }) => <div className="font-bold text-emerald-500">{row.getValue("id")}</div>,
+      cell: ({ row }) => <div className="font-bold text-emerald-500">{row.getValue("indentId")}</div>,
     },
     {
       accessorKey: "requester",
       header: "Requester",
       cell: ({ row }) => {
-        const req = row.original.requester
+        const req = row.original.requestedBy
         return (
           <div className="flex flex-col">
-            <span className="font-bold text-zinc-900">{req.name}</span>
-            <span className="text-[10px] text-zinc-400 font-medium">{req.role}</span>
+            <span className="font-bold text-zinc-900">{req?.name || "Unknown"}</span>
+            <span className="text-[10px] text-zinc-400 font-medium">{req?.email || "Requester"}</span>
           </div>
         )
       },
@@ -232,11 +137,12 @@ export default function IndentPage() {
       accessorKey: "project",
       header: "Project / Area",
       cell: ({ row }) => {
-        const proj = row.original.project
+        const proj = row.original.projectId
+        const tower = row.original.towerId
         return (
           <div className="flex flex-col">
-            <span className="font-bold text-zinc-900">{proj.name}</span>
-            <span className="text-[10px] text-zinc-400 font-medium">{proj.area}</span>
+            <span className="font-bold text-zinc-900">{proj?.projectName || proj?.name || "N/A"}</span>
+            <span className="text-[10px] text-zinc-400 font-medium">{tower?.towerName || tower?.name || "N/A"}</span>
           </div>
         )
       },
@@ -245,11 +151,13 @@ export default function IndentPage() {
       accessorKey: "items",
       header: "Items",
       cell: ({ row }) => {
-        const items = row.original.items
+        const items = row.original.items || []
+        const count = items.length
+        const preview = items.map((i: any) => i.itemId?.itemName || i.itemId?.name || "Unknown").join(", ")
         return (
           <div className="flex flex-col">
-            <span className="font-bold text-zinc-900">{items.count} Items</span>
-            <span className="text-[10px] text-zinc-400 font-medium">{items.preview}</span>
+            <span className="font-bold text-zinc-900">{count} Items</span>
+            <span className="text-[10px] text-zinc-400 font-medium max-w-[200px] truncate" title={preview}>{preview}</span>
           </div>
         )
       },
@@ -272,53 +180,39 @@ export default function IndentPage() {
         )
       }
     },
-    // {
-    //   accessorKey: "consumption",
-    //   header: "Consumption",
-    //   cell: ({ row }) => {
-    //     const usage = row.original.usage
-    //     if (!usage || usage.received === 0) {
-    //       return (
-    //         <div className="flex items-center gap-2">
-    //           <span className="text-[10px] text-zinc-400 font-bold tracking-wider uppercase">Not Received</span>
-    //         </div>
-    //       )
-    //     }
-        
-    //     const percent = Math.round((usage.used / usage.received) * 100)
-        
-    //     return (
-    //       <div className="flex flex-col gap-1.5 w-32">
-    //         <div className="flex items-center justify-between font-black text-[10px] tracking-wide">
-    //           <span className={cn(
-    //             percent === 100 ? "text-rose-500" :
-    //             percent > 50 ? "text-amber-500" :
-    //             "text-emerald-500"
-    //           )}>{percent}% Used</span>
-    //           <span className="text-zinc-400">{usage.received - usage.used} left</span>
-    //         </div>
-    //         <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
-    //           <div 
-    //             className={cn(
-    //               "h-full rounded-full transition-all duration-500",
-    //               percent === 100 ? "bg-rose-500" :
-    //               percent > 50 ? "bg-amber-500" :
-    //               "bg-emerald-500"
-    //             )}
-    //             style={{ width: `${percent}%` }}
-    //           />
-    //         </div>
-    //       </div>
-    //     )
-    //   }
-    // },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.status
-        const id = row.original.id
+        const id = row.original._id
         const rejectionReason = row.original.rejectionReason
+        const uiStatus = mapBackendStatusToUI(status)
+
+        if (status !== "Pending") {
+          return (
+            <div className="flex flex-col gap-1.5">
+              <div className={cn(
+                "h-9 px-4 rounded-xl flex items-center justify-center font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm w-[160px]",
+                status === "Approved" ? "bg-blue-50 text-blue-600" :
+                status === "ConvertedToPO" ? "bg-emerald-50 text-emerald-600" :
+                "bg-rose-50 text-rose-500"
+              )}>
+                <div className="flex items-center gap-2">
+                  {status === "Approved" && <FileText className="h-3 w-3" />}
+                  {status === "ConvertedToPO" && <CheckCircle2 className="h-3 w-3" />}
+                  {status === "Rejected" && <X className="h-3 w-3" />}
+                  <span>{uiStatus}</span>
+                </div>
+              </div>
+              {status === "Rejected" && rejectionReason && (
+                <span className="text-[10px] text-rose-500 font-bold italic max-w-[160px] truncate leading-tight mt-1" title={rejectionReason}>
+                  &quot;{rejectionReason}&quot;
+                </span>
+              )}
+            </div>
+          )
+        }
 
         return (
           <div className="flex items-center justify-start py-1">
@@ -326,52 +220,41 @@ export default function IndentPage() {
               <Select
                 value={status}
                 onValueChange={(val) => {
-                  if (val === "REJECTED") {
+                  if (val === "Rejected") {
                     setRejectingId(id)
                   } else {
-                    handleStatusChange(id, val as Indent["status"])
+                    handleStatusChange(id, val)
                   }
                 }}
               >
-                <SelectTrigger className={cn(
-                  "h-9 w-[160px] rounded-xl border-none font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm",
-                  status === "PENDING MANAGER" ? "bg-amber-50 text-amber-600 hover:bg-amber-100/50" :
-                    status === "QUOTATION RECEIVED" ? "bg-blue-50 text-blue-600 hover:bg-blue-100/50" :
-                      status === "REJECTED" ? "bg-rose-50 text-rose-500 hover:bg-rose-100/50" :
-                        "bg-emerald-50 text-emerald-600 hover:bg-emerald-100/50"
-                )}>
+                <SelectTrigger className="h-9 w-[160px] rounded-xl border-none font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm bg-amber-50 text-amber-600 hover:bg-amber-100/50">
                   <div className="flex items-center gap-2">
-                    {status === "PENDING MANAGER" && <Clock className="h-3 w-3" />}
-                    {status === "QUOTATION RECEIVED" && <FileText className="h-3 w-3" />}
-                    {status === "PO CREATED" && <CheckCircle2 className="h-3 w-3" />}
-                    {status === "REJECTED" && <X className="h-3 w-3" />}
-                    <SelectValue />
+                    <Clock className="h-3 w-3" />
+                    <SelectValue placeholder="PENDING MANAGER" />
                   </div>
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl p-1">
-                  <SelectItem value="PO CREATED" className="rounded-xl font-bold text-[10px] uppercase tracking-wider py-3 text-emerald-600">Approve</SelectItem>
-                  <SelectItem value="REJECTED" className="rounded-xl font-bold text-[10px] uppercase tracking-wider py-3 text-rose-500">Reject</SelectItem>
+                  <SelectItem value="Approved" className="rounded-xl font-bold text-[10px] uppercase tracking-wider py-3 text-emerald-600">Approve</SelectItem>
+                  <SelectItem value="Rejected" className="rounded-xl font-bold text-[10px] uppercase tracking-wider py-3 text-rose-500">Reject</SelectItem>
                 </SelectContent>
               </Select>
-              {status === "REJECTED" && rejectionReason && (
-                <span className="text-[10px] text-rose-500 font-bold italic max-w-[160px] truncate leading-tight mt-1" title={rejectionReason}>
-                  &quot;{rejectionReason}&quot;
-                </span>
-              )}
             </div>
           </div>
         )
       },
     },
     {
-      accessorKey: "created",
+      accessorKey: "createdAt",
       header: "Created Date",
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2 text-zinc-500 font-bold text-[11px]">
-          <Clock className="h-3 w-3 text-zinc-300" />
-          {row.getValue("created")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const created = row.original.createdAt ? new Date(row.original.createdAt).toLocaleDateString("en-IN") : "N/A"
+        return (
+          <div className="flex items-center gap-2 text-zinc-500 font-bold text-[11px]">
+            <Clock className="h-3 w-3 text-zinc-300" />
+            {created}
+          </div>
+        )
+      },
     },
     {
       id: "actions",
@@ -380,6 +263,8 @@ export default function IndentPage() {
         return (
           <div className="flex items-center justify-end gap-1 pr-4">
             <ViewIndentDialog
+              indent={row.original}
+              onStatusChange={handleStatusChange}
               trigger={
                 <Button
                   variant="ghost"
@@ -394,6 +279,7 @@ export default function IndentPage() {
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => exportIndentReceipt(row.original)}
               className="h-9 px-3 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 font-bold text-[11px] gap-2 transition-all"
             >
               <FileText className="h-3.5 w-3.5" />
@@ -415,44 +301,37 @@ export default function IndentPage() {
 
           <div className="flex items-center gap-4">
             <div className="relative w-72">
-              <Input placeholder="Search material, vendor..." className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-medium shadow-sm" />
+              <Input
+                placeholder="Search material, location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-medium shadow-sm"
+              />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
             </div>
-            {/* <CreateIndentDialog 
-                trigger={
-                  <Button className="h-12 px-8 rounded-2xl bg-primary font-black shadow-lg shadow-primary/20 gap-2">
-                     <Plus className="h-5 w-5" /> Create Indent
-                  </Button>
-                }
-              /> */}
+
+            <CreateIndentDialog
+              onSuccess={() => fetchIndents(searchTerm)}
+              trigger={
+                <Button className="h-12 px-6 rounded-2xl bg-zinc-900 text-white font-black shadow-lg shadow-zinc-900/10 gap-2 hover:scale-[1.01] transition-all">
+                  <Plus className="h-4 w-4" /> Create Indent
+                </Button>
+              }
+            />
           </div>
         </div>
 
-        {/* Global Strategy Metrics
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-           {[
-             { label: "Total Indents", val: "142", color: "text-zinc-600", bg: "bg-zinc-50" },
-             { label: "Pending Approval", val: "18", color: "text-amber-500", bg: "bg-amber-50" },
-             { label: "Converted to PO", val: "84", color: "text-emerald-500", bg: "bg-emerald-50" },
-           ].map((stat, i) => (
-             <div key={i} className="bg-white p-6 rounded-[2rem] border border-zinc-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all cursor-pointer">
-                <div className="flex flex-col gap-1">
-                   <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{stat.label}</span>
-                   <span className="text-2xl font-black text-zinc-900 tracking-tighter">{stat.val}</span>
-                </div>
-                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", stat.bg)}>
-                   <Filter className={cn("h-5 w-5", stat.color)} />
-                </div>
-             </div>
-           ))}
-        </div> */}
-
         {/* Indent Board */}
-       
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">
+            Loading Indent Requests...
+          </div>
+        ) : (
           <DataTable
             columns={columns}
             data={data}
           />
+        )}
         
       </div>
 
@@ -466,7 +345,7 @@ export default function IndentPage() {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none">Status Change</span>
-                <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight leading-none">Reject Indent {rejectingId}</DialogTitle>
+                <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight leading-none">Reject Indent</DialogTitle>
               </div>
             </div>
             <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-wider leading-relaxed">

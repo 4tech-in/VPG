@@ -52,7 +52,7 @@ export const advanceService = {
   },
 
   async settleAdvance(id: string): Promise<ApiAdvance> {
-    return apiRequest<ApiAdvance>(`advances/${id}/settle`, {
+    return apiRequest<ApiAdvance>(`advances/settle/${id}`, {
       method: "PATCH",
     })
   },
@@ -64,7 +64,7 @@ export const advanceService = {
   },
 
   async deleteAdvance(id: string): Promise<void> {
-    return apiRequest<void>(`advances/${id}`, {
+    return apiRequest<void>(`advances/delete/${id}`, {
       method: "DELETE",
     })
   },

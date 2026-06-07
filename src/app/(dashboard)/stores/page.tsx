@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   Building2, 
   MapPin, 
@@ -40,66 +40,146 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-type Store = {
-  id: string
-  name: string
-  location: string
-  manager: string
-  capacity: number
-  status: "Active" | "Maintenance" | "Full"
-  itemsCount: number
-}
-
-const MOCK_STORES: Store[] = [
-  {
-    id: "STR-001",
-    name: "Main Warehouse",
-    location: "Sector 82, Mohali",
-    manager: "Ravi Kumar",
-    capacity: 85,
-    status: "Active",
-    itemsCount: 1250
-  },
-  {
-    id: "STR-002",
-    name: "Site Storage A",
-    location: "Sector 70, Mohali",
-    manager: "Anita Singh",
-    capacity: 42,
-    status: "Active",
-    itemsCount: 450
-  },
-  {
-    id: "STR-003",
-    name: "Raw Material Depot",
-    location: "Industrial Area, Ph 7",
-    manager: "Vikram Mehta",
-    capacity: 98,
-    status: "Full",
-    itemsCount: 3200
-  },
-  {
-    id: "STR-004",
-    name: "Secondary Hub",
-    location: "Zirakpur, Punjab",
-    manager: "Sonia Sharma",
-    capacity: 15,
-    status: "Maintenance",
-    itemsCount: 120
-  }
-]
+import { assetService } from "@/service/assets.api"
 
 export default function StoresPage() {
-  const [data, setData] = useState<Store[]>(MOCK_STORES)
+  const [data, setData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  
+  // Edit state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingAsset, setEditingAsset] = useState<any | null>(null)
 
-  const columns: ColumnDef<Store>[] = [
+  // Form states for creation
+  const [newName, setNewName] = useState("")
+  const [newType, setNewType] = useState("Equipment")
+  const [newSerialNumber, setNewSerialNumber] = useState("")
+  const [newIssuedDate, setNewIssuedDate] = useState("")
+  const [newStatus, setNewStatus] = useState("Issued")
+  const [newMaintenanceDate, setNewMaintenanceDate] = useState("")
+  const [newExtraNote, setNewExtraNote] = useState("")
+
+  // Form states for editing
+  const [editName, setEditName] = useState("")
+  const [editType, setEditType] = useState("")
+  const [editSerialNumber, setEditSerialNumber] = useState("")
+  const [editIssuedDate, setEditIssuedDate] = useState("")
+  const [editStatus, setEditStatus] = useState("")
+  const [editMaintenanceDate, setEditMaintenanceDate] = useState("")
+  const [editExtraNote, setEditExtraNote] = useState("")
+
+  const fetchAssets = async (search = "") => {
+    try {
+      setLoading(true)
+      const res = await assetService.getAssets({ search })
+      if (Array.isArray(res)) {
+        setData(res)
+      } else if (res && res.data) {
+        setData(res.data)
+      } else {
+        setData([])
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch assets")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      fetchAssets(searchTerm)
+    }, 400)
+    return () => clearTimeout(delayDebounce)
+  }, [searchTerm])
+
+  useEffect(() => {
+    if (editingAsset) {
+      setEditName(editingAsset.name || "")
+      setEditType(editingAsset.type || "")
+      setEditSerialNumber(editingAsset.serialNumber || "")
+      setEditIssuedDate(editingAsset.issuedDate ? new Date(editingAsset.issuedDate).toISOString().split("T")[0] : "")
+      setEditStatus(editingAsset.status || "")
+      setEditMaintenanceDate(editingAsset.maintenanceDueDate ? new Date(editingAsset.maintenanceDueDate).toISOString().split("T")[0] : "")
+      setEditExtraNote(editingAsset.extraNote || "")
+    }
+  }, [editingAsset])
+
+  const handleAddStore = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newName.trim() || !newType.trim()) {
+      toast.error("Asset Name and Type are required")
+      return
+    }
+
+    try {
+      await assetService.createAsset({
+        name: newName,
+        type: newType,
+        serialNumber: newSerialNumber,
+        issuedDate: newIssuedDate || undefined,
+        status: newStatus,
+        maintenanceDueDate: newMaintenanceDate || undefined,
+        extraNote: newExtraNote
+      })
+      toast.success("New asset added successfully")
+      setIsDialogOpen(false)
+      // Reset form
+      setNewName("")
+      setNewType("Equipment")
+      setNewSerialNumber("")
+      setNewIssuedDate("")
+      setNewStatus("Issued")
+      setNewMaintenanceDate("")
+      setNewExtraNote("")
+      fetchAssets(searchTerm)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create asset")
+    }
+  }
+
+  const handleUpdateAsset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingAsset) return
+
+    try {
+      await assetService.updateAsset(editingAsset._id, {
+        name: editName,
+        type: editType,
+        serialNumber: editSerialNumber,
+        issuedDate: editIssuedDate || undefined,
+        status: editStatus,
+        maintenanceDueDate: editMaintenanceDate || undefined,
+        extraNote: editExtraNote
+      })
+      toast.success("Asset updated successfully")
+      setIsEditDialogOpen(false)
+      setEditingAsset(null)
+      fetchAssets(searchTerm)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update asset")
+    }
+  }
+
+  const handleDeleteAsset = async (id: string) => {
+    try {
+      await assetService.deleteAsset(id)
+      toast.success("Asset deleted successfully")
+      fetchAssets(searchTerm)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete asset")
+    }
+  }
+
+  const columns: ColumnDef<any>[] = [
     {
       accessorKey: "name",
-      header: "Store Name",
+      header: "Asset Name",
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white shadow-lg shadow-zinc-900/20">
@@ -107,56 +187,30 @@ export default function StoresPage() {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-zinc-900 text-sm tracking-tight">{row.getValue("name")}</span>
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none mt-1">ID: {row.original.id}</span>
+            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none mt-1">Type: {row.original.type}</span>
           </div>
         </div>
       ),
     },
     {
-      accessorKey: "location",
-      header: "Location",
+      accessorKey: "serialNumber",
+      header: "Serial Number",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <MapPin className="h-3.5 w-3.5 text-zinc-400" />
-          <span className="text-zinc-600 font-medium text-xs">{row.getValue("location")}</span>
-        </div>
+        <span className="text-zinc-600 font-medium text-xs">{row.getValue("serialNumber") || "—"}</span>
       ),
     },
-    // {
-    //   accessorKey: "manager",
-    //   header: "Manager",
-    //   cell: ({ row }) => (
-    //     <div className="flex items-center gap-2">
-    //       <div className="h-6 w-6 rounded-full bg-zinc-100 flex items-center justify-center">
-    //         <User className="h-3 w-3 text-zinc-500" />
-    //       </div>
-    //       <span className="text-zinc-900 font-bold text-xs">{row.getValue("manager")}</span>
-    //     </div>
-    //   ),
-    // },
-    // {
-    //   accessorKey: "capacity",
-    //   header: "Utilization",
-    //   cell: ({ row }) => {
-    //     const value = row.getValue("capacity") as number
-    //     return (
-    //       <div className="flex flex-col gap-1.5 w-[100px]">
-    //         <div className="flex items-center justify-between">
-    //            <span className="text-[10px] font-black text-zinc-900">{value}%</span>
-    //         </div>
-    //         <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
-    //            <div 
-    //              className={cn(
-    //                "h-full rounded-full transition-all duration-500",
-    //                value > 90 ? "bg-rose-500" : value > 70 ? "bg-amber-500" : "bg-emerald-500"
-    //              )} 
-    //              style={{ width: `${value}%` }}
-    //            />
-    //         </div>
-    //       </div>
-    //     )
-    //   },
-    // },
+    {
+      accessorKey: "issuedDate",
+      header: "Issued Date",
+      cell: ({ row }) => {
+        const val = row.getValue("issuedDate")
+        return (
+          <span className="text-zinc-600 font-medium text-xs">
+            {val ? new Date(val as string).toLocaleDateString("en-IN") : "—"}
+          </span>
+        )
+      },
+    },
     {
       accessorKey: "status",
       header: "Status",
@@ -165,42 +219,56 @@ export default function StoresPage() {
         return (
           <Badge className={cn(
             "rounded-lg px-3 py-1 font-black text-[9px] border shadow-sm uppercase tracking-wider",
-            status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-            status === "Full" ? "bg-rose-50 text-rose-600 border-rose-100" :
-            "bg-amber-50 text-amber-600 border-amber-100"
+            status === "Returned" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+            status === "Under Maintenance" ? "bg-amber-50 text-amber-600 border-amber-100" :
+            "bg-blue-50 text-blue-600 border-blue-100"
           )}>
-            {status}
+            {status || "Issued"}
           </Badge>
         )
       },
     },
     {
       id: "actions",
-      header: "",
-      cell: () => (
-        <div className="flex justify-end pr-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-zinc-100">
-            <MoreVertical className="h-4 w-4 text-zinc-400" />
+      header: () => <div className="w-full text-center">Operations</div>,
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEditingAsset(row.original)
+              setIsEditDialogOpen(true)
+            }}
+            className="h-9 px-3 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 font-bold text-[11px] gap-2 transition-all"
+          >
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (confirm("Are you sure you want to delete this asset?")) {
+                handleDeleteAsset(row.original._id)
+              }
+            }}
+            className="h-9 px-3 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 font-bold text-[11px] gap-2 transition-all"
+          >
+            Delete
           </Button>
         </div>
       ),
     },
   ]
 
-  const handleAddStore = (e: React.FormEvent) => {
-    e.preventDefault()
-    toast.success("New store added to the network")
-    setIsDialogOpen(false)
-  }
-
   return (
-    <ContentLayout title="Store Management">
+    <ContentLayout title="Asset Management">
       <div className="flex flex-col gap-10 p-6 sm:p-12 max-w-[1700px] mx-auto min-h-screen">
         
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
            <div className="flex flex-col gap-2">
-              <h1 className="text-4xl font-black text-zinc-900 tracking-tighter">Store Management</h1>
+              <h1 className="text-4xl font-black text-zinc-900 tracking-tighter">Asset Management</h1>
               <div className="flex items-center gap-3">
                  <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Network Asset Inventory</p>
@@ -209,19 +277,25 @@ export default function StoresPage() {
            
            <div className="flex items-center gap-4">
               <div className="relative w-72">
-                 <Input placeholder="Search stores..." className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-bold shadow-sm focus:ring-primary" />
+                 <Input 
+                   placeholder="Search assets..." 
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-bold shadow-sm focus:ring-primary" 
+                 />
                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
               </div>
 
+              {/* Create Asset Dialog */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="h-12 rounded-2xl px-8 bg-zinc-900 text-white font-black shadow-2xl shadow-zinc-900/20 gap-3 hover:scale-[1.02] active:scale-95 transition-all">
-                    <Plus className="h-5 w-5" /> Add Store
+                     Add Asset
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
                   <DialogHeader className="p-10 bg-zinc-900 text-white pb-12">
-                    <DialogTitle className="text-3xl font-black tracking-tight">Register New Store</DialogTitle>
+                    <DialogTitle className="text-3xl font-black tracking-tight">Register New Asset</DialogTitle>
                     <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-3">
                       Asset Expansion Protocol
                     </DialogDescription>
@@ -229,43 +303,91 @@ export default function StoresPage() {
                   <form onSubmit={handleAddStore} className="p-10 bg-white space-y-8">
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Store Name</Label>
-                        <Input placeholder="e.g. West Wing Storage" className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" />
+                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Name</Label>
+                        <Input 
+                          placeholder="e.g. Concrete Mixer" 
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          required
+                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                        />
                       </div>
-                      {/* <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Manager</Label>
-                        <Input placeholder="Assign manager" className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" />
-                      </div> */}
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Type</Label>
+                        <Select value={newType} onValueChange={setNewType}>
+                          <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                            <SelectItem value="Vehicle">Vehicle</SelectItem>
+                            <SelectItem value="Equipment">Equipment</SelectItem>
+                            <SelectItem value="Tool">Tool</SelectItem>
+                            <SelectItem value="Electronics">Electronics</SelectItem>
+                            <SelectItem value="Furniture">Furniture</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Location Details</Label>
-                      <Input placeholder="Street address or Sector" className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" />
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Serial Number</Label>
+                        <Input 
+                          placeholder="e.g. SN-982173" 
+                          value={newSerialNumber}
+                          onChange={(e) => setNewSerialNumber(e.target.value)}
+                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Issued Date</Label>
+                        <Input 
+                          type="date"
+                          value={newIssuedDate}
+                          onChange={(e) => setNewIssuedDate(e.target.value)}
+                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
                         <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Initial Status</Label>
-                        <Select defaultValue="Active">
+                        <Select value={newStatus} onValueChange={setNewStatus}>
                           <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl">
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Maintenance">Maintenance</SelectItem>
-                            <SelectItem value="Full">Full</SelectItem>
+                          <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                            <SelectItem value="Issued">Issued</SelectItem>
+                            <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
+                            <SelectItem value="Returned">Returned</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      {/* <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Capacity (%)</Label>
-                        <Input type="number" placeholder="0" className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" />
-                      </div> */}
+                      <div className="space-y-3">
+                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Maintenance Due</Label>
+                        <Input 
+                          type="date" 
+                          value={newMaintenanceDate}
+                          onChange={(e) => setNewMaintenanceDate(e.target.value)}
+                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Extra Note</Label>
+                      <Textarea 
+                        placeholder="Add any specific storage, operator or location remarks..."
+                        value={newExtraNote}
+                        onChange={(e) => setNewExtraNote(e.target.value)}
+                        className="min-h-[100px] rounded-2xl bg-zinc-50 border-none font-bold text-sm p-4 focus:ring-1 focus:ring-primary"
+                      />
                     </div>
 
                     <div className="pt-6 flex items-center gap-4">
                       <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-400 hover:text-zinc-900 transition-colors">Cancel</Button>
-                      <Button type="submit" className="h-14 flex-1 rounded-2xl bg-zinc-900 font-black shadow-2xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all">Register Store</Button>
+                      <Button type="submit" className="h-14 flex-1 rounded-2xl bg-zinc-900 font-black shadow-2xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all text-white">Register Asset</Button>
                     </div>
                   </form>
                 </DialogContent>
@@ -273,62 +395,117 @@ export default function StoresPage() {
            </div>
         </div>
 
-        {/* Metrics Grid
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-           {[
-             { label: "Total Stores", val: "12", icon: Building2, color: "text-zinc-900", bg: "bg-zinc-100", trend: "+2 New this month" },
-             { label: "Inventory Count", val: "14,250", icon: Package, color: "text-blue-500", bg: "bg-blue-50", trend: "Across all locations" },
-             { label: "Avg Utilization", val: "68%", icon: BarChart3, color: "text-emerald-500", bg: "bg-emerald-50", trend: "Healthy threshold" },
-             { label: "Alerts", val: "03", icon: AlertCircle, color: "text-rose-500", bg: "bg-rose-50", trend: "Requires attention" },
-           ].map((stat, i) => (
-             <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm group hover:shadow-2xl transition-all cursor-pointer relative overflow-hidden">
-                <div className="flex items-start justify-between relative z-10">
-                   <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">{stat.label}</span>
-                      <span className="text-3xl font-black text-zinc-900 tracking-tighter leading-none">{stat.val}</span>
-                      <div className="flex items-center gap-1.5 mt-4 text-zinc-400">
-                        <Activity className="h-3 w-3" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider">{stat.trend}</span>
-                      </div>
-                   </div>
-                   <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center", stat.bg)}>
-                      <stat.icon className={cn("h-7 w-7", stat.color)} />
-                   </div>
+        {/* Edit Asset Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
+            <DialogHeader className="p-10 bg-zinc-900 text-white pb-12">
+              <DialogTitle className="text-3xl font-black tracking-tight">Edit Asset</DialogTitle>
+              <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-3">
+                Update Asset Specifications
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateAsset} className="p-10 bg-white space-y-8">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Name</Label>
+                  <Input 
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                  />
                 </div>
-                {/* Micro-animation background icon */}
-                {/* <div className="absolute -bottom-6 -right-6 opacity-[0.03] rotate-12 group-hover:scale-110 transition-transform duration-500"> */}
-                   {/* <stat.icon className="h-36 w-36" /> */}
-                {/* </div> */}
-             {/* </div> */}
-           {/* )) */}
-        {/* </div> */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Type</Label>
+                  <Select value={editType} onValueChange={setEditType}>
+                    <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                      <SelectItem value="Vehicle">Vehicle</SelectItem>
+                      <SelectItem value="Equipment">Equipment</SelectItem>
+                      <SelectItem value="Tool">Tool</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-        {/* Inventory Ledger Card */}
-        {/* <div className="bg-white rounded-[3rem] p-10 border border-zinc-100 shadow-sm relative overflow-hidden">
-           <div className="absolute top-0 left-0 w-2 h-full bg-zinc-900" />
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-6">
-              <div className="flex items-center gap-4">
-                 <div className="h-11 w-11 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-xl shadow-zinc-900/20">
-                    <Box className="h-6 w-6" />
-                 </div>
-                 <div className="flex flex-col">
-                    <h3 className="text-xl font-black text-zinc-900 tracking-tight leading-none">Global Asset Ledger</h3>
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mt-1.5">Network-wide distribution</p>
-                 </div>
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Serial Number</Label>
+                  <Input 
+                    value={editSerialNumber}
+                    onChange={(e) => setEditSerialNumber(e.target.value)}
+                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Issued Date</Label>
+                  <Input 
+                    type="date"
+                    value={editIssuedDate}
+                    onChange={(e) => setEditIssuedDate(e.target.value)}
+                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                 <Button variant="ghost" className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest text-zinc-400 hover:text-zinc-900 gap-2">
-                   Download Report <ArrowUpRight className="h-3.5 w-3.5" />
-                 </Button>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Status</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                      <SelectItem value="Issued">Issued</SelectItem>
+                      <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
+                      <SelectItem value="Returned">Returned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Maintenance Due</Label>
+                  <Input 
+                    type="date" 
+                    value={editMaintenanceDate}
+                    onChange={(e) => setEditMaintenanceDate(e.target.value)}
+                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                  />
+                </div>
               </div>
-           </div> */}
-           
-           <DataTable 
-             columns={columns} 
-             data={data} 
-           />
-        </div>
-      {/* </div> */}
+
+              <div className="space-y-3">
+                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Extra Note</Label>
+                <Textarea 
+                  value={editExtraNote}
+                  onChange={(e) => setEditExtraNote(e.target.value)}
+                  className="min-h-[100px] rounded-2xl bg-zinc-50 border-none font-bold text-sm p-4 focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="pt-6 flex items-center gap-4">
+                <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-400 hover:text-zinc-900 transition-colors">Cancel</Button>
+                <Button type="submit" className="h-14 flex-1 rounded-2xl bg-zinc-900 font-black shadow-2xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all text-white">Save Changes</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Ledger Card */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">
+            Loading Assets...
+          </div>
+        ) : (
+          <DataTable 
+            columns={columns} 
+            data={data} 
+          />
+        )}
+      </div>
     </ContentLayout>
   )
 }

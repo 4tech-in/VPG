@@ -349,6 +349,7 @@ export default function AdvancePage() {
                         placeholder="0.00"
                         value={formAmount}
                         onChange={(e) => setFormAmount(e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
                         className="h-12 rounded-xl bg-zinc-50 border-none font-black text-lg pl-10 focus:ring-1 focus:ring-primary"
                         required
                       />
@@ -405,6 +406,7 @@ export default function AdvancePage() {
                     placeholder="0.00"
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
                     className="h-12 rounded-xl bg-zinc-50 border-none font-black text-lg pl-10 focus:ring-1 focus:ring-primary"
                     required
                   />

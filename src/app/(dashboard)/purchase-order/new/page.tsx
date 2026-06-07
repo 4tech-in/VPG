@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
    ArrowLeft,
    FileText,
-   Truck,
    Wallet,
    MapPin,
    MessageSquare,
@@ -18,9 +17,9 @@ import {
    Phone,
    Mail,
    Building,
-   CheckCircle2,
    UploadCloud,
-   Box
+   Box,
+   Loader2
 } from "lucide-react"
 import { toast } from "sonner"
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -38,97 +37,68 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
-
-type MockIndentItem = {
-   name: string
-   id: string
-   qty: number
-   unit: string
-   price: number
-}
-
-type MockVendor = {
-   id: string
-   name: string
-   contactPerson: string
-   role: string
-   phone: string
-   email: string
-   address: string
-   city: string
-}
-
-type MockIndent = {
-   id: string
-   title: string
-   project: string
-   items: MockIndentItem[]
-   vendors: MockVendor[]
-}
-
-const MOCK_INDENTS_DATA: MockIndent[] = [
-   {
-      id: "IND-001",
-      title: "IND-001 (VPG Grande - Tower A)",
-      project: "VPG Grande",
-      items: [
-         { name: "Cement Bag", id: "i1", qty: 100, unit: "Bags", price: 420 },
-         { name: "Sand", id: "i2", qty: 20, unit: "Tons", price: 1100 }
-      ],
-      vendors: [
-         { id: "v1", name: "Supreme Build Tech", contactPerson: "Rajesh Gupta", role: "Business Manager", phone: "+91 98765 43210", email: "contact@supremebuild.in", address: "Phase 8B, Industrial Area", city: "Mohali, Punjab - 160055" },
-         { id: "v2", name: "UltraTech Cement", contactPerson: "Sandeep Singh", role: "Sales Head", phone: "+91 99123 45678", email: "sandeep@ultratech.com", address: "Sector 22-C", city: "Chandigarh - 160022" }
-      ]
-   },
-   {
-      id: "IND-007",
-      title: "IND-007 (VPG Twin Towers - Tower D)",
-      project: "VPG Twin Towers",
-      items: [
-         { name: "LED Panel Lights", id: "i3", qty: 50, unit: "Pcs", price: 650 }
-      ],
-      vendors: [
-         { id: "v3", name: "Havells India", contactPerson: "Amit Sharma", role: "Regional Sales Manager", phone: "+91 98888 77777", email: "amit.sharma@havells.com", address: "Phase 7, Industrial Area", city: "Mohali, Punjab - 160055" },
-         { id: "v4", name: "Philips Lighting", contactPerson: "Vikram Malhotra", role: "Account Executive", phone: "+91 97777 66666", email: "sales@philips-lighting.in", address: "Sector 34", city: "Chandigarh - 160034" }
-      ]
-   },
-   {
-      id: "IND-008",
-      title: "IND-008 (VPG Grande - Tower A)",
-      project: "VPG Grande",
-      items: [
-         { name: "PVC Glue (Large)", id: "i4", qty: 10, unit: "Cans", price: 320 }
-      ],
-      vendors: [
-         { id: "v5", name: "Pidilite Industries", contactPerson: "Sanjay Mehta", role: "Corporate Partner", phone: "+91 95555 44444", email: "sanjay@pidilite.com", address: "Sector 17", city: "Chandigarh - 160017" },
-         { id: "v1", name: "Supreme Build Tech", contactPerson: "Rajesh Gupta", role: "Business Manager", phone: "+91 98765 43210", email: "contact@supremebuild.in", address: "Phase 8B, Industrial Area", city: "Mohali, Punjab - 160055" }
-      ]
-   }
-]
-
-const ALL_VENDORS = Array.from(
-   new Map(
-      MOCK_INDENTS_DATA.flatMap(ind => ind.vendors).map(v => [v.id, v])
-   ).values()
-)
+import { indentService } from "@/service/indents.api"
+import { vendorService } from "@/service/vendorService"
+import { purchaseOrderService } from "@/service/purchaseOrderService"
 
 export default function CreatePOPage() {
    const router = useRouter()
-   const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files">("remarks")
+   const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files" >("remarks")
    const [selectedIndentId, setSelectedIndentId] = useState<string>("")
    const [selectedVendorId, setSelectedVendorId] = useState<string>("")
 
-   const activeIndent = MOCK_INDENTS_DATA.find(ind => ind.id === selectedIndentId)
-   const activeVendor = activeIndent
-      ? activeIndent.vendors.find(v => v.id === selectedVendorId)
-      : ALL_VENDORS.find(v => v.id === selectedVendorId)
+   const [indents, setIndents] = useState<any[]>([])
+   const [vendors, setVendors] = useState<any[]>([])
+   const [activeIndent, setActiveIndent] = useState<any | null>(null)
+   const [items, setItems] = useState<any[]>([])
+   const [isDataLoading, setIsDataLoading] = useState(true)
 
-   const handleIndentSelect = (val: string) => {
+   const calledRef = useRef(false)
+
+   useEffect(() => {
+      if (calledRef.current) return
+      calledRef.current = true
+
+      const loadInitialData = async () => {
+         setIsDataLoading(true)
+         try {
+            const indentsRes = await indentService.getIndents({ status: "Approved" })
+            setIndents(indentsRes.data || indentsRes || [])
+            
+            const vendorsRes = await vendorService.getVendors()
+            setVendors(vendorsRes.vendors || vendorsRes || [])
+         } catch (err: any) {
+            toast.error("Failed to load indents or vendors data")
+         } finally {
+            setIsDataLoading(false)
+         }
+      }
+      loadInitialData()
+   }, [])
+
+   const handleIndentSelect = async (val: string) => {
       setSelectedIndentId(val)
-      const newIndent = MOCK_INDENTS_DATA.find(ind => ind.id === val)
-      const isVendorValid = newIndent?.vendors.some(v => v.id === selectedVendorId)
-      if (!isVendorValid) {
-         setSelectedVendorId("") // Reset only if vendor isn't related to this new indent
+      setSelectedVendorId("")
+      setActiveIndent(null)
+      setItems([])
+      
+      try {
+         const fullIndent = await indentService.getIndentById(val)
+         setActiveIndent(fullIndent)
+         if (fullIndent && Array.isArray(fullIndent.items)) {
+            setItems(
+               fullIndent.items.map((item: any) => ({
+                  itemId: item.itemId?._id || item.itemId || "",
+                  name: item.itemId?.name || item.itemId?.itemName || "Unknown Item",
+                  qty: item.quantity,
+                  unitId: item.unitId?._id || item.unitId || "",
+                  unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
+                  price: 0
+               }))
+            )
+         }
+      } catch (err) {
+         toast.error("Failed to fetch indent details")
       }
    }
 
@@ -136,21 +106,54 @@ export default function CreatePOPage() {
       setSelectedVendorId(val)
    }
 
-   const subtotal = activeIndent 
-      ? activeIndent.items.reduce((sum, item) => sum + (item.qty * item.price), 0)
-      : 0
+   const handlePriceChange = (idx: number, val: number) => {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, price: val } : item))
+   }
 
+   const activeVendor = vendors.find(v => (v._id || v.id) === selectedVendorId)
+
+   const subtotal = items.reduce((sum, item) => sum + (item.qty * (item.price || 0)), 0)
    const freight = activeVendor ? 1200 : 0
    const packing = activeVendor ? 500 : 0
    const taxableAmount = activeVendor ? (subtotal + freight + packing) : 0
    const gst = activeVendor ? Math.round(taxableAmount * 0.18) : 0
    const grandTotal = activeVendor ? (taxableAmount + gst) : 0
 
-   const handleGeneratePO = () => {
-      toast.success("Purchase Order created successfully", {
-         description: `PO-2024-001 has been generated and sent to ${activeVendor?.name || "vendor"}.`,
-      })
-      router.push("/purchase-order")
+   const handleGeneratePO = async () => {
+      if (!selectedIndentId || !selectedVendorId || !activeVendor) {
+         toast.error("Please select both indent and vendor")
+         return
+      }
+
+      try {
+         await purchaseOrderService.createPurchaseOrder({
+            indentId: selectedIndentId,
+            vendorName: activeVendor.name,
+            vendorMobile: activeVendor.contactNumber || "",
+            vendorAddress: activeVendor.address || "",
+            items: items.map(item => ({
+               itemId: item.itemId,
+               unitId: item.unitId,
+               indentQuantity: item.qty,
+               orderQuantity: item.qty,
+               rate: item.price
+            })),
+            bypassApproval: true
+         })
+         toast.success("Purchase Order created successfully")
+         router.push("/purchase-order")
+      } catch (err) {}
+   }
+
+   if (isDataLoading) {
+      return (
+         <ContentLayout title="Create Purchase Order">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+               <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+               <p className="text-zinc-500 font-bold text-sm">Loading PO source details...</p>
+            </div>
+         </ContentLayout>
+      )
    }
 
    return (
@@ -196,8 +199,8 @@ export default function CreatePOPage() {
                                  <SelectValue placeholder="Select Indent" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
-                                 {MOCK_INDENTS_DATA.map((ind) => (
-                                    <SelectItem key={ind.id} value={ind.id}>{ind.title}</SelectItem>
+                                 {indents.map((ind) => (
+                                    <SelectItem key={ind._id} value={ind._id}>{ind.indentNo} ({ind.projectId?.projectName || ind.projectId?.name || "Project"})</SelectItem>
                                  ))}
                               </SelectContent>
                            </Select>
@@ -209,8 +212,8 @@ export default function CreatePOPage() {
                                  <SelectValue placeholder="Select Vendor" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
-                                 {(activeIndent ? activeIndent.vendors : ALL_VENDORS).map((vendor) => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
+                                 {vendors.map((vendor) => (
+                                    <SelectItem key={vendor._id} value={vendor._id}>{vendor.name}</SelectItem>
                                  ))}
                               </SelectContent>
                            </Select>
@@ -219,7 +222,7 @@ export default function CreatePOPage() {
                   </div>
 
                   <AnimatePresence>
-                     {selectedIndentId && (
+                     {selectedIndentId && activeIndent && (
                         <motion.div
                            initial={{ opacity: 0, y: 20 }}
                            animate={{ opacity: 1, y: 0 }}
@@ -230,10 +233,10 @@ export default function CreatePOPage() {
                               <div className="flex items-center justify-between">
                                  <div className="flex flex-col gap-1">
                                     <h3 className="text-xl font-black text-zinc-900 leading-tight">Requested Items</h3>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Materials requested in {activeIndent?.id}</p>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Materials requested in {activeIndent?.indentNo}</p>
                                  </div>
                                  <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-full px-4 py-1 font-black text-[10px]">
-                                    {activeIndent?.items.length} {activeIndent && activeIndent.items.length === 1 ? "Item" : "Items"}
+                                    {items.length} {items.length === 1 ? "Item" : "Items"}
                                  </Badge>
                               </div>
 
@@ -243,12 +246,12 @@ export default function CreatePOPage() {
                                        <tr className="bg-zinc-50/50 border-b border-zinc-100">
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Item Information</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Quantity</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price</th>
+                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price (₹)</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Total Amount</th>
                                        </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-50">
-                                       {activeIndent?.items.map((item, idx) => (
+                                       {items.map((item, idx) => (
                                           <tr key={idx} className="group hover:bg-zinc-50 transition-colors">
                                              <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
@@ -257,22 +260,28 @@ export default function CreatePOPage() {
                                                    </div>
                                                    <div className="flex flex-col">
                                                       <span className="text-sm font-black text-zinc-900">{item.name}</span>
-                                                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ID: {item.id}</span>
+                                                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ID: {item.itemId.slice(-6).toUpperCase()}</span>
                                                    </div>
                                                 </div>
                                              </td>
                                              <td className="px-6 py-4 text-center">
                                                 <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">{item.qty} {item.unit}</span>
                                              </td>
-                                             <td className="px-6 py-4 text-center">
-                                                <div className="flex flex-col">
-                                                   <span className="text-sm font-black text-zinc-900">₹{item.price}</span>
-                                                   <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest mt-0.5">Per Unit</span>
+                                             <td className="px-6 py-4 text-center w-36">
+                                                <div className="relative">
+                                                   <Input 
+                                                      type="number" 
+                                                      min="0"
+                                                      value={item.price} 
+                                                      onWheel={(e) => e.currentTarget.blur()}
+                                                      onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
+                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-teal-500 focus:bg-white" 
+                                                   />
                                                 </div>
                                              </td>
                                              <td className="px-6 py-4 text-right">
                                                 <div className="flex flex-col">
-                                                   <span className="text-sm font-black text-zinc-900">₹{(item.qty * item.price).toLocaleString("en-IN")}</span>
+                                                   <span className="text-sm font-black text-zinc-900">₹{(item.qty * (item.price || 0)).toLocaleString("en-IN")}</span>
                                                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mt-0.5">Incl. Tax</span>
                                                 </div>
                                              </td>
@@ -308,7 +317,7 @@ export default function CreatePOPage() {
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid To</Label>
-                                       <Input type="date" defaultValue="2024-06-01" className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" defaultValue="2026-06-01" className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Est. Delivery Date</Label>
@@ -343,8 +352,8 @@ export default function CreatePOPage() {
                                        </div>
                                        <div className="flex flex-col">
                                           <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Person</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.contactPerson}</span>
-                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">{activeVendor.role}</span>
+                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.contactPerson || activeVendor.name}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">Supplier Agent</span>
                                        </div>
                                     </div>
                                     <div className="flex items-start gap-4">
@@ -353,8 +362,8 @@ export default function CreatePOPage() {
                                        </div>
                                        <div className="flex flex-col">
                                           <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Business Address</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-tight">{activeVendor.address}</span>
-                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">{activeVendor.city}</span>
+                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-tight">{activeVendor.address || "N/A"}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">{activeVendor.city || activeVendor.state || ""}</span>
                                        </div>
                                     </div>
                                     <div className="flex items-start gap-4">
@@ -363,7 +372,7 @@ export default function CreatePOPage() {
                                        </div>
                                        <div className="flex flex-col">
                                           <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Number</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.phone}</span>
+                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.contactNumber}</span>
                                           <span className="text-[10px] font-bold text-zinc-400 mt-1">Official Mobile</span>
                                        </div>
                                     </div>
@@ -373,7 +382,7 @@ export default function CreatePOPage() {
                                        </div>
                                        <div className="flex flex-col">
                                           <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Email Address</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.email}</span>
+                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.email || "N/A"}</span>
                                        </div>
                                     </div>
                                  </div>

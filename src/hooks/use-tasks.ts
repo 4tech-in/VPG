@@ -14,7 +14,7 @@ export type Task = {
   nodeId: string
   nodeName: string
   priority: "low" | "medium" | "high" | "urgent"
-  status: "pending" | "in_progress" | "review" | "completed" | "cancelled"
+  status: "pending" | "in-progress" | "review" | "completed" | "cancelled"
   dueDate: string
   completedAt: string
   isActive: boolean

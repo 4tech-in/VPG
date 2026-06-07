@@ -38,11 +38,13 @@ export default function TasksPage() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const { tasks, isLoading, removeTask, refetch } = useTasks({ filterStatus: activeFilter });
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDeleteTask = async (id: string) => {
     try {
       await removeTask(id);
-    } catch(err) { }
+    } catch (err) { }
   };
 
   const columns: ColumnDef<Task>[] = [
@@ -174,15 +176,30 @@ export default function TasksPage() {
             <DropdownMenuLabel className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-3 py-2">
               Operations
             </DropdownMenuLabel>
-            <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer py-2.5">
+            <DropdownMenuItem
+              className="rounded-xl gap-3 cursor-pointer py-2.5"
+              onClick={() => router.push(`/tasks/${row.original.id}`)}
+            >
               <Eye className="h-4 w-4 text-primary" />
               <span className="font-bold text-sm">View Task Details</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer py-2.5">
+            <DropdownMenuItem
+              className="rounded-xl gap-3 cursor-pointer py-2.5"
+              onClick={() => {
+                setEditingTask(row.original);
+                setIsEditOpen(true);
+              }}
+            >
               <Edit className="h-4 w-4 text-amber-500" />
               <span className="font-bold text-sm">Edit Mission</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="rounded-xl gap-3 cursor-pointer py-2.5">
+            <DropdownMenuItem
+              className="rounded-xl gap-3 cursor-pointer py-2.5"
+              onClick={() => {
+                setEditingTask(row.original);
+                setIsEditOpen(true);
+              }}
+            >
               <UserPlus className="h-4 w-4 text-emerald-500" />
               <span className="font-bold text-sm">Assign Members</span>
             </DropdownMenuItem>
@@ -220,12 +237,18 @@ export default function TasksPage() {
 
           <div className="flex items-center gap-4">
             <TaskDialog onSuccess={refetch} />
+            <TaskDialog
+              task={editingTask}
+              open={isEditOpen}
+              onOpenChange={setIsEditOpen}
+              onSuccess={refetch}
+            />
           </div>
         </div>
 
         <div className="flex flex-col gap-8">
           <div className="flex items-center gap-2 p-1.5 bg-zinc-100/50 backdrop-blur-sm w-fit rounded-[1.25rem] border border-zinc-100">
-            {["All", "Pending", "In_Progress", "Review", "Completed", "Cancelled"].map((filter) => (
+            {["All", "Pending", "in-progress", "Completed", "Cancelled"].map((filter) => (
               <Button
                 key={filter}
                 variant={activeFilter === filter ? "white" : "ghost"}

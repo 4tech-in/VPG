@@ -1,23 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Trash2,
   CheckCircle2,
   Edit3,
-  Paperclip,
-  MessageSquare,
-  UserPlus,
   Calendar,
   Clock,
-  MoreVertical,
-  Plus,
   ChevronRight,
-  FileText,
-  History,
   Info,
-  X,
+  Loader2,
+  FileText,
+  History
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,9 +20,8 @@ import { toast } from "sonner";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -36,8 +30,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AssignDialog } from "@/components/tasks/assign-dialog";
 import { cn } from "@/lib/utils";
+import { taskService } from "@/service/taskService";
+import { TaskDialog } from "@/components/tasks/task-dialog";
 
 export default function TaskDetailsPage({
   params,
@@ -45,22 +40,102 @@ export default function TaskDetailsPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("comments");
-  const [assignees, setAssignees] = useState<string[]>([
-    "Assa Singh",
-    "Vir Singh",
-  ]);
+  const [task, setTask] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const handleAssign = (name: string) => {
-    if (!assignees.includes(name)) {
-      setAssignees((prev) => [...prev, name]);
-      toast.success(`${name} assigned to mission`);
+  const fetchTaskDetails = async () => {
+    setIsLoading(true);
+    try {
+      const data = await taskService.getTaskById(params.id);
+      setTask(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load task details");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRemoveAssignee = (name: string) => {
-    setAssignees((prev) => prev.filter((a) => a !== name));
-    toast.info(`${name} removed from mission`);
+  useEffect(() => {
+    fetchTaskDetails();
+  }, [params.id]);
+
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this task record?")) {
+      try {
+        await taskService.deleteTask(params.id);
+        toast.success("Task deleted successfully");
+        router.push("/tasks");
+      } catch (err) { }
+    }
+  };
+
+  const handleMarkComplete = async () => {
+    try {
+      const updated = await taskService.updateTask(params.id, { status: "completed" });
+      setTask(updated);
+      toast.success("Task marked as completed");
+    } catch (err) { }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const updated = await taskService.updateTask(params.id, { status: newStatus });
+      setTask(updated);
+      toast.success(`Task status updated to ${newStatus.replace("_", " ")}`);
+    } catch (err) { }
+  };
+
+  const handlePriorityChange = async (newPriority: string) => {
+    try {
+      const updated = await taskService.updateTask(params.id, { priority: newPriority });
+      setTask(updated);
+      toast.success(`Task priority updated to ${newPriority}`);
+    } catch (err) { }
+  };
+
+  if (isLoading) {
+    return (
+      <ContentLayout title="Task Details">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+          <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+          <p className="text-zinc-500 font-bold text-sm">Loading task details...</p>
+        </div>
+      </ContentLayout>
+    );
+  }
+
+  if (error || !task) {
+    return (
+      <ContentLayout title="Task Details">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+          <p className="text-rose-500 font-bold text-sm">{error || "Task not found."}</p>
+          <Link href="/tasks">
+            <Button className="rounded-xl px-6 bg-zinc-900 text-white font-bold">Back to Tasks</Button>
+          </Link>
+        </div>
+      </ContentLayout>
+    );
+  }
+
+  const mappedTaskForDialog = {
+    id: task._id || task.id,
+    title: task.title,
+    description: task.description || "",
+    assignedToId: task.assignedToId?._id || task.assignedToId || "",
+    assignedToName: task.assignedToId?.name || "Unassigned",
+    assignedToMobile: task.assignedToId?.mobile || "",
+    createdById: task.createdById?._id || task.createdById || "",
+    createdByName: task.createdById?.name || "Unknown",
+    nodeId: task.nodeId?._id || task.nodeId || "",
+    nodeName: task.nodeId?.name || "Unknown Project",
+    priority: task.priority || "medium",
+    status: task.status || "pending",
+    dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
+    completedAt: task.completedAt ? task.completedAt.split("T")[0] : "",
+    isActive: task.isActive ?? true,
+    createdAt: task.createdAt ? task.createdAt.split("T")[0] : "",
   };
 
   return (
@@ -77,7 +152,7 @@ export default function TaskDetailsPage({
                 Tasks
               </Link>
               <ChevronRight className="h-3 w-3" />
-              <span className="text-zinc-900">Task #{params.id || "2384"}</span>
+              <span className="text-zinc-900">Task #{mappedTaskForDialog.id.slice(-6).toUpperCase()}</span>
             </div>
             <div className="flex items-center gap-4">
               <Link href="/tasks">
@@ -98,13 +173,19 @@ export default function TaskDetailsPage({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              onClick={handleDelete}
               className="h-10 rounded-xl border-zinc-200 text-rose-500 font-bold gap-2 hover:bg-rose-50 hover:text-rose-600 transition-all"
             >
               <Trash2 className="h-4 w-4" /> Delete
             </Button>
-            <Button className="h-10 rounded-xl bg-primary font-bold gap-2 shadow-lg shadow-primary/20">
-              <CheckCircle2 className="h-4 w-4" /> Mark Complete
-            </Button>
+            {task.status !== "completed" && (
+              <Button
+                onClick={handleMarkComplete}
+                className="h-10 rounded-xl bg-primary font-bold gap-2 shadow-lg shadow-primary/20"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Mark Complete
+              </Button>
+            )}
           </div>
         </div>
 
@@ -116,25 +197,35 @@ export default function TaskDetailsPage({
               <div className="flex items-center gap-3">
                 <Badge
                   variant="outline"
-                  className="rounded-md border-rose-100 bg-rose-50/50 text-rose-600 font-bold px-2 py-0.5 text-[10px] uppercase"
+                  className={cn(
+                    "rounded-md px-2 py-0.5 text-[10px] uppercase font-bold border",
+                    task.priority === "urgent" || task.priority === "high"
+                      ? "border-rose-100 bg-rose-50/50 text-rose-600"
+                      : task.priority === "medium"
+                        ? "border-amber-100 bg-amber-50/50 text-amber-600"
+                        : "border-emerald-100 bg-emerald-50/50 text-emerald-600"
+                  )}
                 >
-                  Urgent
+                  {task.priority}
                 </Badge>
-                <Badge
-                  variant="outline"
-                  className="rounded-md border-blue-100 bg-blue-50/50 text-blue-600 font-bold px-2 py-0.5 text-[10px] uppercase"
-                >
-                  Engineering
-                </Badge>
+                {task.nodeId && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-md border-blue-100 bg-blue-50/50 text-blue-600 font-bold px-2 py-0.5 text-[10px] uppercase"
+                  >
+                    {task.nodeId.name}
+                  </Badge>
+                )}
               </div>
 
               <div className="flex items-start justify-between">
                 <h2 className="text-3xl font-bold text-zinc-900 leading-tight">
-                  Finalize architecture review for VPG Twin Towers Phase 1.
+                  {task.title}
                 </h2>
                 <Button
                   variant="ghost"
                   size="icon"
+                  onClick={() => setIsEditOpen(true)}
                   className="h-10 w-10 text-zinc-400 hover:text-primary"
                 >
                   <Edit3 className="h-5 w-5" />
@@ -146,34 +237,15 @@ export default function TaskDetailsPage({
                   <Info className="h-3 w-3" /> Description
                 </div>
                 <p className="text-sm font-medium text-zinc-600 leading-relaxed">
-                  Please ensure that all structural modifications follow the
-                  updated municipal guidelines for the Sector 402 development
-                  zone. All documents must be signed off by the lead architect
-                  and uploaded to the resources section before EOD Friday.
+                  {task.description || "No description provided for this task."}
                 </p>
               </div>
             </div>
 
             {/* Collaborative Area */}
             <div className="space-y-6">
-              <Tabs
-                defaultValue="comments"
-                className="w-full"
-                onValueChange={setActiveTab}
-              >
+              <Tabs defaultValue="history" className="w-full">
                 <TabsList className="bg-transparent h-auto p-0 border-b border-zinc-100 w-full justify-start rounded-none gap-8">
-                  <TabsTrigger
-                    value="comments"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-11 px-0 font-bold text-zinc-400 data-[state=active]:text-primary"
-                  >
-                    Comments (3)
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="attachments"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-11 px-0 font-bold text-zinc-400 data-[state=active]:text-primary"
-                  >
-                    Resources (2)
-                  </TabsTrigger>
                   <TabsTrigger
                     value="history"
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none h-11 px-0 font-bold text-zinc-400 data-[state=active]:text-primary"
@@ -182,137 +254,27 @@ export default function TaskDetailsPage({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent
-                  value="comments"
-                  className="pt-8 space-y-8 focus-visible:outline-none"
-                >
-                  <div className="flex gap-4">
-                    <Avatar className="h-10 w-10 border border-zinc-100">
-                      <AvatarFallback className="bg-zinc-50 text-[10px] font-bold text-zinc-400">
-                        ME
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-3">
-                      <Textarea
-                        placeholder="Write a message..."
-                        className="min-h-[100px] rounded-xl border-zinc-200 focus-visible:ring-primary font-medium p-4"
-                      />
-                      <div className="flex justify-end">
-                        <Button className="h-9 px-6 rounded-lg font-bold text-xs">
-                          Post Comment
-                        </Button>
+                <TabsContent value="history" className="pt-8 focus-visible:outline-none">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-zinc-50 last:border-0 text-sm">
+                      <div className="flex items-center gap-3">
+                        <History className="h-4 w-4 text-zinc-300" />
+                        <span className="font-medium text-zinc-600">Task created</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-bold text-zinc-900">
+                          {task.createdById?.name || "System"}
+                        </span>
+                        <span className="text-xs text-zinc-400">
+                          {task.createdAt ? new Date(task.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit"
+                          }) : "N/A"}
+                        </span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    {[
-                      {
-                        user: "Sarah Miller",
-                        time: "2 hours ago",
-                        text: "I've uploaded the revised structural plans. Please review the lobby modifications.",
-                      },
-                      {
-                        user: "Marcus Aurelius",
-                        time: "5 hours ago",
-                        text: "Confirmed the sector 402 guidelines. We are within compliance.",
-                      },
-                    ].map((c, i) => (
-                      <div
-                        key={i}
-                        className="flex gap-4 p-4 rounded-xl hover:bg-zinc-50 transition-colors"
-                      >
-                        <Avatar className="h-10 w-10 border border-zinc-100">
-                          <AvatarFallback className="bg-zinc-100 text-[10px] font-bold text-zinc-400">
-                            {c.user[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-zinc-900">
-                              {c.user}
-                            </span>
-                            <span className="text-[10px] font-bold text-zinc-400">
-                              {c.time}
-                            </span>
-                          </div>
-                          <p className="text-sm text-zinc-600 font-medium">
-                            {c.text}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent
-                  value="attachments"
-                  className="pt-8 focus-visible:outline-none"
-                >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {[1, 2].map((i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-4 p-4 rounded-xl border border-zinc-100 hover:border-primary/20 hover:bg-primary/5 transition-all cursor-pointer group"
-                      >
-                        <div className="h-10 w-10 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400 group-hover:text-primary">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-zinc-900 text-sm">
-                            Site_Manual_v{i}.pdf
-                          </span>
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase">
-                            2.4 MB • PDF
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent
-                  value="history"
-                  className="pt-8 focus-visible:outline-none"
-                >
-                  <div className="space-y-4">
-                    {[
-                      {
-                        action: "Status changed to Pending",
-                        user: "Admin",
-                        date: "May 10, 10:45 AM",
-                      },
-                      {
-                        action: "Priority updated to Urgent",
-                        user: "Sarah Miller",
-                        date: "May 09, 02:20 PM",
-                      },
-                      {
-                        action: "Task created",
-                        user: "Admin",
-                        date: "May 08, 09:00 AM",
-                      },
-                    ].map((log, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between py-3 border-b border-zinc-50 last:border-0 text-sm"
-                      >
-                        <div className="flex items-center gap-3">
-                          <History className="h-4 w-4 text-zinc-300" />
-                          <span className="font-medium text-zinc-600">
-                            {log.action}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-xs font-bold text-zinc-900">
-                            {log.user}
-                          </span>
-                          <span className="text-xs text-zinc-400">
-                            {log.date}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </TabsContent>
               </Tabs>
@@ -321,7 +283,6 @@ export default function TaskDetailsPage({
 
           {/* Sidebar Panel */}
           <div className="flex flex-col gap-6">
-            {/* Properties Card */}
             <div className="rounded-2xl border border-zinc-100 p-6 space-y-8">
               <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-50 pb-4">
                 Operational Data
@@ -332,13 +293,16 @@ export default function TaskDetailsPage({
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                     Status
                   </label>
-                  <Select defaultValue="pending">
+                  <Select value={task.status} onValueChange={handleStatusChange}>
                     <SelectTrigger className="h-10 rounded-lg bg-zinc-50 border-none text-zinc-600 font-bold text-xs focus:ring-0">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="review">Review</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -347,14 +311,22 @@ export default function TaskDetailsPage({
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                     Priority
                   </label>
-                  <Select defaultValue="urgent">
-                    <SelectTrigger className="h-10 rounded-lg bg-rose-50 border-none text-rose-700 font-bold text-xs focus:ring-0">
+                  <Select value={task.priority} onValueChange={handlePriorityChange}>
+                    <SelectTrigger className={cn(
+                      "h-10 rounded-lg border-none font-bold text-xs focus:ring-0",
+                      task.priority === "urgent" || task.priority === "high"
+                        ? "bg-rose-50 text-rose-700"
+                        : task.priority === "medium"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-emerald-50 text-emerald-700"
+                    )}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
+                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
+                      <SelectItem value="low">Low</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -364,36 +336,18 @@ export default function TaskDetailsPage({
                     Assigned Team
                   </label>
                   <div className="flex flex-col gap-3">
-                    {assignees.map((name) => (
-                      <div
-                        key={name}
-                        className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 group hover:bg-zinc-100 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-[8px] font-bold">
-                              {name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-bold text-zinc-700">
-                            {name}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100"
-                          onClick={() => handleRemoveAssignee(name)}
-                        >
-                          <X className="h-3 w-3 text-rose-500" />
-                        </Button>
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-[8px] font-bold">
+                            {task.assignedToId?.name?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-bold text-zinc-700">
+                          {task.assignedToId?.name || "Unassigned"}
+                        </span>
                       </div>
-                    ))}
-
-                    <AssignDialog
-                      currentAssignees={assignees}
-                      onAssign={handleAssign}
-                    />
+                    </div>
                   </div>
                 </div>
 
@@ -406,7 +360,11 @@ export default function TaskDetailsPage({
                       </span>
                     </div>
                     <span className="text-xs font-bold text-zinc-900">
-                      May 16, 2026
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      }) : "No Due Date"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -417,7 +375,11 @@ export default function TaskDetailsPage({
                       </span>
                     </div>
                     <span className="text-xs font-bold text-zinc-900">
-                      May 03, 2026
+                      {task.createdAt ? new Date(task.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric"
+                      }) : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -426,6 +388,13 @@ export default function TaskDetailsPage({
           </div>
         </div>
       </div>
+
+      <TaskDialog
+        task={mappedTaskForDialog}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSuccess={fetchTaskDetails}
+      />
     </ContentLayout>
   );
 }
