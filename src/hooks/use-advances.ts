@@ -12,6 +12,7 @@ export function useAdvances(initialPage = 1, initialLimit = 10, skipFetch = fals
   const [page, setPage] = useState(initialPage)
   const [limit, setLimit] = useState(initialLimit)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [status, setStatus] = useState<string>("")
   const [userId, setUserId] = useState<string>("")
   const [pagination, setPagination] = useState({
@@ -23,10 +24,20 @@ export function useAdvances(initialPage = 1, initialLimit = 10, skipFetch = fals
 
   const lastFetchedRef = useRef<string>("")
 
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 400)
+
+    return () => clearTimeout(handler)
+  }, [search])
+
   const fetchAdvances = useCallback(async (force = false) => {
     if (skipFetch) return
 
-    const paramsKey = JSON.stringify({ page, limit, search, status, userId })
+    const paramsKey = JSON.stringify({ page, limit, search: debouncedSearch, status, userId })
     if (!force && lastFetchedRef.current === paramsKey) return
     lastFetchedRef.current = paramsKey
 
@@ -35,7 +46,7 @@ export function useAdvances(initialPage = 1, initialLimit = 10, skipFetch = fals
       const response = await advanceService.getAdvances({
         page,
         limit,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         status: status || undefined,
         userId: userId || undefined,
       })
@@ -60,7 +71,7 @@ export function useAdvances(initialPage = 1, initialLimit = 10, skipFetch = fals
     } finally {
       setIsLoading(false)
     }
-  }, [page, limit, search, status, userId, skipFetch])
+  }, [page, limit, debouncedSearch, status, userId, skipFetch])
 
   useEffect(() => {
     fetchAdvances()

@@ -306,10 +306,39 @@ export default function AdvancePage() {
                 placeholder="Search records..."
                 className="h-11 rounded-xl bg-white border-zinc-100 pl-10 font-bold shadow-sm"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
             </div>
+
+            <Select
+              value={status || "all"}
+              onValueChange={(val) => {
+                setStatus(val === "all" ? "" : val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="h-11 w-40 rounded-xl bg-white border-zinc-100 font-bold shadow-sm">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
+                <SelectItem value="all" className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">
+                  All Status
+                </SelectItem>
+                <SelectItem value="Active" className="font-bold text-xs text-blue-600 hover:bg-zinc-50 cursor-pointer">
+                  Active
+                </SelectItem>
+                <SelectItem value="Settled" className="font-bold text-xs text-emerald-600 hover:bg-zinc-50 cursor-pointer">
+                  Settled
+                </SelectItem>
+                <SelectItem value="Cancelled" className="font-bold text-xs text-rose-600 hover:bg-zinc-50 cursor-pointer">
+                  Cancelled
+                </SelectItem>
+              </SelectContent>
+            </Select>
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>

@@ -139,10 +139,13 @@ export default function IndentPage() {
       cell: ({ row }) => {
         const proj = row.original.projectId
         const tower = row.original.towerId
+        const outside = row.original.outsideId
         return (
           <div className="flex flex-col">
             <span className="font-bold text-zinc-900">{proj?.projectName || proj?.name || "N/A"}</span>
-            <span className="text-[10px] text-zinc-400 font-medium">{tower?.towerName || tower?.name || "N/A"}</span>
+            <span className="text-[10px] text-zinc-400 font-medium">
+              {outside?.outsideName || outside?.name || tower?.towerName || tower?.name || "N/A"}
+            </span>
           </div>
         )
       },

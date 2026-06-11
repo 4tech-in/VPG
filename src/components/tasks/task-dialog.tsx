@@ -251,10 +251,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="review">Review</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

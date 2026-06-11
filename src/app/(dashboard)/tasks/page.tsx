@@ -248,7 +248,7 @@ export default function TasksPage() {
 
         <div className="flex flex-col gap-8">
           <div className="flex items-center gap-2 p-1.5 bg-zinc-100/50 backdrop-blur-sm w-fit rounded-[1.25rem] border border-zinc-100">
-            {["All", "Pending", "in-progress", "Completed", "Cancelled"].map((filter) => (
+            {["All", "Pending", "Completed"].map((filter) => (
               <Button
                 key={filter}
                 variant={activeFilter === filter ? "white" : "ghost"}
