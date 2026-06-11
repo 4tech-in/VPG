@@ -11,7 +11,7 @@ export type ApiLeave = {
 }
 
 export const leaveService = {
-  async getLeaves(params?: { page?: number; limit?: number; status?: string; userId?: string }): Promise<any> {
+  async getLeaves(params?: { page?: number; limit?: number; status?: string; userId?: string; search?: string }): Promise<any> {
     const query = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -19,11 +19,11 @@ export const leaveService = {
       })
     }
     const queryString = query.toString()
-    return apiRequest<any>(`/leaves${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<any>(`leaves${queryString ? `?${queryString}` : ""}`)
   },
 
   async getLeaveById(id: string): Promise<ApiLeave> {
-    return apiRequest<ApiLeave>(`/leaves/${id}`)
+    return apiRequest<ApiLeave>(`leaves/${id}`)
   },
 
   async getMyLeaves(params?: { page?: number; limit?: number }): Promise<any> {
@@ -34,18 +34,18 @@ export const leaveService = {
       })
     }
     const queryString = query.toString()
-    return apiRequest<any>(`/leaves/me${queryString ? `?${queryString}` : ""}`)
+    return apiRequest<any>(`leaves/me${queryString ? `?${queryString}` : ""}`)
   },
 
   async createLeave(payload: any): Promise<ApiLeave> {
-    return apiRequest<ApiLeave>("/leaves", {
+    return apiRequest<ApiLeave>("leaves", {
       method: "POST",
       body: JSON.stringify(payload),
     })
   },
 
-  async updateLeaveStatus(id: string, payload: { status: string; remarks?: string }): Promise<ApiLeave> {
-    return apiRequest<ApiLeave>(`/leaves/${id}/status`, {
+  async updateLeaveStatus(id: string, payload: { status: string; remarks?: string; rejectionReason?: string }): Promise<ApiLeave> {
+    return apiRequest<ApiLeave>(`leaves/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     })

@@ -35,7 +35,7 @@ type ActiveUser = {
 
 const mapTrackToActiveUser = (track: LiveTrackData): ActiveUser => {
   const name = track.user?.name || "Unknown User"
-  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  const initials = name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
   
   const colors = ["bg-rose-500", "bg-cyan-500", "bg-emerald-500", "bg-amber-500", "bg-violet-500", "bg-blue-500"]
   const colorIndex = (name.charCodeAt(0) + name.length) % colors.length

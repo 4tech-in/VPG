@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   Trash2,
@@ -45,7 +45,7 @@ export default function TaskDetailsPage({
   const [error, setError] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const fetchTaskDetails = async () => {
+  const fetchTaskDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await taskService.getTaskById(params.id);
@@ -55,11 +55,11 @@ export default function TaskDetailsPage({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
 
   useEffect(() => {
     fetchTaskDetails();
-  }, [params.id]);
+  }, [fetchTaskDetails]);
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this task record?")) {

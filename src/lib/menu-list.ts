@@ -123,11 +123,11 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
         //   icon: Calendar,
         //   submenus: []
         // },
-        {
-          href:"/leave",
-          label:"Leave",
-          icon:Calendar
-        },
+        // {
+        //   href:"/leave",
+        //   label:"Leave",
+        //   icon:Calendar
+        // },
         {
           href:"/advance",
           label:"Advance",
