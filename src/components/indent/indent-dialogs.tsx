@@ -65,7 +65,8 @@ export function ViewIndentDialog({
    if (!indent) return null
 
    const currentLabel = indent.status === "Pending" ? "PENDING MANAGER" :
-                        indent.status === "Approved" ? "APPROVED / PENDING PO" :
+                        indent.status === "ManagerApproved" ? "PENDING ADMIN" :
+                        indent.status === "Approved" ? "APPROVED" :
                         indent.status === "ConvertedToPO" ? "PO CREATED" : "REJECTED"
 
    const handleApprove = () => {
@@ -99,7 +100,7 @@ export function ViewIndentDialog({
                   </div>
                   <Badge className={cn(
                      "px-5 py-1.5 rounded-full font-black text-[10px] gap-2 border-none shadow-sm",
-                     indent.status === "Pending" ? "bg-amber-100 text-amber-700" :
+                     indent.status === "Pending" || indent.status === "ManagerApproved" ? "bg-amber-100 text-amber-700" :
                      indent.status === "Approved" ? "bg-blue-100 text-blue-700" :
                      indent.status === "ConvertedToPO" ? "bg-emerald-100 text-emerald-700" :
                      "bg-rose-100 text-rose-700"
@@ -248,6 +249,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [priority, setPriority] = useState("medium")
    const [estimateDeliveryDate, setEstimateDeliveryDate] = useState("")
    const [storageLocation, setStorageLocation] = useState("")
+   const [locationTab, setLocationTab] = useState<"project" | "outside">("project")
    
    const [towers, setTowers] = useState<any[]>([])
    const [floors, setFloors] = useState<any[]>([])
@@ -293,7 +295,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
              const res = await towerService.getTowers({ projectId })
              setTowers(res.data || [])
              setTowerId("")
-          } catch (err) {
+          } catch (err: any) {
              console.error(err)
           }
        }
@@ -302,7 +304,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
              const res = await outsideService.getOutsides({ projectId, limit: 100 })
              setOutsideAreas(res.data || [])
              setOutsideId("")
-          } catch (err) {
+          } catch (err: any) {
              console.error(err)
           }
        }
@@ -322,7 +324,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
             const res = await floorService.getFloors({ towerId })
             setFloors(res.data || [])
             setFloorId("")
-         } catch (err) {
+         } catch (err: any) {
             console.error(err)
          }
       }
@@ -341,7 +343,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
             const res = await flatService.getFlats({ floorId })
             setFlats(res.data || [])
             setFlatId("")
-         } catch (err) {
+         } catch (err: any) {
             console.error(err)
          }
       }
@@ -424,6 +426,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          setPriority("medium")
          setEstimateDeliveryDate("")
          setStorageLocation("")
+         setLocationTab("project")
          setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "" }])
          if (onSuccess) onSuccess()
       } catch (err: any) {
@@ -497,97 +500,147 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
 
                 {/* Cascading Location Selectors */}
                 {projectId && (
-                  <div className="space-y-6">
-                     <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                           <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Tower (Optional)</Label>
-                              {towerId && towerId !== "none" && (
-                                 <button
-                                    type="button"
-                                    onClick={() => {
-                                       setTowerId("none")
-                                       setFloorId("none")
-                                       setFlatId("none")
-                                    }}
-                                    className="text-[10px] font-bold text-rose-500 hover:underline"
-                                 >
-                                    Clear
-                                 </button>
-                              )}
-                           </div>
-                           <Select
-                              value={towerId || "none"}
-                              onValueChange={(val) => {
-                                 setTowerId(val)
-                                 if (val && val !== "none") {
-                                    setOutsideId("none")
-                                 }
-                              }}
-                              disabled={!!outsideId && outsideId !== "none"}
-                           >
-                              <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
-                                 <SelectValue placeholder="Select tower" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                 <SelectItem value="none">Project Level (No Tower)</SelectItem>
-                                 {towers.map(t => (
-                                    <SelectItem key={t._id} value={t._id}>{t.towerName}</SelectItem>
-                                 ))}
-                              </SelectContent>
-                           </Select>
-                        </div>
-                        <div className="space-y-3">
-                           <div className="flex items-center justify-between">
-                              <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Outside Area (Optional)</Label>
-                              {outsideId && outsideId !== "none" && (
-                                 <button
-                                    type="button"
-                                    onClick={() => {
-                                       setOutsideId("none")
-                                    }}
-                                    className="text-[10px] font-bold text-rose-500 hover:underline"
-                                 >
-                                    Clear
-                                 </button>
-                              )}
-                           </div>
-                           <Select
-                              value={outsideId || "none"}
-                              onValueChange={(val) => {
-                                 setOutsideId(val)
-                                 if (val && val !== "none") {
-                                    setTowerId("none")
-                                    setFloorId("none")
-                                    setFlatId("none")
-                                 }
-                              }}
-                              disabled={!!towerId && towerId !== "none"}
-                           >
-                              <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
-                                 <SelectValue placeholder="Select outside area" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                 <SelectItem value="none">No Outside Area</SelectItem>
-                                 {outsideAreas.map(o => (
-                                    <SelectItem key={o._id} value={o._id}>{o.outsideName}</SelectItem>
-                                 ))}
-                              </SelectContent>
-                           </Select>
-                        </div>
+                  <div className="space-y-6 col-span-2">
+                     <div className="flex bg-zinc-100 p-1.5 rounded-2xl w-full">
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setLocationTab("project")
+                              setOutsideId("")
+                           }}
+                           className={cn(
+                              "flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all",
+                              locationTab === "project" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-900"
+                           )}
+                        >
+                           Project Structure
+                        </button>
+                        <button
+                           type="button"
+                           onClick={() => {
+                              setLocationTab("outside")
+                              setTowerId("")
+                              setFloorId("")
+                              setFlatId("")
+                           }}
+                           className={cn(
+                              "flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all",
+                              locationTab === "outside" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-900"
+                           )}
+                        >
+                           Outside Project
+                        </button>
                      </div>
 
-                     {towerId && towerId !== "none" && (
+                     {locationTab === "project" ? (
+                        <div className="space-y-6">
+                           <div className="grid grid-cols-2 gap-8">
+                              <div className="space-y-3">
+                                 <div className="flex items-center justify-between">
+                                    <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Tower (Optional)</Label>
+                                    {towerId && towerId !== "none" && (
+                                       <button
+                                          type="button"
+                                          onClick={() => {
+                                             setTowerId("none")
+                                             setFloorId("none")
+                                             setFlatId("none")
+                                          }}
+                                          className="text-[10px] font-bold text-rose-500 hover:underline"
+                                       >
+                                          Clear
+                                       </button>
+                                    )}
+                                 </div>
+                                 <Select
+                                    value={towerId || "none"}
+                                    onValueChange={(val) => {
+                                       setTowerId(val)
+                                    }}
+                                 >
+                                    <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
+                                       <SelectValue placeholder="Select tower" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                       <SelectItem value="none">Project Level (No Tower)</SelectItem>
+                                       {towers.map(t => (
+                                          <SelectItem key={t._id} value={t._id}>{t.towerName}</SelectItem>
+                                       ))}
+                                    </SelectContent>
+                                 </Select>
+                              </div>
+                           </div>
+
+                           {towerId && towerId !== "none" && (
+                              <div className="grid grid-cols-2 gap-8">
+                                 <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                       <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Floor (Optional)</Label>
+                                       {floorId && floorId !== "none" && (
+                                          <button
+                                             type="button"
+                                             onClick={() => {
+                                                setFloorId("none")
+                                                setFlatId("none")
+                                             }}
+                                             className="text-[10px] font-bold text-rose-500 hover:underline"
+                                          >
+                                             Clear
+                                          </button>
+                                       )}
+                                    </div>
+                                    <Select value={floorId || "none"} onValueChange={setFloorId}>
+                                       <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
+                                          <SelectValue placeholder="Select floor" />
+                                       </SelectTrigger>
+                                       <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                          <SelectItem value="none">Tower Level (No Floor)</SelectItem>
+                                          {floors.map(f => (
+                                             <SelectItem key={f._id} value={f._id}>{f.floorName}</SelectItem>
+                                          ))}
+                                       </SelectContent>
+                                    </Select>
+                                 </div>
+                                 <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                       <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Flat (Optional)</Label>
+                                       {flatId && flatId !== "none" && (
+                                          <button
+                                             type="button"
+                                             onClick={() => {
+                                                setFlatId("none")
+                                             }}
+                                             className="text-[10px] font-bold text-rose-500 hover:underline"
+                                          >
+                                             Clear
+                                          </button>
+                                       )}
+                                    </div>
+                                    <Select value={flatId || "none"} onValueChange={setFlatId} disabled={!floorId || floorId === "none"}>
+                                       <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
+                                          <SelectValue placeholder="Select flat" />
+                                       </SelectTrigger>
+                                       <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                          <SelectItem value="none">Floor Level (No Flat)</SelectItem>
+                                          {flats.map(fl => (
+                                             <SelectItem key={fl._id} value={fl._id}>{fl.flatName}</SelectItem>
+                                          ))}
+                                       </SelectContent>
+                                    </Select>
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                     ) : (
                         <div className="grid grid-cols-2 gap-8">
                            <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                 <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Floor (Optional)</Label>
-                                 {floorId && floorId !== "none" && (
+                                 <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Outside Area (Optional)</Label>
+                                 {outsideId && outsideId !== "none" && (
                                     <button
                                        type="button"
                                        onClick={() => {
-                                          setFloorId("none")
-                                          setFlatId("none")
+                                          setOutsideId("none")
                                        }}
                                        className="text-[10px] font-bold text-rose-500 hover:underline"
                                     >
@@ -595,41 +648,19 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     </button>
                                  )}
                               </div>
-                              <Select value={floorId || "none"} onValueChange={setFloorId}>
+                              <Select
+                                 value={outsideId || "none"}
+                                 onValueChange={(val) => {
+                                    setOutsideId(val)
+                                 }}
+                              >
                                  <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
-                                    <SelectValue placeholder="Select floor" />
+                                    <SelectValue placeholder="Select outside area" />
                                  </SelectTrigger>
                                  <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                    <SelectItem value="none">Tower Level (No Floor)</SelectItem>
-                                    {floors.map(f => (
-                                       <SelectItem key={f._id} value={f._id}>{f.floorName}</SelectItem>
-                                    ))}
-                                 </SelectContent>
-                              </Select>
-                           </div>
-                           <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                 <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Flat (Optional)</Label>
-                                 {flatId && flatId !== "none" && (
-                                    <button
-                                       type="button"
-                                       onClick={() => {
-                                          setFlatId("none")
-                                       }}
-                                       className="text-[10px] font-bold text-rose-500 hover:underline"
-                                    >
-                                       Clear
-                                    </button>
-                                 )}
-                              </div>
-                              <Select value={flatId || "none"} onValueChange={setFlatId} disabled={!floorId || floorId === "none"}>
-                                 <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
-                                    <SelectValue placeholder="Select flat" />
-                                 </SelectTrigger>
-                                 <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                    <SelectItem value="none">Floor Level (No Flat)</SelectItem>
-                                    {flats.map(fl => (
-                                       <SelectItem key={fl._id} value={fl._id}>{fl.flatName}</SelectItem>
+                                    <SelectItem value="none">No Outside Area</SelectItem>
+                                    {outsideAreas.map(o => (
+                                       <SelectItem key={o._id} value={o._id}>{o.outsideName}</SelectItem>
                                     ))}
                                  </SelectContent>
                               </Select>

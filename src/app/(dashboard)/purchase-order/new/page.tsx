@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useRef, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
    ArrowLeft,
    FileText,
@@ -41,8 +41,11 @@ import { indentService } from "@/service/indents.api"
 import { vendorService } from "@/service/vendorService"
 import { purchaseOrderService } from "@/service/purchaseOrderService"
 
-export default function CreatePOPage() {
+function CreatePOContent() {
    const router = useRouter()
+   const searchParams = useSearchParams()
+   const urlIndentId = searchParams.get("indentId")
+
    const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files" >("remarks")
    const [selectedIndentId, setSelectedIndentId] = useState<string>("")
    const [selectedVendorId, setSelectedVendorId] = useState<string>("")
@@ -54,27 +57,6 @@ export default function CreatePOPage() {
    const [isDataLoading, setIsDataLoading] = useState(true)
 
    const calledRef = useRef(false)
-
-   useEffect(() => {
-      if (calledRef.current) return
-      calledRef.current = true
-
-      const loadInitialData = async () => {
-         setIsDataLoading(true)
-         try {
-            const indentsRes = await indentService.getIndents({ status: "Approved" })
-            setIndents(indentsRes.data || indentsRes || [])
-            
-            const vendorsRes = await vendorService.getVendors()
-            setVendors(vendorsRes.vendors || vendorsRes || [])
-         } catch (err: any) {
-            toast.error("Failed to load indents or vendors data")
-         } finally {
-            setIsDataLoading(false)
-         }
-      }
-      loadInitialData()
-   }, [])
 
    const handleIndentSelect = async (val: string) => {
       setSelectedIndentId(val)
@@ -93,7 +75,8 @@ export default function CreatePOPage() {
                   qty: item.quantity,
                   unitId: item.unitId?._id || item.unitId || "",
                   unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
-                  price: 0
+                  price: 0,
+                  description: ""
                }))
             )
          }
@@ -101,6 +84,50 @@ export default function CreatePOPage() {
          toast.error("Failed to fetch indent details")
       }
    }
+
+   useEffect(() => {
+      if (calledRef.current) return
+      calledRef.current = true
+
+      const loadInitialData = async () => {
+         setIsDataLoading(true)
+         try {
+            const indentsRes = await indentService.getIndents({ status: "Approved" })
+            const loadedIndents = indentsRes.data || indentsRes || []
+            setIndents(loadedIndents)
+            
+            const vendorsRes = await vendorService.getVendors()
+            setVendors(vendorsRes.vendors || vendorsRes || [])
+
+            if (urlIndentId) {
+               const found = loadedIndents.find((i: any) => i._id === urlIndentId)
+               if (found) {
+                  await handleIndentSelect(urlIndentId)
+               } else {
+                  try {
+                     const directIndent = await indentService.getIndentById(urlIndentId)
+                     if (directIndent) {
+                        setIndents(prev => {
+                           if (!prev.some(i => i._id === urlIndentId)) {
+                              return [...prev, directIndent]
+                           }
+                           return prev
+                        })
+                        await handleIndentSelect(urlIndentId)
+                     }
+                  } catch (e) {
+                     // ignore
+                  }
+               }
+            }
+         } catch (err: any) {
+            toast.error("Failed to load indents or vendors data")
+         } finally {
+            setIsDataLoading(false)
+         }
+      }
+      loadInitialData()
+   }, [urlIndentId])
 
    const handleVendorSelect = (val: string) => {
       setSelectedVendorId(val)
@@ -110,14 +137,14 @@ export default function CreatePOPage() {
       setItems(prev => prev.map((item, i) => i === idx ? { ...item, price: val } : item))
    }
 
+   const handleDescriptionChange = (idx: number, val: string) => {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, description: val } : item))
+   }
+
    const activeVendor = vendors.find(v => (v._id || v.id) === selectedVendorId)
 
    const subtotal = items.reduce((sum, item) => sum + (item.qty * (item.price || 0)), 0)
-   const freight = activeVendor ? 1200 : 0
-   const packing = activeVendor ? 500 : 0
-   const taxableAmount = activeVendor ? (subtotal + freight + packing) : 0
-   const gst = activeVendor ? Math.round(taxableAmount * 0.18) : 0
-   const grandTotal = activeVendor ? (taxableAmount + gst) : 0
+   const grandTotal = subtotal
 
    const handleGeneratePO = async () => {
       if (!selectedIndentId || !selectedVendorId || !activeVendor) {
@@ -128,15 +155,17 @@ export default function CreatePOPage() {
       try {
          await purchaseOrderService.createPurchaseOrder({
             indentId: selectedIndentId,
+            vendorId: selectedVendorId,
             vendorName: activeVendor.name,
             vendorMobile: activeVendor.contactNumber || "",
             vendorAddress: activeVendor.address || "",
             items: items.map(item => ({
-               itemId: item.itemId,
-               unitId: item.unitId,
+               itemId: item.itemId || null,
+               unitId: item.unitId || null,
                indentQuantity: item.qty,
                orderQuantity: item.qty,
-               rate: item.price
+               rate: item.price,
+               description: item.description || ""
             })),
             bypassApproval: true
          })
@@ -213,7 +242,7 @@ export default function CreatePOPage() {
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
                                  {vendors.map((vendor) => (
-                                    <SelectItem key={vendor._id} value={vendor._id}>{vendor.name}</SelectItem>
+                                    <SelectItem key={vendor._id || vendor.id} value={vendor._id || vendor.id || ""}>{vendor.name}</SelectItem>
                                  ))}
                               </SelectContent>
                            </Select>
@@ -245,6 +274,7 @@ export default function CreatePOPage() {
                                     <thead>
                                        <tr className="bg-zinc-50/50 border-b border-zinc-100">
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Item Information</th>
+                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-left">Description</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Quantity</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price (₹)</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Total Amount</th>
@@ -263,6 +293,14 @@ export default function CreatePOPage() {
                                                       <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ID: {item.itemId.slice(-6).toUpperCase()}</span>
                                                    </div>
                                                 </div>
+                                             </td>
+                                             <td className="px-6 py-4 w-48">
+                                                <Input 
+                                                   placeholder="Details / specifications"
+                                                   value={item.description || ""}
+                                                   onChange={(e) => handleDescriptionChange(idx, e.target.value)}
+                                                   className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold focus-visible:ring-teal-500 focus:bg-white" 
+                                                />
                                              </td>
                                              <td className="px-6 py-4 text-center">
                                                 <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">{item.qty} {item.unit}</span>
@@ -466,36 +504,9 @@ export default function CreatePOPage() {
                      </div>
 
                      <div className="space-y-4 pt-4">
-                        {[
-                           { label: "Subtotal", val: activeIndent ? `₹ ${subtotal.toLocaleString("en-IN")}` : "₹ 0" },
-                           { label: "Freight & Cartage", val: activeVendor ? `₹ ${freight.toLocaleString("en-IN")}` : "₹ 0" },
-                           { label: "Packing & Forwarding", val: activeVendor ? `₹ ${packing.toLocaleString("en-IN")}` : "₹ 0" },
-                        ].map((item, i) => (
-                           <div key={i} className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-zinc-500">{item.label}</span>
-                              <span className="text-sm font-black text-zinc-900">{item.val}</span>
-                           </div>
-                        ))}
-                        <div className="h-px bg-zinc-50 my-4" />
                         <div className="flex items-center justify-between">
-                           <div className="flex flex-col">
-                              <span className="text-xs font-bold text-zinc-500">Taxable Amount</span>
-                              <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest">(SUBTOTAL + LOGISTICS)</span>
-                           </div>
-                           <span className="text-base font-black text-zinc-900">{activeVendor ? `₹ ${taxableAmount.toLocaleString("en-IN")}` : "₹ 0"}</span>
-                        </div>
-
-                        <div className="bg-teal-50/50 p-6 rounded-2xl border border-teal-100/50 flex items-center justify-between">
-                           <div className="flex flex-col">
-                              <span className="text-[11px] font-black text-teal-600 uppercase tracking-tight">GST Amount (18%)</span>
-                              <span className={cn(
-                                 "text-[8px] font-black uppercase tracking-widest mt-1",
-                                 activeVendor ? "text-teal-500/60" : "text-zinc-300"
-                              )}>
-                                 CGST: {activeVendor ? `₹${Math.round(gst / 2).toLocaleString("en-IN")}` : "₹0"}  SGST: {activeVendor ? `₹${Math.round(gst / 2).toLocaleString("en-IN")}` : "₹0"}
-                              </span>
-                           </div>
-                           <span className="text-lg font-black text-teal-600">{activeVendor ? `₹ ${gst.toLocaleString("en-IN")}` : "₹ 0"}</span>
+                           <span className="text-xs font-bold text-zinc-500">Subtotal</span>
+                           <span className="text-sm font-black text-zinc-900">{activeIndent ? `₹ ${subtotal.toLocaleString("en-IN")}` : "₹ 0"}</span>
                         </div>
                      </div>
 
@@ -547,5 +558,20 @@ export default function CreatePOPage() {
             </div>
          </div>
       </ContentLayout>
+   )
+}
+
+export default function CreatePOPage() {
+   return (
+      <Suspense fallback={
+         <ContentLayout title="Create Purchase Order">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
+               <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+               <p className="text-zinc-500 font-bold text-sm">Loading PO source details...</p>
+            </div>
+         </ContentLayout>
+      }>
+         <CreatePOContent />
+      </Suspense>
    )
 }

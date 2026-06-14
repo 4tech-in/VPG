@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { ColumnDef } from "@tanstack/react-table"
 import {
   Plus,
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable } from "@/components/ui/data-table"
 import { toast } from "sonner"
+import { useAuthStore } from "@/store/use-auth-store"
 import {
   Select,
   SelectContent,
@@ -29,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ViewIndentDialog, CreateIndentDialog } from "@/components/indent/indent-dialogs"
+import { CreatePODialog } from "@/components/purchase-order/po-dialogs"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
@@ -45,6 +48,7 @@ import { exportIndentReceipt } from "@/lib/export-receipt"
 const mapBackendStatusToUI = (status: string) => {
   switch (status) {
     case "Pending": return "PENDING MANAGER"
+    case "ManagerApproved": return "PENDING ADMIN"
     case "Approved": return "APPROVED"
     case "ConvertedToPO": return "PO CREATED"
     case "Rejected": return "REJECTED"
@@ -53,16 +57,30 @@ const mapBackendStatusToUI = (status: string) => {
 }
 
 export default function IndentPage() {
+  const router = useRouter()
+  const user = useAuthStore((state) => state.user)
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [approvalDescription, setApprovalDescription] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
 
-  const fetchIndents = async (search = "") => {
+  const fetchIndents = async (search = "", statusFilter = selectedStatus) => {
     try {
       setLoading(true)
-      const res = await indentService.getIndents({ search })
+      const params: any = { search }
+      if (statusFilter && statusFilter !== "all") {
+        if (statusFilter === "Pending") {
+          const isAdmin = user?.roleId?.name?.toLowerCase() === "admin"
+          params.status = isAdmin ? "ManagerApproved" : "Pending"
+        } else {
+          params.status = statusFilter
+        }
+      }
+      const res = await indentService.getIndents(params)
       if (Array.isArray(res)) {
         setData(res)
       } else if (res && res.data) {
@@ -79,20 +97,26 @@ export default function IndentPage() {
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      fetchIndents(searchTerm)
+      fetchIndents(searchTerm, selectedStatus)
     }, 400)
     return () => clearTimeout(delayDebounce)
-  }, [searchTerm])
+  }, [searchTerm, selectedStatus])
 
   const handleStatusChange = async (id: string, newStatus: string, reason?: string) => {
     try {
-      await indentService.updateIndentStatus(id, { status: newStatus, rejectionReason: reason })
+      const payload: any = { status: newStatus }
+      if (newStatus === "Rejected") {
+        payload.rejectionReason = reason
+      } else if (newStatus === "Approved") {
+        payload.approvalDescription = reason
+      }
+      await indentService.updateIndentStatus(id, payload)
       if (newStatus === "Rejected") {
         toast.error(`Indent has been rejected${reason ? `: "${reason}"` : ""}`)
       } else {
         toast.success(`Indent status updated to ${newStatus}`)
       }
-      fetchIndents(searchTerm)
+      fetchIndents(searchTerm, selectedStatus)
     } catch (err: any) {
       toast.error(err.message || "Failed to update indent status")
     }
@@ -112,6 +136,22 @@ export default function IndentPage() {
   const handleCancelReject = () => {
     setRejectingId(null)
     setRejectionReason("")
+  }
+
+  const handleConfirmApprove = () => {
+    if (!approvingId) return
+    if (!approvalDescription.trim()) {
+      toast.error("Please enter a description for approval")
+      return
+    }
+    handleStatusChange(approvingId, "Approved", approvalDescription)
+    setApprovingId(null)
+    setApprovalDescription("")
+  }
+
+  const handleCancelApprove = () => {
+    setApprovingId(null)
+    setApprovalDescription("")
   }
 
   const columns: ColumnDef<any>[] = [
@@ -165,53 +205,47 @@ export default function IndentPage() {
         )
       },
     },
-    {
-      accessorKey: "used",
-      header: "Used Qty",
-      cell: ({ row }) => {
-        const usage = row.original.usage
-        if (!usage || usage.received === 0) {
-          return <div className="text-zinc-300 font-bold text-[11px]">—</div>
-        }
-        return (
-          <div className="flex items-center gap-1 text-zinc-900 font-bold text-xs">
-            <span className="text-[13px] font-black text-zinc-900">{usage.used}</span>
-            <span className="text-[11px] text-zinc-300 font-normal">/</span>
-            <span className="text-[12px] text-zinc-500 font-bold">{usage.received}</span>
-            <span className="text-[9px] text-zinc-400 font-black tracking-wider uppercase ml-1">{usage.unit}</span>
-          </div>
-        )
-      }
-    },
+
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.status
         const id = row.original._id
-        const rejectionReason = row.original.rejectionReason
         const uiStatus = mapBackendStatusToUI(status)
+        const isAdmin = user?.roleId?.name?.toLowerCase() === "admin"
+        const showDropdown = isAdmin ? (status === "ManagerApproved") : (status === "Pending")
 
-        if (status !== "Pending") {
+        if (!showDropdown) {
           return (
             <div className="flex flex-col gap-1.5">
               <div className={cn(
                 "h-9 px-4 rounded-xl flex items-center justify-center font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm w-[160px]",
                 status === "Approved" ? "bg-blue-50 text-blue-600" :
                 status === "ConvertedToPO" ? "bg-emerald-50 text-emerald-600" :
-                "bg-rose-50 text-rose-500"
+                status === "Rejected" ? "bg-rose-50 text-rose-500" :
+                "bg-amber-50 text-amber-600"
               )}>
                 <div className="flex items-center gap-2">
-                  {status === "Approved" && <FileText className="h-3 w-3" />}
+                  {(status === "Approved" || status === "ManagerApproved" || status === "Pending") && <Clock className="h-3 w-3" />}
                   {status === "ConvertedToPO" && <CheckCircle2 className="h-3 w-3" />}
                   {status === "Rejected" && <X className="h-3 w-3" />}
                   <span>{uiStatus}</span>
                 </div>
               </div>
-              {status === "Rejected" && rejectionReason && (
-                <span className="text-[10px] text-rose-500 font-bold italic max-w-[160px] truncate leading-tight mt-1" title={rejectionReason}>
-                  &quot;{rejectionReason}&quot;
-                </span>
+              {status === "Approved" && (
+                <CreatePODialog
+                  defaultIndentId={id}
+                  onSuccess={() => fetchIndents(searchTerm)}
+                  trigger={
+                    <Button
+                      className="h-8 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-[9px] tracking-[0.1em] uppercase transition-all shadow-sm w-[160px] gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Create PO
+                    </Button>
+                  }
+                />
               )}
             </div>
           )
@@ -225,6 +259,8 @@ export default function IndentPage() {
                 onValueChange={(val) => {
                   if (val === "Rejected") {
                     setRejectingId(id)
+                  } else if (val === "Approved") {
+                    setApprovingId(id)
                   } else {
                     handleStatusChange(id, val)
                   }
@@ -233,7 +269,7 @@ export default function IndentPage() {
                 <SelectTrigger className="h-9 w-[160px] rounded-xl border-none font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm bg-amber-50 text-amber-600 hover:bg-amber-100/50">
                   <div className="flex items-center gap-2">
                     <Clock className="h-3 w-3" />
-                    <SelectValue placeholder="PENDING MANAGER" />
+                    <span>{uiStatus}</span>
                   </div>
                 </SelectTrigger>
                 <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl p-1">
@@ -324,6 +360,29 @@ export default function IndentPage() {
           </div>
         </div>
 
+        {/* Status Tabs Filter */}
+        <div className="flex border-b border-zinc-100 gap-8 overflow-x-auto pb-px scrollbar-none">
+          {[
+            { label: "All", value: "all" },
+            { label: "Pending", value: "Pending" },
+            { label: "Approved", value: "Approved" },
+            { label: "Rejected", value: "Rejected" },
+          ].map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setSelectedStatus(tab.value)}
+              className={cn(
+                "pb-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0",
+                selectedStatus === tab.value
+                  ? "border-zinc-900 text-zinc-900"
+                  : "border-transparent text-zinc-400 hover:text-zinc-900"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* Indent Board */}
         {loading ? (
           <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">
@@ -381,6 +440,54 @@ export default function IndentPage() {
               className="flex-1 h-12 rounded-xl bg-rose-500 text-white font-black text-xs gap-2 shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all"
             >
               Confirm Reject
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Indent Dialog */}
+      <Dialog open={!!approvingId} onOpenChange={(open) => { if (!open) handleCancelApprove() }}>
+        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] flex flex-col mx-4 bg-white">
+          <div className="p-8 pb-4 shrink-0 bg-white">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none">Status Change</span>
+                <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight leading-none">Approve Indent</DialogTitle>
+              </div>
+            </div>
+            <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-wider leading-relaxed">
+              Please provide a brief description or remark for approving this indent request.
+            </DialogDescription>
+          </div>
+
+          <div className="flex-1 p-8 pt-2 space-y-4 bg-zinc-50/10">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Approval Description / Remark</Label>
+              <Textarea
+                placeholder="e.g. Budget approved, specs verified, proceed with order..."
+                value={approvalDescription}
+                onChange={(e) => setApprovalDescription(e.target.value)}
+                className="min-h-[120px] rounded-2xl bg-white border-zinc-100 focus:ring-emerald-500 focus:border-emerald-500 font-bold shadow-inner p-4 text-xs resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="p-8 bg-emerald-50/20 border-t border-emerald-100 shrink-0 flex gap-4">
+            <Button
+              variant="outline"
+              onClick={handleCancelApprove}
+              className="flex-1 h-12 rounded-xl border-zinc-100 text-zinc-500 font-black text-xs hover:bg-zinc-50 transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmApprove}
+              className="flex-1 h-12 rounded-xl bg-emerald-500 text-white font-black text-xs gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+            >
+              Confirm Approve
             </Button>
           </div>
         </DialogContent>
