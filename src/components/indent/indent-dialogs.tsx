@@ -165,6 +165,19 @@ export function ViewIndentDialog({
                   </div>
                )}
 
+               {indent.approveRemark && (
+                  <div className={cn(
+                     "p-5 rounded-2xl border border-dashed",
+                     indent.status === "Approved" ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-zinc-50 border-zinc-100 text-zinc-600"
+                  )}>
+                     <span className={cn(
+                        "text-[8px] font-black uppercase tracking-widest block mb-1",
+                        indent.status === "Approved" ? "text-emerald-500" : "text-zinc-500"
+                     )}>Approval Remark / Description</span>
+                     <p className="text-[11px] font-bold italic leading-relaxed">&quot;{indent.approveRemark}&quot;</p>
+                  </div>
+               )}
+
                {/* Requested Items */}
                <div className="space-y-4">
                   <div className="flex items-center gap-3">
@@ -189,7 +202,7 @@ export function ViewIndentDialog({
                         </div>
                         <div className="flex items-center gap-1.5 bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100">
                            <span className="text-sm font-black text-zinc-900">{item.quantity}</span>
-                           <span className="text-[8px] font-black text-zinc-400 uppercase">{item.unitId?.unitName || item.unitId?.name || "Units"}</span>
+                           <span className="text-[8px] font-black text-zinc-400 uppercase">{item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units"}</span>
                         </div>
                      </div>
                   ))}

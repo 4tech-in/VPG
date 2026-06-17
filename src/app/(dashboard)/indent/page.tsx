@@ -14,7 +14,8 @@ import {
   Eye,
   Check,
   X,
-  XCircle
+  XCircle,
+  Trash2
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -43,6 +44,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { indentService } from "@/service/indents.api"
+import { unitService } from "@/service/unitService"
 import { exportIndentReceipt } from "@/lib/export-receipt"
 
 const mapBackendStatusToUI = (status: string) => {
@@ -64,9 +66,40 @@ export default function IndentPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectionReason, setRejectionReason] = useState("")
-  const [approvingId, setApprovingId] = useState<string | null>(null)
-  const [approvalDescription, setApprovalDescription] = useState("")
+  const [approvingIndent, setApprovingIndent] = useState<any | null>(null)
+  const [approvalItems, setApprovalItems] = useState<any[]>([])
+  const [approveRemark, setApproveRemark] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [units, setUnits] = useState<any[]>([])
+
+  const fetchUnits = async () => {
+    try {
+      const res = await unitService.getUnits({ limit: 100 })
+      setUnits(res.units || [])
+    } catch (err) {
+      console.error("Failed to fetch units:", err)
+    }
+  }
+
+  useEffect(() => {
+    fetchUnits()
+  }, [])
+
+  useEffect(() => {
+    if (approvingIndent) {
+      setApprovalItems(
+        (approvingIndent.items || []).map((item: any) => ({
+          itemId: item.itemId?._id || item.itemId,
+          itemName: item.itemId?.itemName || item.itemId?.name || "Unknown",
+          unitId: item.unitId?._id || item.unitId,
+          unitName: item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units",
+          quantity: item.quantity,
+        }))
+      )
+    } else {
+      setApprovalItems([])
+    }
+  }, [approvingIndent])
 
   const fetchIndents = async (search = "", statusFilter = selectedStatus) => {
     try {
@@ -102,13 +135,16 @@ export default function IndentPage() {
     return () => clearTimeout(delayDebounce)
   }, [searchTerm, selectedStatus])
 
-  const handleStatusChange = async (id: string, newStatus: string, reason?: string) => {
+  const handleStatusChange = async (id: string, newStatus: string, reason?: string, items?: any[]) => {
     try {
       const payload: any = { status: newStatus }
       if (newStatus === "Rejected") {
         payload.rejectionReason = reason
       } else if (newStatus === "Approved") {
-        payload.approvalDescription = reason
+        payload.approveRemark = reason
+        if (items) {
+          payload.items = items
+        }
       }
       await indentService.updateIndentStatus(id, payload)
       if (newStatus === "Rejected") {
@@ -139,19 +175,34 @@ export default function IndentPage() {
   }
 
   const handleConfirmApprove = () => {
-    if (!approvingId) return
-    if (!approvalDescription.trim()) {
+    if (!approvingIndent) return
+    if (!approveRemark.trim()) {
       toast.error("Please enter a description for approval")
       return
     }
-    handleStatusChange(approvingId, "Approved", approvalDescription)
-    setApprovingId(null)
-    setApprovalDescription("")
+    if (approvalItems.length === 0) {
+      toast.error("At least one item is required for approval")
+      return
+    }
+    if (approvalItems.some(i => !i.quantity || Number(i.quantity) <= 0)) {
+      toast.error("All quantities must be greater than 0")
+      return
+    }
+
+    const formattedItems = approvalItems.map(i => ({
+      itemId: i.itemId,
+      unitId: i.unitId,
+      quantity: Number(i.quantity)
+    }))
+
+    handleStatusChange(approvingIndent._id, "Approved", approveRemark, formattedItems)
+    setApprovingIndent(null)
+    setApproveRemark("")
   }
 
   const handleCancelApprove = () => {
-    setApprovingId(null)
-    setApprovalDescription("")
+    setApprovingIndent(null)
+    setApproveRemark("")
   }
 
   const columns: ColumnDef<any>[] = [
@@ -260,7 +311,7 @@ export default function IndentPage() {
                   if (val === "Rejected") {
                     setRejectingId(id)
                   } else if (val === "Approved") {
-                    setApprovingId(id)
+                    setApprovingIndent(row.original)
                   } else {
                     handleStatusChange(id, val)
                   }
@@ -446,8 +497,8 @@ export default function IndentPage() {
       </Dialog>
 
       {/* Approve Indent Dialog */}
-      <Dialog open={!!approvingId} onOpenChange={(open) => { if (!open) handleCancelApprove() }}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] flex flex-col mx-4 bg-white">
+      <Dialog open={!!approvingIndent} onOpenChange={(open) => { if (!open) handleCancelApprove() }}>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] flex flex-col mx-4 bg-white max-h-[90vh]">
           <div className="p-8 pb-4 shrink-0 bg-white">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-12 w-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
@@ -459,18 +510,80 @@ export default function IndentPage() {
               </div>
             </div>
             <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-wider leading-relaxed">
-              Please provide a brief description or remark for approving this indent request.
+              Please verify items list, adjust quantities, and provide a remark for approving this indent request.
             </DialogDescription>
           </div>
 
-          <div className="flex-1 p-8 pt-2 space-y-4 bg-zinc-50/10">
+          <div className="flex-1 overflow-y-auto p-8 pt-2 space-y-6 bg-zinc-50/10 custom-scrollbar">
+            {/* Items modification section */}
+            <div className="space-y-4">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Adjust Quantities / Remove Items</Label>
+              <div className="space-y-3">
+                {approvalItems.map((item, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between gap-4">
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <span className="font-bold text-zinc-950 text-sm truncate">{item.itemName}</span>
+                      <div className="w-28 mt-1">
+                        <Select
+                          value={item.unitId}
+                          onValueChange={(val) => {
+                            const selectedUnit = units.find(u => (u._id || u.id) === val)
+                            setApprovalItems(prev => prev.map((it, i) => i === idx ? {
+                              ...it,
+                              unitId: val,
+                              unitName: selectedUnit?.label || selectedUnit?.value || "Units"
+                            } : it))
+                          }}
+                        >
+                          <SelectTrigger className="h-8 rounded-xl bg-zinc-50 border-none font-bold text-[10px] uppercase shadow-sm">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                            {units.map((u) => (
+                              <SelectItem key={u._id || u.id} value={u._id || u.id} className="text-[10px] font-bold uppercase py-2">
+                                {u.label || u.value}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : 0
+                          setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: val } : it))
+                        }}
+                        className="h-10 w-24 text-center rounded-xl bg-zinc-50 border-zinc-100 font-bold focus:bg-white text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setApprovalItems(prev => prev.filter((_, i) => i !== idx))
+                        }}
+                        disabled={approvalItems.length <= 1}
+                        className="h-10 w-10 rounded-xl text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Approval Description / Remark</Label>
               <Textarea
                 placeholder="e.g. Budget approved, specs verified, proceed with order..."
-                value={approvalDescription}
-                onChange={(e) => setApprovalDescription(e.target.value)}
-                className="min-h-[120px] rounded-2xl bg-white border-zinc-100 focus:ring-emerald-500 focus:border-emerald-500 font-bold shadow-inner p-4 text-xs resize-none"
+                value={approveRemark}
+                onChange={(e) => setApproveRemark(e.target.value)}
+                className="min-h-[100px] rounded-2xl bg-white border-zinc-100 focus:ring-emerald-500 focus:border-emerald-500 font-bold shadow-inner p-4 text-xs resize-none"
               />
             </div>
           </div>
