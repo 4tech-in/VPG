@@ -23,7 +23,9 @@ import {
    ChevronRight,
    Plus,
    Trash2,
-   Zap
+   Zap,
+   Eye,
+   X
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -48,6 +50,16 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
+const getImageUrl = (filePath: string) => {
+  if (!filePath) return ""
+  if (filePath.startsWith("http")) return filePath
+  let cleanPath = filePath
+  if (filePath.startsWith("/uploads/")) {
+    cleanPath = `/api${filePath}`
+  }
+  return `http://localhost:9090${cleanPath}`
+}
+
 // --- VIEW INDENT DIALOG ---
 
 export function ViewIndentDialog({
@@ -61,6 +73,7 @@ export function ViewIndentDialog({
 }) {
    const [open, setOpen] = useState(false)
    const [remark, setRemark] = useState("")
+   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
    if (!indent) return null
 
@@ -143,7 +156,7 @@ export function ViewIndentDialog({
                      indent.outsideId ? { label: "Outside Area", val: indent.outsideId?.outsideName || indent.outsideId?.name || "N/A", icon: MapPin } :
                      { label: "Tower", val: indent.towerId?.towerName || indent.towerId?.name || "N/A", icon: Layers },
                      !indent.outsideId && { label: "Floor / Flat", val: [indent.floorId?.floorName || indent.floorId?.name, indent.flatId?.flatName || indent.flatId?.name].filter(Boolean).join(" · ") || "N/A", icon: MapPin },
-                     { label: "Store Room / Loc", val: indent.storageLocation || "N/A", icon: Layers },
+                     { label: "Storage Location", val: indent.storageLocation || "N/A", icon: Layers },
                   ].filter(Boolean).map((item: any, i) => (
                      <div key={i} className="flex items-start gap-3">
                         <div className="h-9 w-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 shrink-0">
@@ -186,24 +199,66 @@ export function ViewIndentDialog({
                   </div>
 
                   {indent.items?.map((item: any, i: number) => (
-                     <div key={i} className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between group hover:border-emerald-200 transition-all">
-                        <div className="flex items-center gap-4">
-                           <div className="h-10 w-10 rounded-xl bg-zinc-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                              <Layers className="h-5 w-5" />
-                           </div>
-                           <div className="flex flex-col gap-1">
+                     <div key={i} className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4 group hover:border-emerald-200 transition-all">
+                        {/* Header: Item name and Priority badge */}
+                        <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                           <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                                 <Layers className="h-4 w-4" />
+                              </div>
                               <h5 className="text-sm font-black text-zinc-900 tracking-tight">{item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</h5>
-                              <div className="flex items-center gap-1.5">
-                                 <Badge variant="outline" className="text-[7px] font-black uppercase px-2 py-0 border-zinc-100 rounded-md text-zinc-400">
-                                    {indent.priority || "low"}
-                                 </Badge>
+                           </div>
+                           <Badge variant="outline" className="text-[7px] font-black uppercase px-2 py-0.5 border-zinc-100 rounded-md text-zinc-400">
+                              {indent.priority || "low"}
+                           </Badge>
+                        </div>
+
+                        {/* Fields Grid */}
+                        <div className="grid grid-cols-3 gap-4">
+                           <div>
+                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Quantity</span>
+                              <span className="text-xs font-bold text-zinc-900">{item.quantity}</span>
+                           </div>
+                           <div>
+                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Unit</span>
+                              <span className="text-xs font-bold text-zinc-900 uppercase">{item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units"}</span>
+                           </div>
+                           <div className="col-span-1">
+                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Description</span>
+                              <span className="text-xs font-bold text-zinc-600 italic block truncate" title={item.description || "N/A"}>
+                                 {item.description || "N/A"}
+                              </span>
+                           </div>
+                        </div>
+
+                        {/* Item-specific Images */}
+                        {item.images && item.images.length > 0 && (
+                           <div className="space-y-2 border-t border-zinc-100/60 pt-3">
+                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Item Images ({item.images.length})</span>
+                              <div className="flex flex-wrap gap-2">
+                                 {item.images.map((img: any, imgIdx: number) => {
+                                    const imgUrl = getImageUrl(img.filePath)
+                                    return (
+                                       <div 
+                                          key={imgIdx} 
+                                          onClick={() => setSelectedImage(imgUrl)}
+                                          title={img.fileName || `Attachment ${imgIdx + 1}`}
+                                          className="relative h-12 w-20 rounded-xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
+                                       >
+                                          <img 
+                                             src={imgUrl} 
+                                             alt={`Attachment ${imgIdx + 1}`} 
+                                             className="w-full h-full object-cover"
+                                          />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                             <Eye className="h-4 w-4 text-white" />
+                                          </div>
+                                       </div>
+                                    )
+                                 })}
                               </div>
                            </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100">
-                           <span className="text-sm font-black text-zinc-900">{item.quantity}</span>
-                           <span className="text-[8px] font-black text-zinc-400 uppercase">{item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units"}</span>
-                        </div>
+                        )}
                      </div>
                   ))}
                </div>
@@ -240,6 +295,23 @@ export function ViewIndentDialog({
                </div>
             )}
          </DialogContent>
+
+         {/* Image Lightbox Dialog */}
+         <Dialog open={!!selectedImage} onOpenChange={(open) => { if (!open) setSelectedImage(null) }}>
+            <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-transparent shadow-none flex items-center justify-center">
+               {selectedImage && (
+                  <div className="relative max-w-full max-h-[85vh] rounded-3xl overflow-hidden bg-black/95 p-1 flex items-center justify-center shadow-2xl">
+                     <img src={selectedImage} alt="Preview" className="max-w-full max-h-[80vh] object-contain rounded-2xl" />
+                     <button 
+                        onClick={() => setSelectedImage(null)}
+                        className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-all border border-white/10"
+                     >
+                        <X className="h-5 w-5" />
+                     </button>
+                  </div>
+               )}
+            </DialogContent>
+         </Dialog>
       </Dialog>
    )
 }
@@ -269,9 +341,9 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [flats, setFlats] = useState<any[]>([])
    const [outsideAreas, setOutsideAreas] = useState<any[]>([])
 
-   const [items, setItems] = useState<any[]>([{ id: Date.now(), itemId: "", quantity: 1, unitId: "" }])
+   const [items, setItems] = useState<any[]>([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
 
-   const addItem = () => setItems([...items, { id: Date.now(), itemId: "", quantity: 1, unitId: "" }])
+   const addItem = () => setItems([...items, { id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
    const removeItem = (id: number) => setItems(items.filter(i => i.id !== id))
 
    useEffect(() => {
@@ -422,7 +494,9 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          items: items.map(i => ({
             itemId: i.itemId,
             quantity: Number(i.quantity),
-            unitId: i.unitId
+            unitId: i.unitId,
+            description: i.description || "",
+            images: i.images || []
          }))
       }
 
@@ -440,7 +514,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          setEstimateDeliveryDate("")
          setStorageLocation("")
          setLocationTab("project")
-         setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "" }])
+         setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
          if (onSuccess) onSuccess()
       } catch (err: any) {
          toast.error(err.message || "Failed to create indent request")
@@ -500,15 +574,25 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                         </SelectContent>
                      </Select>
                   </div>
-                  <div className="space-y-3 col-span-2">
-                     <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Estimate Delivery Date</Label>
-                     <Input
-                        type="date"
-                        value={estimateDeliveryDate}
-                        onChange={(e) => setEstimateDeliveryDate(e.target.value)}
-                        className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm px-4 appearance-none"
-                     />
-                  </div>
+                  <div className="space-y-3">
+                      <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Estimate Delivery Date</Label>
+                      <Input
+                         type="date"
+                         value={estimateDeliveryDate}
+                         onChange={(e) => setEstimateDeliveryDate(e.target.value)}
+                         className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm px-4 appearance-none"
+                      />
+                   </div>
+                   <div className="space-y-3">
+                      <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Storage Location</Label>
+                      <Input
+                         type="text"
+                         placeholder="e.g. Store Room A, Site Office..."
+                         value={storageLocation}
+                         onChange={(e) => setStorageLocation(e.target.value)}
+                         className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm px-4"
+                      />
+                   </div>
                </div>
 
                 {/* Cascading Location Selectors */}
@@ -700,72 +784,143 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                   <div className="space-y-6">
                      {items.map((item, idx) => (
                         <motion.div
-                           initial={{ opacity: 0, x: -10 }}
-                           animate={{ opacity: 1, x: 0 }}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
                            key={item.id}
-                           className="grid grid-cols-[1fr,120px,120px,50px] gap-5 items-end"
+                           className="bg-zinc-50/50 p-6 rounded-2xl border border-zinc-100/80 space-y-4"
                         >
-                           <div className="space-y-2.5">
-                              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Item</Label>
-                              <Select value={item.itemId} onValueChange={(val) => handleItemSelect(idx, val)}>
-                                 <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold">
-                                    <SelectValue placeholder="Select item" />
-                                 </SelectTrigger>
-                                 <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                    {availableItems.map(i => (
-                                       <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
-                                    ))}
-                                 </SelectContent>
-                              </Select>
+                           {/* First row: Item selection and delete button */}
+                           <div className="flex items-end gap-4">
+                              <div className="flex-1 space-y-2">
+                                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Item</Label>
+                                 <Select value={item.itemId} onValueChange={(val) => handleItemSelect(idx, val)}>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
+                                       <SelectValue placeholder="Select item" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                       {availableItems.map(i => (
+                                          <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
+                                       ))}
+                                    </SelectContent>
+                                 </Select>
+                              </div>
+                              {items.length > 1 && (
+                                 <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeItem(item.id)}
+                                    className="h-14 w-14 rounded-2xl text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                                 >
+                                    <Trash2 className="h-5 w-5" />
+                                 </Button>
+                              )}
                            </div>
-                           <div className="space-y-2.5">
-                              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest text-center block w-full">Qty</Label>
+
+                           {/* Second row: Qty and Unit side-by-side */}
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Quantity</Label>
+                                 <Input
+                                    type="number"
+                                    value={item.quantity || ""}
+                                    onChange={(e) => handleQtyChange(idx, e.target.value)}
+                                    placeholder="0"
+                                    className="h-14 rounded-2xl bg-white border-zinc-100 font-bold focus:bg-white transition-all px-4"
+                                 />
+                              </div>
+                              <div className="space-y-2">
+                                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Unit</Label>
+                                 <Select value={item.unitId} onValueChange={(val) => handleUnitSelect(idx, val)}>
+                                    <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
+                                       <SelectValue placeholder="Unit" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                       {units.map(u => (
+                                          <SelectItem key={u._id} value={u._id}>{u.label || u.value}</SelectItem>
+                                       ))}
+                                    </SelectContent>
+                                 </Select>
+                              </div>
+                           </div>
+
+                           {/* Third row: Item Description */}
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Item Description</Label>
                               <Input
-                                 type="number"
-                                 value={item.quantity || ""}
-                                 onChange={(e) => handleQtyChange(idx, e.target.value)}
-                                 placeholder="0"
-                                 className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold text-center focus:bg-white transition-all"
+                                 placeholder="Enter specs, brand or other details for this item..."
+                                 value={item.description || ""}
+                                 onChange={(e) => {
+                                    const val = e.target.value
+                                    setItems(prev => prev.map((it, i) => i === idx ? { ...it, description: val } : it))
+                                 }}
+                                 className="h-12 rounded-xl bg-white border-zinc-100 font-medium text-xs px-4"
                               />
                            </div>
-                           <div className="space-y-2.5">
-                              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Unit</Label>
-                              <Select value={item.unitId} onValueChange={(val) => handleUnitSelect(idx, val)}>
-                                 <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold">
-                                    <SelectValue placeholder="Unit" />
-                                 </SelectTrigger>
-                                 <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                    {units.map(u => (
-                                       <SelectItem key={u._id} value={u._id}>{u.label || u.value}</SelectItem>
-                                    ))}
-                                 </SelectContent>
-                              </Select>
+
+                           {/* Fourth row: Item Images upload */}
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Attach Images (Optional)</Label>
+                              <div className="flex flex-wrap gap-3 items-center">
+                                 <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    id={`item-file-${item.id}`}
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                       const files = Array.from(e.target.files || [])
+                                       const readPromises = files.map(file => {
+                                          return new Promise((resolve) => {
+                                             const reader = new FileReader()
+                                             reader.onloadend = () => {
+                                                resolve({
+                                                   fileName: file.name,
+                                                   base64: reader.result as string
+                                                })
+                                             }
+                                             reader.readAsDataURL(file)
+                                          })
+                                       })
+                                       const results = await Promise.all(readPromises)
+                                       setItems(prev => prev.map((it, i) => i === idx ? {
+                                          ...it,
+                                          images: [...(it.images || []), ...results]
+                                       } : it))
+                                    }}
+                                 />
+                                 <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => document.getElementById(`item-file-${item.id}`)?.click()}
+                                    className="h-12 px-4 rounded-xl border-dashed border-zinc-200 hover:border-zinc-300 font-bold text-xs gap-1.5"
+                                 >
+                                    <Plus className="h-4 w-4" /> Upload
+                                 </Button>
+                                 
+                                 {/* Display selected images */}
+                                 {item.images?.map((img: any, imgIdx: number) => (
+                                    <div key={imgIdx} className="relative h-12 w-12 rounded-xl overflow-hidden border border-zinc-200 shadow-sm group">
+                                       <img src={img.base64} alt="Preview" className="h-full w-full object-cover" />
+                                       <button
+                                          type="button"
+                                          onClick={() => {
+                                             setItems(prev => prev.map((it, i) => i === idx ? {
+                                                ...it,
+                                                images: it.images.filter((_: any, k: number) => k !== imgIdx)
+                                             } : it))
+                                          }}
+                                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                                       >
+                                          <X className="h-4 w-4" />
+                                       </button>
+                                    </div>
+                                 ))}
+                              </div>
                            </div>
-                           {items.length > 1 && (
-                              <Button
-                                 type="button"
-                                 variant="ghost"
-                                 size="icon"
-                                 onClick={() => removeItem(item.id)}
-                                 className="h-14 w-14 rounded-2xl text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                              >
-                                 <Trash2 className="h-5 w-5" />
-                              </Button>
-                           )}
                         </motion.div>
                      ))}
                   </div>
-               </div>
-
-               {/* Storage Location */}
-               <div className="space-y-4">
-                  <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Storage Location Remark</Label>
-                  <Textarea
-                     placeholder="Where should the items be stored?"
-                     value={storageLocation}
-                     onChange={(e) => setStorageLocation(e.target.value)}
-                     className="min-h-[120px] rounded-[2rem] bg-white border-zinc-100 font-bold p-8 focus:ring-primary shadow-sm"
-                  />
                </div>
             </div>
 

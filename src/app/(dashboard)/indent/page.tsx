@@ -47,6 +47,16 @@ import { indentService } from "@/service/indents.api"
 import { unitService } from "@/service/unitService"
 import { exportIndentReceipt } from "@/lib/export-receipt"
 
+const getImageUrl = (filePath: string) => {
+  if (!filePath) return ""
+  if (filePath.startsWith("http")) return filePath
+  let cleanPath = filePath
+  if (filePath.startsWith("/uploads/")) {
+    cleanPath = `/api${filePath}`
+  }
+  return `http://localhost:9090${cleanPath}`
+}
+
 const mapBackendStatusToUI = (status: string) => {
   switch (status) {
     case "Pending": return "PENDING MANAGER"
@@ -69,8 +79,10 @@ export default function IndentPage() {
   const [approvingIndent, setApprovingIndent] = useState<any | null>(null)
   const [approvalItems, setApprovalItems] = useState<any[]>([])
   const [approveRemark, setApproveRemark] = useState("")
+  const [storageLocation, setStorageLocation] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [units, setUnits] = useState<any[]>([])
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   const fetchUnits = async () => {
     try {
@@ -87,6 +99,7 @@ export default function IndentPage() {
 
   useEffect(() => {
     if (approvingIndent) {
+      setStorageLocation(approvingIndent.storageLocation || "")
       setApprovalItems(
         (approvingIndent.items || []).map((item: any) => ({
           itemId: item.itemId?._id || item.itemId,
@@ -94,10 +107,14 @@ export default function IndentPage() {
           unitId: item.unitId?._id || item.unitId,
           unitName: item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units",
           quantity: item.quantity,
+          description: item.description || "",
+          status: "Approved",
+          images: item.images || []
         }))
       )
     } else {
       setApprovalItems([])
+      setStorageLocation("")
     }
   }, [approvingIndent])
 
@@ -135,7 +152,7 @@ export default function IndentPage() {
     return () => clearTimeout(delayDebounce)
   }, [searchTerm, selectedStatus])
 
-  const handleStatusChange = async (id: string, newStatus: string, reason?: string, items?: any[]) => {
+  const handleStatusChange = async (id: string, newStatus: string, reason?: string, items?: any[], storageLocationVal?: string) => {
     try {
       const payload: any = { status: newStatus }
       if (newStatus === "Rejected") {
@@ -144,6 +161,9 @@ export default function IndentPage() {
         payload.approveRemark = reason
         if (items) {
           payload.items = items
+        }
+        if (storageLocationVal !== undefined) {
+          payload.storageLocation = storageLocationVal
         }
       }
       await indentService.updateIndentStatus(id, payload)
@@ -176,28 +196,28 @@ export default function IndentPage() {
 
   const handleConfirmApprove = () => {
     if (!approvingIndent) return
-    if (!approveRemark.trim()) {
-      toast.error("Please enter a description for approval")
+    const approvedOnly = approvalItems.filter(i => i.status === "Approved")
+    if (approvedOnly.length === 0) {
+      toast.error("At least one item must be approved")
       return
     }
-    if (approvalItems.length === 0) {
-      toast.error("At least one item is required for approval")
-      return
-    }
-    if (approvalItems.some(i => !i.quantity || Number(i.quantity) <= 0)) {
-      toast.error("All quantities must be greater than 0")
+    if (approvedOnly.some(i => !i.quantity || Number(i.quantity) <= 0)) {
+      toast.error("All approved quantities must be greater than 0")
       return
     }
 
-    const formattedItems = approvalItems.map(i => ({
+    const formattedItems = approvedOnly.map(i => ({
       itemId: i.itemId,
       unitId: i.unitId,
-      quantity: Number(i.quantity)
+      quantity: Number(i.quantity),
+      description: i.description || "",
+      images: i.images || []
     }))
 
-    handleStatusChange(approvingIndent._id, "Approved", approveRemark, formattedItems)
+    handleStatusChange(approvingIndent._id, "Approved", approveRemark, formattedItems, storageLocation)
     setApprovingIndent(null)
     setApproveRemark("")
+    setStorageLocation("")
   }
 
   const handleCancelApprove = () => {
@@ -510,21 +530,103 @@ export default function IndentPage() {
               </div>
             </div>
             <DialogDescription className="text-zinc-400 text-xs font-bold uppercase tracking-wider leading-relaxed">
-              Please verify items list, adjust quantities, and provide a remark for approving this indent request.
+              Please verify items list, adjust quantities, approve/reject items individually, and provide a remark.
             </DialogDescription>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 pt-2 space-y-6 bg-zinc-50/10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-8 pt-4 space-y-6 bg-zinc-50/10 custom-scrollbar">
+            {/* Storage Location Input */}
+            <div className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Storage Location</Label>
+              <Input
+                placeholder="e.g. Store Room A, Site Office..."
+                value={storageLocation}
+                onChange={(e) => setStorageLocation(e.target.value)}
+                className="h-11 rounded-xl bg-zinc-50 border-zinc-100 focus:bg-white focus:ring-emerald-500 focus:border-emerald-500 font-bold px-4 text-xs"
+              />
+            </div>
+
             {/* Items modification section */}
             <div className="space-y-4">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Adjust Quantities / Remove Items</Label>
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Items List (Approve / Reject & Adjust)</Label>
               <div className="space-y-3">
                 {approvalItems.map((item, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm flex items-center justify-between gap-4">
-                    <div className="flex-1 flex flex-col min-w-0">
-                      <span className="font-bold text-zinc-950 text-sm truncate">{item.itemName}</span>
-                      <div className="w-28 mt-1">
+                  <div 
+                    key={idx} 
+                    className={cn(
+                      "p-5 rounded-2xl border transition-all space-y-3",
+                      item.status === "Rejected" 
+                        ? "bg-rose-50/20 border-rose-100/50 opacity-70" 
+                        : "bg-white border-zinc-100 shadow-sm"
+                    )}
+                  >
+                    {/* First row: Item Name and Status Buttons */}
+                    <div className="flex items-center justify-between border-b border-zinc-100/60 pb-2">
+                      <span className={cn(
+                        "font-black text-sm tracking-tight truncate",
+                        item.status === "Rejected" ? "text-rose-900/60 line-through" : "text-zinc-950"
+                      )}>
+                        {item.itemName}
+                      </span>
+                      
+                      <div className="flex items-center gap-1 bg-zinc-50 p-1 rounded-xl border border-zinc-100">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, status: "Approved" } : it))
+                          }}
+                          className={cn(
+                            "h-8 w-8 rounded-lg transition-all",
+                            item.status === "Approved" 
+                              ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600" 
+                              : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                          )}
+                          title="Approve Item"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, status: "Rejected" } : it))
+                          }}
+                          className={cn(
+                            "h-8 w-8 rounded-lg transition-all",
+                            item.status === "Rejected" 
+                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600" 
+                              : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100"
+                          )}
+                          title="Reject Item"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Second row: Quantity & Unit */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Quantity</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          disabled={item.status === "Rejected"}
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : 0
+                            setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: val } : it))
+                          }}
+                          className="h-10 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold focus:bg-white text-xs disabled:opacity-50 px-3"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Unit</Label>
                         <Select
+                          disabled={item.status === "Rejected"}
                           value={item.unitId}
                           onValueChange={(val) => {
                             const selectedUnit = units.find(u => (u._id || u.id) === val)
@@ -535,7 +637,7 @@ export default function IndentPage() {
                             } : it))
                           }}
                         >
-                          <SelectTrigger className="h-8 rounded-xl bg-zinc-50 border-none font-bold text-[10px] uppercase shadow-sm">
+                          <SelectTrigger className="h-10 rounded-xl bg-zinc-50 border-none font-bold text-xs uppercase shadow-sm disabled:opacity-50">
                             <SelectValue placeholder="Unit" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
@@ -548,37 +650,86 @@ export default function IndentPage() {
                         </Select>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+
+                    {/* Third row: Description */}
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Description</Label>
                       <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
+                        placeholder="Enter details..."
+                        disabled={item.status === "Rejected"}
+                        value={item.description || ""}
                         onChange={(e) => {
-                          const val = e.target.value ? Number(e.target.value) : 0
-                          setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: val } : it))
+                          const val = e.target.value
+                          setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, description: val } : it))
                         }}
-                        className="h-10 w-24 text-center rounded-xl bg-zinc-50 border-zinc-100 font-bold focus:bg-white text-xs"
+                        className="h-10 w-full rounded-xl bg-zinc-50 border-zinc-100 font-medium text-xs disabled:opacity-50 px-3"
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setApprovalItems(prev => prev.filter((_, i) => i !== idx))
-                        }}
-                        disabled={approvalItems.length <= 1}
-                        className="h-10 w-10 rounded-xl text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
+
+                    {/* Item-specific Images */}
+                    {item.images && item.images.length > 0 && (
+                      <div className="space-y-2 border-t border-zinc-100/60 pt-3">
+                        <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Item Images ({item.images.length})</span>
+                        <div className="flex flex-wrap gap-2">
+                          {item.images.map((img: any, imgIdx: number) => {
+                            const imgUrl = getImageUrl(img.filePath)
+                            return (
+                              <div 
+                                key={imgIdx} 
+                                onClick={() => setSelectedImage(imgUrl)}
+                                title={img.fileName || `Attachment ${imgIdx + 1}`}
+                                className="relative h-12 w-20 rounded-xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
+                              >
+                                <img 
+                                  src={imgUrl} 
+                                  alt={`Attachment ${imgIdx + 1}`} 
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <Eye className="h-4 w-4 text-white" />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Attached Images Section */}
+            {approvingIndent?.images && approvingIndent.images.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Attached Images ({approvingIndent.images.length})</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {approvingIndent.images.map((img: any, idx: number) => {
+                    const imgUrl = getImageUrl(img.filePath)
+                    return (
+                      <div 
+                        key={idx} 
+                        onClick={() => setSelectedImage(imgUrl)}
+                        title={img.fileName || `Attachment ${idx + 1}`}
+                        className="relative aspect-video rounded-2xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer hover:scale-[1.03] transition-all bg-zinc-50 group"
+                      >
+                        <img 
+                          src={imgUrl} 
+                          alt={`Attachment ${idx + 1}`} 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Eye className="h-4 w-4 text-white" />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Approval Description / Remark</Label>
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Approval Description / Remark (Optional)</Label>
               <Textarea
                 placeholder="e.g. Budget approved, specs verified, proceed with order..."
                 value={approveRemark}
@@ -603,6 +754,23 @@ export default function IndentPage() {
               Confirm Approve
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox Dialog */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => { if (!open) setSelectedImage(null) }}>
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden border-none bg-transparent shadow-none flex items-center justify-center">
+          {selectedImage && (
+            <div className="relative max-w-full max-h-[85vh] rounded-3xl overflow-hidden bg-black/95 p-1 flex items-center justify-center shadow-2xl">
+              <img src={selectedImage} alt="Preview" className="max-w-full max-h-[80vh] object-contain rounded-2xl" />
+              <button 
+                onClick={() => setSelectedImage(null)}
+                className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-all border border-white/10"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </ContentLayout>
