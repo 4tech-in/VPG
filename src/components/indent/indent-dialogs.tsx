@@ -39,7 +39,9 @@ import {
    DialogHeader,
    DialogTitle,
    DialogTrigger,
+   DialogDescription,
 } from "@/components/ui/dialog"
+import { ItemForm } from "@/components/item-form"
 import {
    Select,
    SelectContent,
@@ -342,6 +344,26 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [outsideAreas, setOutsideAreas] = useState<any[]>([])
 
    const [items, setItems] = useState<any[]>([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
+
+   const [isCreateItemOpen, setIsCreateItemOpen] = useState(false)
+   const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null)
+
+   const handleCreateItemSave = async (payload: any) => {
+      try {
+         const newItem = await itemService.createItem(payload)
+         // Refetch available items
+         const itemRes = await itemService.getItems({ limit: 200 })
+         setAvailableItems(itemRes.items || [])
+         
+         // Automatically select the new item in the active row
+         if (activeItemIndex !== null) {
+            handleItemSelect(activeItemIndex, newItem._id || newItem.id || "")
+         }
+         setIsCreateItemOpen(false)
+      } catch (err: any) {
+         // Error is handled/shown by the form submit or toast
+      }
+   }
 
    const addItem = () => setItems([...items, { id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
    const removeItem = (id: number) => setItems(items.filter(i => i.id !== id))
@@ -789,15 +811,32 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            key={item.id}
                            className="bg-zinc-50/50 p-6 rounded-2xl border border-zinc-100/80 space-y-4"
                         >
-                           {/* First row: Item selection and delete button */}
-                           <div className="flex items-end gap-4">
+                           {/* First row: Item selection and delete button */}                           <div className="flex items-end gap-4">
                               <div className="flex-1 space-y-2">
                                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Item</Label>
-                                 <Select value={item.itemId} onValueChange={(val) => handleItemSelect(idx, val)}>
+                                 <Select 
+                                    value={item.itemId} 
+                                    onValueChange={(val) => {
+                                       if (val === "CREATE_NEW_ITEM") {
+                                          setActiveItemIndex(idx)
+                                          setIsCreateItemOpen(true)
+                                       } else {
+                                          handleItemSelect(idx, val)
+                                       }
+                                    }}
+                                 >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
                                        <SelectValue placeholder="Select item" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                       <SelectItem 
+                                          value="CREATE_NEW_ITEM" 
+                                          className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
+                                       >
+                                          <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
+                                             <Plus className="h-3.5 w-3.5" /> Create New Item
+                                          </span>
+                                       </SelectItem>
                                        {availableItems.map(i => (
                                           <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
                                        ))}
@@ -930,6 +969,26 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                   Submit Request
                </Button>
             </div>
+
+            {/* Create Item Nested Dialog */}
+            <Dialog open={isCreateItemOpen} onOpenChange={setIsCreateItemOpen}>
+               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl bg-white p-6">
+                  <DialogHeader className="pb-4 border-b border-zinc-100 mb-6">
+                     <DialogTitle className="text-2xl font-black">Create Catalog Item</DialogTitle>
+                     <DialogDescription className="font-medium text-zinc-500">
+                        Initialize a new item record in the master inventory database.
+                     </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-2">
+                     {isCreateItemOpen && (
+                        <ItemForm
+                           onSuccess={() => setIsCreateItemOpen(false)}
+                           onSubmit={handleCreateItemSave}
+                        />
+                     )}
+                  </div>
+               </DialogContent>
+            </Dialog>
          </DialogContent>
       </Dialog>
    )

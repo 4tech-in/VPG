@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { usePurchaseOrders } from "@/hooks/use-purchase-orders"
 import { PurchaseOrder } from "@/service/purchaseOrderService"
 import { CreatePODialog } from "@/components/purchase-order/po-dialogs"
+import { exportPurchaseOrderReceipt } from "@/lib/export-receipt"
 
 export default function PurchaseOrderPage() {
   const router = useRouter()
@@ -70,24 +71,7 @@ export default function PurchaseOrderPage() {
         )
       },
     },
-    {
-      accessorKey: "items",
-      header: "Items",
-      cell: ({ row }) => {
-        const items = row.original.items || []
-        const previewText = items
-          .map(item => item.itemId?.name || item.itemId?.itemName || "Material")
-          .slice(0, 3)
-          .join(", ")
 
-        return (
-          <div className="flex flex-col">
-            <span className="font-bold text-zinc-900">{items.length} {items.length === 1 ? "Item" : "Items"}</span>
-            <span className="text-[10px] text-zinc-400 font-medium max-w-[200px] truncate">{previewText || "N/A"}</span>
-          </div>
-        )
-      },
-    },
     {
       accessorKey: "totalAmount",
       header: "Amount",
@@ -97,29 +81,7 @@ export default function PurchaseOrderPage() {
         </div>
       ),
     },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.getValue("status") as string
-        return (
-          <Badge className={cn(
-            "rounded-full px-4 py-1 font-black text-[9px] border shadow-sm uppercase tracking-wider",
-            status === "Draft" && "bg-zinc-100 text-zinc-600 border-zinc-200",
-            status === "PendingApproval" && "bg-amber-50 text-amber-600 border-amber-100",
-            status === "Approved" && "bg-blue-50 text-blue-600 border-blue-100",
-            status === "Rejected" && "bg-rose-50 text-rose-600 border-rose-100",
-            status === "Ordered" && "bg-indigo-50 text-indigo-600 border-indigo-100",
-            status === "PartiallyReceived" && "bg-orange-50 text-orange-600 border-orange-100",
-            status === "Received" && "bg-emerald-50 text-emerald-600 border-emerald-100",
-            status === "Issued" && "bg-teal-50 text-teal-600 border-teal-100",
-            status === "Cancelled" && "bg-zinc-50 text-zinc-400 border-zinc-150"
-          )}>
-            {status.replace(/([A-Z])/g, " $1").trim()}
-          </Badge>
-        )
-      },
-    },
+
     {
       accessorKey: "createdAt",
       header: "Date",
@@ -135,42 +97,40 @@ export default function PurchaseOrderPage() {
     },
     {
       id: "actions",
-      header: () => <div className="text-right pr-4">Action</div>,
+      header: () => <div className="text-center w-40 mx-auto">Action</div>,
       cell: ({ row }) => {
         const po = row.original
         const isCancellable = !["Received", "Issued", "Cancelled"].includes(po.status)
         return (
-          <div className="flex items-center justify-end gap-1 pr-4">
+          <div className="flex items-center justify-center gap-1.5 w-40 mx-auto">
              <Button 
                variant="ghost" 
-               size="icon" 
                onClick={() => router.push(`/purchase-order/${po._id || po.id}`)}
-               className="h-8 w-8 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-all"
+               className="h-7 px-2 rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-600 font-bold text-xs transition-all border border-zinc-200"
                title="View Details"
              >
-                <Eye className="h-4 w-4" />
+                View
              </Button>
              <Button 
                variant="ghost" 
-               size="icon" 
-               className="h-8 w-8 rounded-lg hover:bg-amber-50 text-zinc-400 hover:text-amber-600 transition-all"
+               onClick={() => exportPurchaseOrderReceipt(po)}
+               className="h-7 px-2 rounded-lg bg-amber-50/50 hover:bg-amber-100/80 text-amber-600 font-bold text-xs transition-all border border-amber-200/50"
                title="Print PO"
              >
-                <Printer className="h-4 w-4" />
+                Print
              </Button>
              {isCancellable && (
                <Button 
                  variant="ghost" 
-                 size="icon" 
                  onClick={() => {
                    if (confirm(`Are you sure you want to cancel purchase order ${po.poNo}?`)) {
                      cancelPO(po._id || po.id || "")
                    }
                  }}
-                 className="h-8 w-8 rounded-lg hover:bg-rose-50 text-zinc-400 hover:text-rose-600 transition-all"
+                 className="h-7 px-2 rounded-lg bg-rose-50/50 hover:bg-rose-100/80 text-rose-600 font-bold text-xs transition-all border border-rose-200/50"
                  title="Cancel Order"
                >
-                  <XCircle className="h-4 w-4" />
+                  Cancel
                </Button>
              )}
           </div>

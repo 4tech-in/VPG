@@ -290,3 +290,283 @@ export function exportIndentReceipt(indent: any) {
   printWindow.document.write(htmlContent);
   printWindow.document.close();
 }
+
+export function exportPurchaseOrderReceipt(po: any) {
+  if (!po) return;
+
+  const formattedCreated = po.createdAt ? new Date(po.createdAt).toLocaleDateString("en-IN") : "N/A";
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("Please allow popups to export the receipt.");
+    return;
+  }
+
+  const itemsHtml = (po.items || [])
+    .map(
+      (item: any, index: number) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: center; font-weight: bold;">${index + 1}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e4e4e7;">
+          <div style="font-weight: bold; color: #18181b;">${item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</div>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: center; font-weight: bold; color: #18181b;">${item.orderQuantity || item.indentQuantity}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: bold; color: #18181b;">₹${Number(item.rate || 0).toLocaleString("en-IN")}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: bold; color: #059669;">₹${Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0))).toLocaleString("en-IN")}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Purchase Order - ${po.poNo}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+          body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #18181b;
+            background: #ffffff;
+            margin: 0;
+            padding: 40px;
+            font-size: 13px;
+            line-height: 1.5;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+          .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #18181b;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            text-transform: uppercase;
+            color: #18181b;
+          }
+          .subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            color: #71717a;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+          }
+          .badge {
+            display: inline-block;
+            padding: 6px 16px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-radius: 9999px;
+            background-color: #dbeafe;
+            color: #2563eb;
+          }
+          .grid-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+          }
+          .section-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a1a1aa;
+            border-bottom: 1px solid #f4f4f5;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          .info-label {
+            color: #71717a;
+            font-weight: 500;
+          }
+          .info-val {
+            font-weight: 700;
+            color: #18181b;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+          }
+          th {
+            background-color: #f4f4f5;
+            color: #27272a;
+            font-weight: 800;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px;
+            border-bottom: 2px solid #e4e4e7;
+          }
+          .total-container {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 50px;
+          }
+          .total-box {
+            width: 250px;
+            border: 1px solid #e4e4e7;
+            border-radius: 12px;
+            padding: 16px;
+            background: #fafafa;
+          }
+          .footer-signs {
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+          }
+          .sign-box {
+            width: 200px;
+            text-align: center;
+          }
+          .sign-line {
+            border-top: 1.5px solid #a1a1aa;
+            margin-top: 40px;
+            padding-top: 8px;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #71717a;
+          }
+          .print-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #18181b;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            font-weight: 800;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+          }
+          .print-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+            background: #27272a;
+          }
+        </style>
+      </head>
+      <body>
+        <button class="print-btn no-print" onclick="window.print()">Print Receipt / PDF</button>
+
+        <div class="header-container">
+          <div>
+            <div class="logo-text">VPG Purchase Order</div>
+            <div class="subtitle">Material Procurement Document</div>
+          </div>
+          <div>
+            <div class="badge">${po.status || "Approved"}</div>
+          </div>
+        </div>
+
+        <div class="grid-info">
+          <div>
+            <div class="section-title">Order Information</div>
+            <div class="info-row">
+              <span class="info-label">PO Number</span>
+              <span class="info-val">#${po.poNo}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Order Date</span>
+              <span class="info-val">${formattedCreated}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Indent Ref</span>
+              <span class="info-val">${po.indentId?.indentId || po.indentId?.indentNo || "N/A"}</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-title">Vendor & Project</div>
+            <div class="info-row">
+              <span class="info-label">Vendor Name</span>
+              <span class="info-val">${po.vendorName}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Contact Mobile</span>
+              <span class="info-val">${po.vendorMobile || "N/A"}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Project</span>
+              <span class="info-val">${po.projectId?.projectName || po.projectId?.name || "N/A"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Ordered Items</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 60px;">No.</th>
+              <th style="text-align: left;">Item Description</th>
+              <th style="text-align: center; width: 120px;">Quantity</th>
+              <th style="text-align: right; width: 120px;">Rate</th>
+              <th style="text-align: right; width: 120px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="total-container">
+          <div class="total-box">
+            <div class="info-row" style="margin-bottom: 0; font-size: 15px; font-weight: 800;">
+              <span>Grand Total:</span>
+              <span style="color: #059669;">₹${Number(po.totalAmount || 0).toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-signs">
+          <div class="sign-box">
+            <div class="sign-line">Prepared By</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-line">Authorized Signatory</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+}

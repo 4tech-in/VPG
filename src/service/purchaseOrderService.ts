@@ -61,12 +61,13 @@ export const purchaseOrderService = {
     const queryString = query.toString()
     const response = await apiRequest<any>(`purchase-orders${queryString ? `?${queryString}` : ""}`)
     
+    const pos = Array.isArray(response) ? response : (response?.data || [])
     return {
-      success: response?.success ?? true,
-      data: response?.data || [],
-      total: response?.total || 0,
-      page: response?.page || 1,
-      totalPages: response?.totalPages || 1,
+      success: true,
+      data: pos,
+      total: pos.length,
+      page: 1,
+      totalPages: 1,
     }
   },
 
