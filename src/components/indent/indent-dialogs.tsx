@@ -159,6 +159,7 @@ export function ViewIndentDialog({
                      { label: "Tower", val: indent.towerId?.towerName || indent.towerId?.name || "N/A", icon: Layers },
                      !indent.outsideId && { label: "Floor / Flat", val: [indent.floorId?.floorName || indent.floorId?.name, indent.flatId?.flatName || indent.flatId?.name].filter(Boolean).join(" · ") || "N/A", icon: MapPin },
                      { label: "Storage Location", val: indent.storageLocation || "N/A", icon: Layers },
+                     { label: "Indent Type", val: indent.indentType ? (indent.indentType.charAt(0).toUpperCase() + indent.indentType.slice(1)) : "Item", icon: Layers },
                   ].filter(Boolean).map((item: any, i) => (
                      <div key={i} className="flex items-start gap-3">
                         <div className="h-9 w-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 shrink-0">
@@ -336,6 +337,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [priority, setPriority] = useState("medium")
    const [estimateDeliveryDate, setEstimateDeliveryDate] = useState("")
    const [storageLocation, setStorageLocation] = useState("")
+   const [indentType, setIndentType] = useState("item")
    const [locationTab, setLocationTab] = useState<"project" | "outside">("project")
    
    const [towers, setTowers] = useState<any[]>([])
@@ -507,6 +509,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          projectId,
          priority,
          estimateDeliveryDate: estimateDeliveryDate ? new Date(estimateDeliveryDate).toISOString() : null,
+         indentType,
          indentFor,
          towerId: towerId && towerId !== "none" ? towerId : null,
          floorId: floorId && floorId !== "none" ? floorId : null,
@@ -535,6 +538,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          setPriority("medium")
          setEstimateDeliveryDate("")
          setStorageLocation("")
+         setIndentType("item")
          setLocationTab("project")
          setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
          if (onSuccess) onSuccess()
@@ -597,6 +601,18 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                      </Select>
                   </div>
                   <div className="space-y-3">
+                     <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Indent Type</Label>
+                     <Select value={indentType} onValueChange={setIndentType}>
+                        <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
+                           <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                           <SelectItem value="item">Item</SelectItem>
+                           <SelectItem value="asset">Asset</SelectItem>
+                        </SelectContent>
+                     </Select>
+                  </div>
+                  <div className="space-y-3">
                       <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Estimate Delivery Date</Label>
                       <Input
                          type="date"
@@ -605,7 +621,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                          className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm px-4 appearance-none"
                       />
                    </div>
-                   <div className="space-y-3">
+                   <div className="space-y-3 col-span-2">
                       <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Storage Location</Label>
                       <Input
                          type="text"
