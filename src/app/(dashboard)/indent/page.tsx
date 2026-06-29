@@ -54,7 +54,13 @@ const getImageUrl = (filePath: string) => {
   if (filePath.startsWith("/uploads/")) {
     cleanPath = `/api${filePath}`
   }
-  return `http://localhost:9090${cleanPath}`
+  const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL}`
+  try {
+    const origin = new URL(baseUrl).origin
+    return `${origin}${cleanPath}`
+  } catch (e) {
+    return `http://localhost:9090${cleanPath}`
+  }
 }
 
 const mapBackendStatusToUI = (status: string) => {
@@ -82,20 +88,29 @@ export default function IndentPage() {
   const [storageLocation, setStorageLocation] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [units, setUnits] = useState<any[]>([])
+  const [unitsPage, setUnitsPage] = useState(1)
+  const [hasMoreUnits, setHasMoreUnits] = useState(true)
+  const [isLoadingUnits, setIsLoadingUnits] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
-  const fetchUnits = async () => {
+  const fetchUnits = async (pageToFetch = 1, reset = false) => {
+    if (isLoadingUnits || (!hasMoreUnits && !reset)) return
+    setIsLoadingUnits(true)
     try {
-      const res = await unitService.getUnits({ limit: 100 })
-      setUnits(res.units || [])
+      const res = await unitService.getUnits({ page: pageToFetch, limit: 10 })
+      const newUnits = res.units || []
+      
+      setUnits(prev => reset ? newUnits : [...prev, ...newUnits])
+      setUnitsPage(pageToFetch)
+      
+      const totalPages = res.pagination?.totalPages || 1
+      setHasMoreUnits(pageToFetch < totalPages)
     } catch (err) {
       console.error("Failed to fetch units:", err)
+    } finally {
+      setIsLoadingUnits(false)
     }
   }
-
-  useEffect(() => {
-    fetchUnits()
-  }, [])
 
   useEffect(() => {
     if (approvingIndent) {
@@ -115,6 +130,9 @@ export default function IndentPage() {
     } else {
       setApprovalItems([])
       setStorageLocation("")
+      setUnits([])
+      setUnitsPage(1)
+      setHasMoreUnits(true)
     }
   }, [approvingIndent])
 
@@ -293,9 +311,9 @@ export default function IndentPage() {
               <div className={cn(
                 "h-9 px-4 rounded-xl flex items-center justify-center font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm w-[160px]",
                 status === "Approved" ? "bg-blue-50 text-blue-600" :
-                status === "ConvertedToPO" ? "bg-emerald-50 text-emerald-600" :
-                status === "Rejected" ? "bg-rose-50 text-rose-500" :
-                "bg-amber-50 text-amber-600"
+                  status === "ConvertedToPO" ? "bg-emerald-50 text-emerald-600" :
+                    status === "Rejected" ? "bg-rose-50 text-rose-500" :
+                      "bg-amber-50 text-amber-600"
               )}>
                 <div className="flex items-center gap-2">
                   {(status === "Approved" || status === "ManagerApproved" || status === "Pending") && <Clock className="h-3 w-3" />}
@@ -465,7 +483,7 @@ export default function IndentPage() {
             data={data}
           />
         )}
-        
+
       </div>
 
       {/* Reject Indent Dialog */}
@@ -551,12 +569,12 @@ export default function IndentPage() {
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Items List (Approve / Reject & Adjust)</Label>
               <div className="space-y-3">
                 {approvalItems.map((item, idx) => (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className={cn(
                       "p-5 rounded-2xl border transition-all space-y-3",
-                      item.status === "Rejected" 
-                        ? "bg-rose-50/20 border-rose-100/50 opacity-70" 
+                      item.status === "Rejected"
+                        ? "bg-rose-50/20 border-rose-100/50 opacity-70"
                         : "bg-white border-zinc-100 shadow-sm"
                     )}
                   >
@@ -568,7 +586,7 @@ export default function IndentPage() {
                       )}>
                         {item.itemName}
                       </span>
-                      
+
                       <div className="flex items-center gap-1 bg-zinc-50 p-1 rounded-xl border border-zinc-100">
                         <Button
                           type="button"
@@ -579,8 +597,8 @@ export default function IndentPage() {
                           }}
                           className={cn(
                             "h-8 w-8 rounded-lg transition-all",
-                            item.status === "Approved" 
-                              ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600" 
+                            item.status === "Approved"
+                              ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
                               : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
                           )}
                           title="Approve Item"
@@ -596,8 +614,8 @@ export default function IndentPage() {
                           }}
                           className={cn(
                             "h-8 w-8 rounded-lg transition-all",
-                            item.status === "Rejected" 
-                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600" 
+                            item.status === "Rejected"
+                              ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
                               : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100"
                           )}
                           title="Reject Item"
@@ -636,11 +654,26 @@ export default function IndentPage() {
                               unitName: selectedUnit?.label || selectedUnit?.value || "Units"
                             } : it))
                           }}
+                          onOpenChange={(open) => {
+                            if (open && units.length === 0) {
+                              fetchUnits(1, true)
+                            }
+                          }}
                         >
                           <SelectTrigger className="h-10 rounded-xl bg-zinc-50 border-none font-bold text-xs uppercase shadow-sm disabled:opacity-50">
                             <SelectValue placeholder="Unit" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                          <SelectContent 
+                            className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
+                            onScroll={(e) => {
+                              const target = e.currentTarget
+                              if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
+                                if (hasMoreUnits && !isLoadingUnits) {
+                                  fetchUnits(unitsPage + 1)
+                                }
+                              }
+                            }}
+                          >
                             {units.map((u) => (
                               <SelectItem key={u._id || u.id} value={u._id || u.id} className="text-[10px] font-bold uppercase py-2">
                                 {u.label || u.value}
@@ -674,15 +707,15 @@ export default function IndentPage() {
                           {item.images.map((img: any, imgIdx: number) => {
                             const imgUrl = getImageUrl(img.filePath)
                             return (
-                              <div 
-                                key={imgIdx} 
+                              <div
+                                key={imgIdx}
                                 onClick={() => setSelectedImage(imgUrl)}
                                 title={img.fileName || `Attachment ${imgIdx + 1}`}
                                 className="relative h-12 w-20 rounded-xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
                               >
-                                <img 
-                                  src={imgUrl} 
-                                  alt={`Attachment ${imgIdx + 1}`} 
+                                <img
+                                  src={imgUrl}
+                                  alt={`Attachment ${imgIdx + 1}`}
                                   className="w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -707,15 +740,15 @@ export default function IndentPage() {
                   {approvingIndent.images.map((img: any, idx: number) => {
                     const imgUrl = getImageUrl(img.filePath)
                     return (
-                      <div 
-                        key={idx} 
+                      <div
+                        key={idx}
                         onClick={() => setSelectedImage(imgUrl)}
                         title={img.fileName || `Attachment ${idx + 1}`}
                         className="relative aspect-video rounded-2xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer hover:scale-[1.03] transition-all bg-zinc-50 group"
                       >
-                        <img 
-                          src={imgUrl} 
-                          alt={`Attachment ${idx + 1}`} 
+                        <img
+                          src={imgUrl}
+                          alt={`Attachment ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -763,7 +796,7 @@ export default function IndentPage() {
           {selectedImage && (
             <div className="relative max-w-full max-h-[85vh] rounded-3xl overflow-hidden bg-black/95 p-1 flex items-center justify-center shadow-2xl">
               <img src={selectedImage} alt="Preview" className="max-w-full max-h-[80vh] object-contain rounded-2xl" />
-              <button 
+              <button
                 onClick={() => setSelectedImage(null)}
                 className="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white p-2 rounded-full backdrop-blur-md transition-all border border-white/10"
               >

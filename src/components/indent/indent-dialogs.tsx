@@ -9,6 +9,7 @@ import { itemService } from "@/service/itemService"
 import { unitService } from "@/service/unitService"
 import { indentService } from "@/service/indents.api"
 import { outsideService } from "@/service/outsideService"
+import { assetService } from "@/service/assets.api"
 import { toast } from "sonner"
 import {
    Building2,
@@ -40,6 +41,7 @@ import {
    DialogTitle,
    DialogTrigger,
    DialogDescription,
+   DialogFooter,
 } from "@/components/ui/dialog"
 import { ItemForm } from "@/components/item-form"
 import {
@@ -59,7 +61,13 @@ const getImageUrl = (filePath: string) => {
   if (filePath.startsWith("/uploads/")) {
     cleanPath = `/api${filePath}`
   }
-  return `http://localhost:9090${cleanPath}`
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:9090/api/"
+  try {
+    const origin = new URL(baseUrl).origin
+    return `${origin}${cleanPath}`
+  } catch (e) {
+    return `http://localhost:9090${cleanPath}`
+  }
 }
 
 // --- VIEW INDENT DIALOG ---
@@ -198,7 +206,9 @@ export function ViewIndentDialog({
                <div className="space-y-4">
                   <div className="flex items-center gap-3">
                      <div className="h-1 w-4 rounded-full bg-emerald-500" />
-                     <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Requested Items</h4>
+                     <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">
+                        {indent.indentType === "asset" || indent.indentType === "assets" ? "Requested Assets" : "Requested Items"}
+                     </h4>
                   </div>
 
                   {indent.items?.map((item: any, i: number) => (
@@ -326,8 +336,24 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [open, setOpen] = useState(false)
    
    const [projects, setProjects] = useState<any[]>([])
+   const [projectsPage, setProjectsPage] = useState(1)
+   const [hasMoreProjects, setHasMoreProjects] = useState(true)
+   const [isLoadingProjects, setIsLoadingProjects] = useState(false)
+
    const [availableItems, setAvailableItems] = useState<any[]>([])
+   const [itemsPage, setItemsPage] = useState(1)
+   const [hasMoreItems, setHasMoreItems] = useState(true)
+   const [isLoadingItems, setIsLoadingItems] = useState(false)
+
+   const [availableAssets, setAvailableAssets] = useState<any[]>([])
+   const [assetsPage, setAssetsPage] = useState(1)
+   const [hasMoreAssets, setHasMoreAssets] = useState(true)
+   const [isLoadingAssets, setIsLoadingAssets] = useState(false)
+
    const [units, setUnits] = useState<any[]>([])
+   const [unitsPage, setUnitsPage] = useState(1)
+   const [hasMoreUnits, setHasMoreUnits] = useState(true)
+   const [isLoadingUnits, setIsLoadingUnits] = useState(false)
    
    const [projectId, setProjectId] = useState("")
    const [towerId, setTowerId] = useState("")
@@ -348,6 +374,11 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [items, setItems] = useState<any[]>([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
 
    const [isCreateItemOpen, setIsCreateItemOpen] = useState(false)
+   const [isCreateAssetOpen, setIsCreateAssetOpen] = useState(false)
+   const [newAssetName, setNewAssetName] = useState("")
+   const [newAssetType, setNewAssetType] = useState("Equipment")
+   const [newAssetSerialNumber, setNewAssetSerialNumber] = useState("")
+   const [newAssetExtraNote, setNewAssetExtraNote] = useState("")
    const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null)
 
    const handleCreateItemSave = async (payload: any) => {
@@ -367,28 +398,136 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
       }
    }
 
+   const handleCreateAssetSave = async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!newAssetName.trim() || !newAssetType.trim()) {
+         toast.error("Asset Name and Type are required")
+         return
+      }
+      try {
+         const newAsset = await assetService.createAsset({
+            name: newAssetName,
+            type: newAssetType,
+            serialNumber: newAssetSerialNumber || undefined,
+            status: "Returned",
+            extraNote: newAssetExtraNote
+         })
+         
+         // Refetch assets
+         const assetRes = await assetService.getAssets({ limit: 200 })
+         setAvailableAssets(assetRes.assets || assetRes.data || assetRes || [])
+         
+         // Automatically select the new asset in the active row
+         if (activeItemIndex !== null) {
+            handleItemSelect(activeItemIndex, newAsset._id || newAsset.id || "")
+         }
+         setIsCreateAssetOpen(false)
+         // Reset form
+         setNewAssetName("")
+         setNewAssetType("Equipment")
+         setNewAssetSerialNumber("")
+         setNewAssetExtraNote("")
+         toast.success("New asset created and selected successfully")
+      } catch (err: any) {
+         toast.error(err.message || "Failed to create asset")
+      }
+   }
+
    const addItem = () => setItems([...items, { id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
    const removeItem = (id: number) => setItems(items.filter(i => i.id !== id))
 
-   useEffect(() => {
-      const loadInitial = async () => {
-         try {
-            const [projRes, itemRes, unitRes] = await Promise.all([
-               projectService.getProjects({ limit: 100 }),
-               itemService.getItems({ limit: 200 }),
-               unitService.getUnits({ limit: 100 })
-            ])
-            setProjects(projRes.projects || [])
-            setAvailableItems(itemRes.items || [])
-            setUnits(unitRes.units || [])
-         } catch (err: any) {
-            console.error(err)
-         }
+   const fetchProjects = async (pageToFetch = 1, reset = false) => {
+      if (isLoadingProjects || (!hasMoreProjects && !reset)) return
+      setIsLoadingProjects(true)
+      try {
+         const res = await projectService.getProjects({ page: pageToFetch, limit: 10 })
+         const newProjects = res.projects || []
+         setProjects(prev => reset ? newProjects : [...prev, ...newProjects])
+         setProjectsPage(pageToFetch)
+         const totalPages = res.pagination?.totalPages || 1
+         setHasMoreProjects(pageToFetch < totalPages)
+      } catch (err) {
+         console.error("Failed to fetch projects:", err)
+      } finally {
+         setIsLoadingProjects(false)
       }
-      if (open) {
-         loadInitial()
+   }
+
+   const fetchItems = async (pageToFetch = 1, reset = false) => {
+      if (isLoadingItems || (!hasMoreItems && !reset)) return
+      setIsLoadingItems(true)
+      try {
+         const res = await itemService.getItems({ page: pageToFetch, limit: 10 })
+         const newItems = res.items || []
+         setAvailableItems(prev => reset ? newItems : [...prev, ...newItems])
+         setItemsPage(pageToFetch)
+         const totalPages = res.pagination?.totalPages || 1
+         setHasMoreItems(pageToFetch < totalPages)
+      } catch (err) {
+         console.error("Failed to fetch items:", err)
+      } finally {
+         setIsLoadingItems(false)
+      }
+   }
+
+   const fetchAssets = async (pageToFetch = 1, reset = false) => {
+      if (isLoadingAssets || (!hasMoreAssets && !reset)) return
+      setIsLoadingAssets(true)
+      try {
+         const res = await assetService.getAssets({ page: pageToFetch, limit: 10 })
+         const newAssets = res.data || []
+         setAvailableAssets(prev => reset ? newAssets : [...prev, ...newAssets])
+         setAssetsPage(pageToFetch)
+         const total = res.pagination?.total || 0
+         const totalPages = Math.ceil(total / 10) || 1
+         setHasMoreAssets(pageToFetch < totalPages)
+      } catch (err) {
+         console.error("Failed to fetch assets:", err)
+      } finally {
+         setIsLoadingAssets(false)
+      }
+   }
+
+   const fetchUnits = async (pageToFetch = 1, reset = false) => {
+      if (isLoadingUnits || (!hasMoreUnits && !reset)) return
+      setIsLoadingUnits(true)
+      try {
+         const res = await unitService.getUnits({ page: pageToFetch, limit: 10 })
+         const newUnits = res.units || []
+         setUnits(prev => reset ? newUnits : [...prev, ...newUnits])
+         setUnitsPage(pageToFetch)
+         const totalPages = res.pagination?.totalPages || 1
+         setHasMoreUnits(pageToFetch < totalPages)
+      } catch (err) {
+         console.error("Failed to fetch units:", err)
+      } finally {
+         setIsLoadingUnits(false)
+      }
+   }
+
+   useEffect(() => {
+      if (!open) {
+         setProjects([])
+         setProjectsPage(1)
+         setHasMoreProjects(true)
+         
+         setAvailableItems([])
+         setItemsPage(1)
+         setHasMoreItems(true)
+         
+         setAvailableAssets([])
+         setAssetsPage(1)
+         setHasMoreAssets(true)
+         
+         setUnits([])
+         setUnitsPage(1)
+         setHasMoreUnits(true)
       }
    }, [open])
+
+   useEffect(() => {
+      setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
+   }, [indentType])
 
     // Fetch towers and outsides when project changes
     useEffect(() => {
@@ -460,7 +599,9 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    }, [floorId])
 
    const handleItemSelect = (index: number, itemId: string) => {
-      const selectedItemObj = availableItems.find(i => i._id === itemId)
+      const selectedItemObj = indentType === "item"
+         ? availableItems.find(i => i._id === itemId)
+         : availableAssets.find(a => a._id === itemId)
       const defaultUnitId = selectedItemObj?.unitId?._id || selectedItemObj?.unitId || ""
       
       setItems(prev => prev.map((item, idx) => idx === index ? {
@@ -567,11 +708,29 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
                      <Label className="text-[11px] font-black text-zinc-900 uppercase tracking-tight">Project</Label>
-                     <Select value={projectId} onValueChange={setProjectId}>
+                      <Select 
+                         value={projectId} 
+                         onValueChange={setProjectId}
+                         onOpenChange={(open) => {
+                            if (open && projects.length === 0) {
+                               fetchProjects(1, true)
+                            }
+                         }}
+                      >
                         <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold shadow-sm">
                            <SelectValue placeholder="Select project" />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                        <SelectContent 
+                           className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
+                           onScroll={(e) => {
+                              const target = e.currentTarget
+                              if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
+                                 if (hasMoreProjects && !isLoadingProjects) {
+                                    fetchProjects(projectsPage + 1)
+                                 }
+                              }
+                           }}
+                        >
                            {projects.map(p => (
                               <SelectItem key={p._id} value={p._id}>{p.projectName || p.name}</SelectItem>
                            ))}
@@ -829,33 +988,80 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                         >
                            {/* First row: Item selection and delete button */}                           <div className="flex items-end gap-4">
                               <div className="flex-1 space-y-2">
-                                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Item</Label>
+                                 <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                    {indentType === "item" ? "Select Item" : "Select Asset"}
+                                 </Label>
                                  <Select 
                                     value={item.itemId} 
                                     onValueChange={(val) => {
                                        if (val === "CREATE_NEW_ITEM") {
                                           setActiveItemIndex(idx)
                                           setIsCreateItemOpen(true)
+                                       } else if (val === "CREATE_NEW_ASSET") {
+                                          setActiveItemIndex(idx)
+                                          setIsCreateAssetOpen(true)
                                        } else {
                                           handleItemSelect(idx, val)
                                        }
                                     }}
+                                    onOpenChange={(open) => {
+                                       if (open) {
+                                          if (indentType === "item" && availableItems.length === 0) {
+                                             fetchItems(1, true)
+                                          } else if (indentType === "asset" && availableAssets.length === 0) {
+                                             fetchAssets(1, true)
+                                          }
+                                       }
+                                    }}
                                  >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
-                                       <SelectValue placeholder="Select item" />
+                                       <SelectValue placeholder={indentType === "item" ? "Select item" : "Select asset"} />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                                       <SelectItem 
-                                          value="CREATE_NEW_ITEM" 
-                                          className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
-                                       >
-                                          <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
-                                             <Plus className="h-3.5 w-3.5" /> Create New Item
-                                          </span>
-                                       </SelectItem>
-                                       {availableItems.map(i => (
-                                          <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
-                                       ))}
+                                    <SelectContent 
+                                       className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
+                                       onScroll={(e) => {
+                                          const target = e.currentTarget
+                                          if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
+                                             if (indentType === "item") {
+                                                if (hasMoreItems && !isLoadingItems) {
+                                                   fetchItems(itemsPage + 1)
+                                                }
+                                             } else {
+                                                if (hasMoreAssets && !isLoadingAssets) {
+                                                   fetchAssets(assetsPage + 1)
+                                                }
+                                             }
+                                          }
+                                       }}
+                                    >
+                                       {indentType === "item" ? (
+                                          <SelectItem 
+                                             value="CREATE_NEW_ITEM" 
+                                             className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
+                                          >
+                                             <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
+                                                <Plus className="h-3.5 w-3.5" /> Create New Item
+                                             </span>
+                                          </SelectItem>
+                                       ) : (
+                                          <SelectItem 
+                                             value="CREATE_NEW_ASSET" 
+                                             className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
+                                          >
+                                             <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
+                                                <Plus className="h-3.5 w-3.5" /> Create New Asset
+                                             </span>
+                                          </SelectItem>
+                                       )}
+                                       {indentType === "item" ? (
+                                          availableItems.map(i => (
+                                             <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
+                                          ))
+                                       ) : (
+                                          availableAssets.map(a => (
+                                             <SelectItem key={a._id} value={a._id}>{a.name}</SelectItem>
+                                          ))
+                                       )}
                                     </SelectContent>
                                  </Select>
                               </div>
@@ -886,11 +1092,29 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                               </div>
                               <div className="space-y-2">
                                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Unit</Label>
-                                 <Select value={item.unitId} onValueChange={(val) => handleUnitSelect(idx, val)}>
+                                 <Select 
+                                    value={item.unitId} 
+                                    onValueChange={(val) => handleUnitSelect(idx, val)}
+                                    onOpenChange={(open) => {
+                                       if (open && units.length === 0) {
+                                          fetchUnits(1, true)
+                                       }
+                                    }}
+                                 >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
                                        <SelectValue placeholder="Unit" />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
+                                    <SelectContent 
+                                       className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
+                                       onScroll={(e) => {
+                                          const target = e.currentTarget
+                                          if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
+                                             if (hasMoreUnits && !isLoadingUnits) {
+                                                fetchUnits(unitsPage + 1)
+                                             }
+                                          }
+                                       }}
+                                    >
                                        {units.map(u => (
                                           <SelectItem key={u._id} value={u._id}>{u.label || u.value}</SelectItem>
                                        ))}
@@ -1003,6 +1227,72 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                         />
                      )}
                   </div>
+               </DialogContent>
+            </Dialog>
+
+            {/* Create Asset Nested Dialog */}
+            <Dialog open={isCreateAssetOpen} onOpenChange={setIsCreateAssetOpen}>
+               <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-3xl border-none shadow-2xl bg-white p-6">
+                  <DialogHeader className="pb-4 border-b border-zinc-100 mb-6">
+                     <DialogTitle className="text-2xl font-black">Create Asset</DialogTitle>
+                     <DialogDescription className="font-medium text-zinc-500">
+                        Create a new asset in the system database.
+                     </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateAssetSave} className="space-y-6 py-2">
+                     <div className="space-y-2">
+                        <Label className="text-xs font-bold text-zinc-700">Asset Name *</Label>
+                        <Input
+                           required
+                           type="text"
+                           placeholder="Enter asset name"
+                           value={newAssetName}
+                           onChange={(e) => setNewAssetName(e.target.value)}
+                           className="h-12 rounded-xl bg-zinc-50 border-zinc-100"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <Label className="text-xs font-bold text-zinc-700">Type *</Label>
+                        <Select value={newAssetType} onValueChange={setNewAssetType}>
+                           <SelectTrigger className="h-12 rounded-xl bg-zinc-50 border-zinc-100">
+                              <SelectValue placeholder="Select type" />
+                           </SelectTrigger>
+                           <SelectContent className="bg-white">
+                              <SelectItem value="Equipment">Equipment</SelectItem>
+                              <SelectItem value="Tool">Tool</SelectItem>
+                              <SelectItem value="Vehicle">Vehicle</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                           </SelectContent>
+                        </Select>
+                     </div>
+                     <div className="space-y-2">
+                        <Label className="text-xs font-bold text-zinc-700">Serial Number (Optional)</Label>
+                        <Input
+                           type="text"
+                           placeholder="Enter serial number"
+                           value={newAssetSerialNumber}
+                           onChange={(e) => setNewAssetSerialNumber(e.target.value)}
+                           className="h-12 rounded-xl bg-zinc-50 border-zinc-100"
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <Label className="text-xs font-bold text-zinc-700">Extra Notes (Optional)</Label>
+                        <Textarea
+                           placeholder="Enter any additional information..."
+                           value={newAssetExtraNote}
+                           onChange={(e) => setNewAssetExtraNote(e.target.value)}
+                           className="rounded-xl bg-zinc-50 border-zinc-100"
+                        />
+                     </div>
+                     <DialogFooter className="pt-4 border-t border-zinc-100">
+                        <Button type="button" variant="ghost" onClick={() => setIsCreateAssetOpen(false)}>
+                           Cancel
+                        </Button>
+                        <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
+                           Create Asset
+                        </Button>
+                     </DialogFooter>
+                  </form>
                </DialogContent>
             </Dialog>
          </DialogContent>

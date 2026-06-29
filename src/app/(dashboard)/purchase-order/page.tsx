@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { usePurchaseOrders } from "@/hooks/use-purchase-orders"
 import { PurchaseOrder } from "@/service/purchaseOrderService"
-import { CreatePODialog } from "@/components/purchase-order/po-dialogs"
 import { exportPurchaseOrderReceipt } from "@/lib/export-receipt"
 
 export default function PurchaseOrderPage() {
@@ -93,6 +92,29 @@ export default function PurchaseOrderPage() {
           day: "numeric"
         }) : "N/A"
         return <div className="text-[11px] font-bold text-zinc-500">{date}</div>
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string
+        return (
+          <Badge
+            className={cn(
+              "px-3 py-1 rounded-full font-black text-[9px] gap-1.5 border-none shadow-sm uppercase tracking-wider",
+              status === "Approved" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" :
+              status === "Ordered" ? "bg-amber-100 text-amber-700 hover:bg-amber-100" :
+              status === "Received" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
+              status === "PartiallyReceived" ? "bg-teal-100 text-teal-700 hover:bg-teal-100" :
+              status === "Issued" ? "bg-purple-100 text-purple-700 hover:bg-purple-100" :
+              status === "Cancelled" ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
+              "bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
+            )}
+          >
+            {status || "Draft"}
+          </Badge>
+        )
       },
     },
     {
@@ -164,16 +186,12 @@ export default function PurchaseOrderPage() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
               </div>
 
-              <CreatePODialog
-                onSuccess={refetch}
-                trigger={
-                  <Button 
-                    className="h-11 px-6 rounded-xl bg-primary font-black shadow-lg shadow-primary/20 gap-2 text-white"
-                  >
-                     <Plus className="h-4 w-4" /> Create New Order
-                  </Button>
-                }
-              />
+              <Button 
+                onClick={() => router.push("/purchase-order/new")}
+                className="h-11 px-6 rounded-xl bg-primary font-black shadow-lg shadow-primary/20 gap-2 text-white"
+              >
+                 <Plus className="h-4 w-4" /> Create New Order
+              </Button>
            </div>
         </div>
 

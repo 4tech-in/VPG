@@ -56,6 +56,14 @@ function CreatePOContent() {
    const [items, setItems] = useState<any[]>([])
    const [isDataLoading, setIsDataLoading] = useState(true)
 
+   // Form inputs state
+   const [dropLocation, setDropLocation] = useState("Site A - Main Store")
+   const [remark, setRemark] = useState("")
+   const [notes, setNotes] = useState("")
+   const [validFrom, setValidFrom] = useState("2026-05-12")
+   const [validTo, setValidTo] = useState("2026-06-01")
+   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("")
+
    const calledRef = useRef(false)
 
    const handleIndentSelect = async (val: string) => {
@@ -133,6 +141,10 @@ function CreatePOContent() {
       setSelectedVendorId(val)
    }
 
+   const handleQtyChange = (idx: number, val: number) => {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, qty: val } : item))
+   }
+
    const handlePriceChange = (idx: number, val: number) => {
       setItems(prev => prev.map((item, i) => i === idx ? { ...item, price: val } : item))
    }
@@ -152,6 +164,11 @@ function CreatePOContent() {
          return
       }
 
+      if (items.some(item => (Number(item.qty) || 0) <= 0)) {
+         toast.error("All items must have a quantity greater than 0")
+         return
+      }
+
       try {
          await purchaseOrderService.createPurchaseOrder({
             indentId: selectedIndentId,
@@ -167,6 +184,11 @@ function CreatePOContent() {
                rate: item.price,
                description: item.description || ""
             })),
+            validFrom: validFrom || null,
+            validTo: validTo || null,
+            expectedDeliveryDate: expectedDeliveryDate || null,
+            remark: remark || null,
+            notes: notes || null,
             bypassApproval: true
          })
          toast.success("Purchase Order created successfully")
@@ -302,8 +324,19 @@ function CreatePOContent() {
                                                    className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold focus-visible:ring-teal-500 focus:bg-white" 
                                                 />
                                              </td>
-                                             <td className="px-6 py-4 text-center">
-                                                <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">{item.qty} {item.unit}</span>
+                                             <td className="px-6 py-4 text-center w-36">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                   <Input 
+                                                      type="number" 
+                                                      min="0.001"
+                                                      step="any"
+                                                      value={item.qty} 
+                                                      onWheel={(e) => e.currentTarget.blur()}
+                                                      onChange={(e) => handleQtyChange(idx, e.target.value === "" ? 0 : Number(e.target.value))}
+                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-teal-500 focus:bg-white w-20" 
+                                                   />
+                                                   <span className="text-[10px] font-bold text-zinc-500">{item.unit}</span>
+                                                </div>
                                              </td>
                                              <td className="px-6 py-4 text-center w-36">
                                                 <div className="relative">
@@ -351,15 +384,15 @@ function CreatePOContent() {
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid From</Label>
-                                       <Input type="date" defaultValue="2026-05-12" className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid To</Label>
-                                       <Input type="date" defaultValue="2026-06-01" className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Est. Delivery Date</Label>
-                                       <Input type="date" className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
                                     </div>
                                  </div>
                               </motion.div>
@@ -466,6 +499,25 @@ function CreatePOContent() {
                                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">INTERNAL ORDER REMARKS</h4>
                                  <Textarea
                                     placeholder="Add general remarks about this purchase order..."
+                                    value={remark}
+                                    onChange={(e) => setRemark(e.target.value)}
+                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-teal-500 focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
+                                 />
+                              </motion.div>
+                           )}
+                           {activeTab === "notes" && (
+                              <motion.div
+                                 key="notes"
+                                 initial={{ opacity: 0, x: -10 }}
+                                 animate={{ opacity: 1, x: 0 }}
+                                 exit={{ opacity: 0, x: 10 }}
+                                 className="flex flex-col gap-4"
+                              >
+                                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">ORDER NOTES</h4>
+                                 <Textarea
+                                    placeholder="Add notes for this purchase order..."
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
                                     className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-teal-500 focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
                                  />
                               </motion.div>
@@ -536,7 +588,8 @@ function CreatePOContent() {
                      </div>
                      <Textarea
                         placeholder="Specify delivery drop location"
-                        defaultValue={activeVendor ? "Site A - Main Store" : ""}
+                        value={dropLocation}
+                        onChange={(e) => setDropLocation(e.target.value)}
                         className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-6 font-bold text-xs focus:ring-teal-500 transition-all shadow-inner placeholder:text-zinc-300"
                      />
                   </div>
