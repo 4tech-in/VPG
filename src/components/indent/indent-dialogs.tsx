@@ -76,14 +76,30 @@ export function ViewIndentDialog({
   trigger,
   indent,
   onStatusChange,
+  user,
 }: {
   trigger: React.ReactNode
   indent: any
-  onStatusChange?: (id: string, newStatus: string, reason?: string) => void
+  onStatusChange?: (id: string, newStatus: string, reason?: string, items?: any[], storageLocation?: string) => void
+  user?: any
 }) {
    const [open, setOpen] = useState(false)
    const [remark, setRemark] = useState("")
+   const [storageLocation, setStorageLocation] = useState("")
    const [selectedImage, setSelectedImage] = useState<string | null>(null)
+   const [itemStatuses, setItemStatuses] = useState<Record<number, "Approved" | "Rejected">>({})
+
+   useEffect(() => {
+      if (open && indent?.items) {
+         const initial: Record<number, "Approved" | "Rejected"> = {}
+         indent.items.forEach((_: any, idx: number) => {
+            initial[idx] = "Approved"
+         })
+         setItemStatuses(initial)
+         setStorageLocation(indent.storageLocation || "")
+         setRemark("")
+      }
+   }, [open, indent])
 
    if (!indent) return null
 
@@ -92,14 +108,35 @@ export function ViewIndentDialog({
                         indent.status === "Approved" ? "APPROVED" :
                         indent.status === "ConvertedToPO" ? "PO CREATED" : "REJECTED"
 
+   const isAdmin = user?.roleId?.name?.toLowerCase() === "admin"
+   const canTakeAction = isAdmin ? (indent.status === "ManagerApproved") : (indent.status === "Pending")
+
    const handleApprove = () => {
+      const approvedItems = indent.items.filter((item: any, idx: number) => itemStatuses[idx] === "Approved")
+      if (approvedItems.length === 0) {
+         toast.error("At least one item must be approved. To reject the whole indent, use the 'Reject Entire Indent' button.")
+         return
+      }
+
+      const formattedItems = approvedItems.map((i: any) => ({
+         itemId: i.itemId?._id || i.itemId,
+         unitId: i.unitId?._id || i.unitId,
+         quantity: Number(i.quantity),
+         description: i.description || "",
+         images: i.images || []
+      }))
+
       if (onStatusChange) {
-         onStatusChange(indent._id, "Approved", remark)
+         onStatusChange(indent._id, "Approved", remark, formattedItems, storageLocation)
       }
       setOpen(false)
    }
 
    const handleReject = () => {
+      if (!remark.trim()) {
+         toast.error("Please enter a rejection reason in the remark/reason field")
+         return
+      }
       if (onStatusChange) {
          onStatusChange(indent._id, "Rejected", remark)
       }
@@ -112,7 +149,7 @@ export function ViewIndentDialog({
    return (
       <Dialog open={open} onOpenChange={setOpen}>
          <DialogTrigger asChild>{trigger}</DialogTrigger>
-         <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] flex flex-col mx-4 bg-white">
+         <DialogContent className="sm:max-w-[1000px] w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl rounded-[2.5rem] flex flex-col mx-4 bg-white">
 
             {/* Header Block */}
             <div className="p-8 pb-4 bg-white shrink-0">
@@ -133,180 +170,308 @@ export function ViewIndentDialog({
                </div>
             </div>
 
-            {/* Content Area: Focused Height */}
-            <div className="flex-1 overflow-y-auto p-8 pt-2 space-y-6 bg-zinc-50/20 custom-scrollbar">
+            {/* Split layout on desktop */}
+            <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden bg-zinc-50/20 border-t border-zinc-100">
+               
+               {/* Left Column: Details & Items */}
+               <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
 
-               {/* Requester Card: Compact */}
-               <div className="bg-white p-6 rounded-[2rem] border border-zinc-100 shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                     <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
-                        <User className="h-6 w-6" />
-                     </div>
-                     <div className="flex flex-col">
-                        <h3 className="text-lg font-black text-zinc-900 leading-tight">{indent.requestedBy?.name || "Unknown"}</h3>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{indent.requestedBy?.email || "Requester"}</span>
-                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5">
-                     <div className="flex items-center gap-2">
-                        <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest">Submitted</span>
-                        <span className="text-xs font-black text-zinc-900 tracking-tight">{formattedCreated}</span>
-                     </div>
-                     <div className="flex items-center gap-2">
-                        <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest">Expected</span>
-                        <span className="text-xs font-black text-emerald-500 tracking-tight">{formattedDelivery}</span>
-                     </div>
-                  </div>
-               </div>
-
-               {/* Project Details: Optimized Grid */}
-               <div className="grid grid-cols-2 gap-y-6 gap-x-10 px-2">
-                  {[
-                     { label: "Project", val: indent.projectId?.projectName || indent.projectId?.name || "N/A", icon: Building2 },
-                     indent.outsideId ? { label: "Outside Area", val: indent.outsideId?.outsideName || indent.outsideId?.name || "N/A", icon: MapPin } :
-                     { label: "Tower", val: indent.towerId?.towerName || indent.towerId?.name || "N/A", icon: Layers },
-                     !indent.outsideId && { label: "Floor / Flat", val: [indent.floorId?.floorName || indent.floorId?.name, indent.flatId?.flatName || indent.flatId?.name].filter(Boolean).join(" · ") || "N/A", icon: MapPin },
-                     { label: "Storage Location", val: indent.storageLocation || "N/A", icon: Layers },
-                     { label: "Indent Type", val: indent.indentType ? (indent.indentType.charAt(0).toUpperCase() + indent.indentType.slice(1)) : "Item", icon: Layers },
-                  ].filter(Boolean).map((item: any, i) => (
-                     <div key={i} className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 shrink-0">
-                           <item.icon className="h-4 w-4" />
+                  {/* Requester Card: Compact */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-zinc-100 shadow-sm flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                           <User className="h-6 w-6" />
                         </div>
                         <div className="flex flex-col">
-                           <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">{item.label}</span>
-                           <span className="text-[13px] font-black text-zinc-900 tracking-tight">{item.val}</span>
+                           <h3 className="text-lg font-black text-zinc-900 leading-tight">{indent.requestedBy?.name || "Unknown"}</h3>
+                           <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                              {indent.requestedBy?.email || "Requester"} {indent.requestedBy?.mobile ? `· ${indent.requestedBy.mobile}` : ""}
+                           </span>
                         </div>
                      </div>
-                  ))}
-               </div>
-
-               {/* Explanation: Leaner */}
-               {indent.rejectionReason && (
-                  <div className="p-5 bg-rose-50 rounded-2xl border border-rose-100 border-dashed">
-                     <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest block mb-1">Rejection Reason</span>
-                     <p className="text-[11px] font-bold text-rose-600 italic leading-relaxed">&quot;{indent.rejectionReason}&quot;</p>
-                  </div>
-               )}
-
-               {indent.approveRemark && (
-                  <div className={cn(
-                     "p-5 rounded-2xl border border-dashed",
-                     indent.status === "Approved" ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-zinc-50 border-zinc-100 text-zinc-600"
-                  )}>
-                     <span className={cn(
-                        "text-[8px] font-black uppercase tracking-widest block mb-1",
-                        indent.status === "Approved" ? "text-emerald-500" : "text-zinc-500"
-                     )}>Approval Remark / Description</span>
-                     <p className="text-[11px] font-bold italic leading-relaxed">&quot;{indent.approveRemark}&quot;</p>
-                  </div>
-               )}
-
-               {/* Requested Items */}
-               <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                     <div className="h-1 w-4 rounded-full bg-emerald-500" />
-                     <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">
-                        {indent.indentType === "asset" || indent.indentType === "assets" ? "Requested Assets" : "Requested Items"}
-                     </h4>
+                     <div className="flex flex-col items-end gap-0.5">
+                        <div className="flex items-center gap-2">
+                           <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest">Submitted</span>
+                           <span className="text-xs font-black text-zinc-900 tracking-tight">{formattedCreated}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-[8px] font-black text-zinc-300 uppercase tracking-widest">Expected</span>
+                           <span className="text-xs font-black text-emerald-500 tracking-tight">{formattedDelivery}</span>
+                        </div>
+                     </div>
                   </div>
 
-                  {indent.items?.map((item: any, i: number) => (
-                     <div key={i} className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4 group hover:border-emerald-200 transition-all">
-                        {/* Header: Item name and Priority badge */}
-                        <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
-                           <div className="flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                                 <Layers className="h-4 w-4" />
+                  {/* Project Details: Optimized Grid */}
+                  <div className="grid grid-cols-2 gap-y-6 gap-x-10 px-2">
+                     {[
+                        { label: "Project", val: indent.projectId?.projectName || indent.projectId?.name || "N/A", icon: Building2 },
+                        indent.outsideId ? { label: "Outside Area", val: indent.outsideId?.outsideName || indent.outsideId?.name || "N/A", icon: MapPin } :
+                        { label: "Tower", val: indent.towerId?.towerName || indent.towerId?.name || "N/A", icon: Layers },
+                        !indent.outsideId && { label: "Floor / Flat", val: [indent.floorId?.floorName || indent.floorId?.name, indent.flatId?.flatNumber || indent.flatId?.flatName || indent.flatId?.name].filter(Boolean).join(" · ") || "N/A", icon: MapPin },
+                        { label: "Storage Location", val: indent.storageLocation || "N/A", icon: Layers },
+                        { label: "Indent Type", val: indent.indentType ? (indent.indentType.charAt(0).toUpperCase() + indent.indentType.slice(1)) : "Item", icon: Layers },
+                        { label: "Priority", val: indent.priority ? (indent.priority.charAt(0).toUpperCase() + indent.priority.slice(1)) : "Medium", icon: Zap },
+                     ].filter(Boolean).map((item: any, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                           <div className="h-9 w-9 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 shrink-0">
+                              <item.icon className="h-4 w-4" />
+                           </div>
+                           <div className="flex flex-col">
+                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">{item.label}</span>
+                              <span className="text-[13px] font-black text-zinc-900 tracking-tight">{item.val}</span>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+
+                  {/* Explanation: Leaner */}
+                  {indent.rejectionReason && (
+                     <div className="p-5 bg-rose-50 rounded-2xl border border-rose-100 border-dashed">
+                        <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest block mb-1">Rejection Reason</span>
+                        <p className="text-[11px] font-bold text-rose-600 italic leading-relaxed">&quot;{indent.rejectionReason}&quot;</p>
+                     </div>
+                  )}
+
+                  {indent.approveRemark && (
+                     <div className={cn(
+                        "p-5 rounded-2xl border border-dashed",
+                        indent.status === "Approved" ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-zinc-50 border-zinc-100 text-zinc-600"
+                     )}>
+                        <span className={cn(
+                           "text-[8px] font-black uppercase tracking-widest block mb-1",
+                           indent.status === "Approved" ? "text-emerald-500" : "text-zinc-500"
+                        )}>Approval Remark / Description</span>
+                        <p className="text-[11px] font-bold italic leading-relaxed">&quot;{indent.approveRemark}&quot;</p>
+                     </div>
+                  )}
+
+                  {/* Requested Items */}
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-3">
+                        <div className="h-1 w-4 rounded-full bg-emerald-500" />
+                        <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">
+                           {indent.indentType === "asset" || indent.indentType === "assets" ? "Requested Assets" : "Requested Items"}
+                        </h4>
+                     </div>
+
+                     {indent.items?.map((item: any, i: number) => (
+                        <div key={i} className={cn(
+                           "bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4 group hover:border-emerald-200 transition-all",
+                           itemStatuses[i] === "Rejected" && "bg-rose-50/10 border-rose-100/50 opacity-70"
+                        )}>
+                           {/* Header: Item name and Priority badge / action */}
+                           <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+                              <div className="flex items-center gap-3">
+                                 <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                                    <Layers className="h-4 w-4" />
+                                 </div>
+                                 <div className="flex flex-col">
+                                    <h5 className={cn(
+                                       "text-sm font-black text-zinc-900 tracking-tight",
+                                       itemStatuses[i] === "Rejected" && "text-rose-900/60 line-through"
+                                    )}>{item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</h5>
+                                    {item.itemId?.itemCode && (
+                                       <span className="text-[9px] font-mono text-zinc-400">Code: {item.itemId.itemCode}</span>
+                                    )}
+                                 </div>
                               </div>
-                              <h5 className="text-sm font-black text-zinc-900 tracking-tight">{item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</h5>
-                           </div>
-                           <Badge variant="outline" className="text-[7px] font-black uppercase px-2 py-0.5 border-zinc-100 rounded-md text-zinc-400">
-                              {indent.priority || "low"}
-                           </Badge>
-                        </div>
-
-                        {/* Fields Grid */}
-                        <div className="grid grid-cols-3 gap-4">
-                           <div>
-                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Quantity</span>
-                              <span className="text-xs font-bold text-zinc-900">{item.quantity}</span>
-                           </div>
-                           <div>
-                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Unit</span>
-                              <span className="text-xs font-bold text-zinc-900 uppercase">{item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units"}</span>
-                           </div>
-                           <div className="col-span-1">
-                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Description</span>
-                              <span className="text-xs font-bold text-zinc-600 italic block truncate" title={item.description || "N/A"}>
-                                 {item.description || "N/A"}
-                              </span>
-                           </div>
-                        </div>
-
-                        {/* Item-specific Images */}
-                        {item.images && item.images.length > 0 && (
-                           <div className="space-y-2 border-t border-zinc-100/60 pt-3">
-                              <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Item Images ({item.images.length})</span>
-                              <div className="flex flex-wrap gap-2">
-                                 {item.images.map((img: any, imgIdx: number) => {
-                                    const imgUrl = getImageUrl(img.filePath)
-                                    return (
-                                       <div 
-                                          key={imgIdx} 
-                                          onClick={() => setSelectedImage(imgUrl)}
-                                          title={img.fileName || `Attachment ${imgIdx + 1}`}
-                                          className="relative h-12 w-20 rounded-xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
+                              <div className="flex items-center gap-2">
+                                 {canTakeAction ? (
+                                    <div className="flex items-center gap-1 bg-zinc-50 p-1 rounded-xl border border-zinc-100 shrink-0">
+                                       <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                             setItemStatuses(prev => ({ ...prev, [i]: "Approved" }))
+                                          }}
+                                          className={cn(
+                                             "h-7 px-3 rounded-lg text-[9px] font-black tracking-wider uppercase transition-all",
+                                             itemStatuses[i] === "Approved"
+                                                ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
+                                                : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                                          )}
                                        >
-                                          <img 
-                                             src={imgUrl} 
-                                             alt={`Attachment ${imgIdx + 1}`} 
-                                             className="w-full h-full object-cover"
-                                          />
-                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                             <Eye className="h-4 w-4 text-white" />
-                                          </div>
-                                       </div>
-                                    )
-                                 })}
+                                          Approve
+                                       </Button>
+                                       <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                             setItemStatuses(prev => ({ ...prev, [i]: "Rejected" }))
+                                          }}
+                                          className={cn(
+                                             "h-7 px-3 rounded-lg text-[9px] font-black tracking-wider uppercase transition-all",
+                                             itemStatuses[i] === "Rejected"
+                                                ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
+                                                : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100"
+                                          )}
+                                       >
+                                          Reject
+                                       </Button>
+                                    </div>
+                                 ) : (
+                                    <Badge variant="outline" className="text-[7px] font-black uppercase px-2 py-0.5 border-zinc-100 rounded-md text-zinc-400">
+                                       {indent.priority || "low"}
+                                    </Badge>
+                                 )}
                               </div>
                            </div>
-                        )}
-                     </div>
-                  ))}
-               </div>
-            </div>
 
-            {/* Action Section: pinned to bottom */}
-            {indent.status === "Pending" && (
-               <div className="p-8 bg-emerald-50/20 border-t border-emerald-100 shrink-0 space-y-5">
-                  <div className="flex items-center gap-2">
-                     <Zap className="h-4 w-4 text-emerald-500 fill-emerald-500" />
-                     <h4 className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Take Action</h4>
-                  </div>
-                  <Textarea
-                     placeholder="Add a remark / rejection reason (optional)..."
-                     value={remark}
-                     onChange={(e) => setRemark(e.target.value)}
-                     className="min-h-[80px] rounded-2xl bg-white border-emerald-100 focus:ring-primary font-bold shadow-inner p-4 text-xs"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                     <Button 
-                        variant="outline" 
-                        onClick={handleReject}
-                        className="h-12 rounded-xl border-rose-100 text-rose-500 font-black text-xs gap-2 hover:bg-rose-50 transition-all"
-                     >
-                        <XCircle className="h-4 w-4" /> Reject
-                     </Button>
-                     <Button
-                        onClick={handleApprove}
-                        className="h-12 rounded-xl bg-emerald-500 text-white font-black text-xs gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
-                     >
-                        <CheckCircle2 className="h-4 w-4" /> Approve
-                     </Button>
+                           {/* Fields Grid */}
+                           <div className="grid grid-cols-3 gap-4">
+                              <div>
+                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Quantity</span>
+                                 <span className="text-xs font-bold text-zinc-900">{item.quantity}</span>
+                              </div>
+                              <div>
+                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Unit</span>
+                                 <span className="text-xs font-bold text-zinc-900 uppercase">{item.unitId?.label || item.unitId?.value || item.unitId?.unitName || item.unitId?.name || "Units"}</span>
+                              </div>
+                              <div className="col-span-1">
+                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Description</span>
+                                 <span className="text-xs font-bold text-zinc-600 italic block truncate" title={item.description || "N/A"}>
+                                    {item.description || "N/A"}
+                                 </span>
+                              </div>
+                           </div>
+
+                           {/* Additional Info Cards (Group, Sub-Group, price, total value) */}
+                           {(item.itemId?.groupId?.name || item.itemId?.subGroupId?.name || item.itemId?.price) && (
+                              <div className="mt-3 pt-3 border-t border-zinc-100/60 grid grid-cols-2 gap-4 bg-zinc-50/50 p-3 rounded-xl">
+                                 {(item.itemId?.groupId?.name || item.itemId?.subGroupId?.name) && (
+                                    <div>
+                                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Category / Brand</span>
+                                       <span className="text-xs font-bold text-zinc-700">
+                                          {[item.itemId?.groupId?.name, item.itemId?.subGroupId?.name].filter(Boolean).join(" · ")}
+                                       </span>
+                                    </div>
+                                 )}
+                                 {item.itemId?.price && (
+                                    <div>
+                                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Est. Price & Total</span>
+                                       <span className="text-xs font-black text-zinc-900">
+                                          ₹{item.itemId.price} / unit <span className="text-emerald-600 font-bold block text-sm">Total: ₹{Number(item.itemId.price) * item.quantity}</span>
+                                       </span>
+                                    </div>
+                                 )}
+                              </div>
+                           )}
+
+                           {/* Item-specific Images */}
+                           {item.images && item.images.length > 0 && (
+                              <div className="space-y-2 border-t border-zinc-100/60 pt-3">
+                                 <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Item Images ({item.images.length})</span>
+                                 <div className="flex flex-wrap gap-2">
+                                    {item.images.map((img: any, imgIdx: number) => {
+                                       const imgUrl = getImageUrl(img.filePath)
+                                       return (
+                                          <div 
+                                             key={imgIdx} 
+                                             onClick={() => setSelectedImage(imgUrl)}
+                                             title={img.fileName || `Attachment ${imgIdx + 1}`}
+                                             className="relative h-12 w-20 rounded-xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
+                                          >
+                                             <img 
+                                                src={imgUrl} 
+                                                alt={`Attachment ${imgIdx + 1}`} 
+                                                className="w-full h-full object-cover"
+                                             />
+                                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <Eye className="h-4 w-4 text-white" />
+                                             </div>
+                                          </div>
+                                       )
+                                    })}
+                                 </div>
+                              </div>
+                           )}
+                        </div>
+                     ))}
+
+                   {/* Attached Images */}
+                   {indent.images && indent.images.length > 0 && (
+                      <div className="space-y-4 pt-2">
+                         <div className="flex items-center gap-3">
+                            <div className="h-1 w-4 rounded-full bg-emerald-500" />
+                            <h4 className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">
+                               Attached Images
+                            </h4>
+                         </div>
+                         <div className="flex flex-wrap gap-3">
+                            {indent.images.map((img: any, idx: number) => {
+                               const imgUrl = getImageUrl(img.filePath)
+                               return (
+                                  <div 
+                                     key={idx} 
+                                     onClick={() => setSelectedImage(imgUrl)}
+                                     title={img.fileName || `Attachment ${idx + 1}`}
+                                     className="relative h-20 w-32 rounded-2xl overflow-hidden border border-zinc-100 shadow-sm cursor-pointer group hover:scale-[1.03] transition-all bg-zinc-50"
+                                  >
+                                     <img 
+                                        src={imgUrl} 
+                                        alt={img.fileName || `Attachment ${idx + 1}`} 
+                                        className="w-full h-full object-cover"
+                                     />
+                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Eye className="h-4 w-4 text-white" />
+                                     </div>
+                                  </div>
+                               )
+                            })}
+                         </div>
+                      </div>
+                   )}
                   </div>
                </div>
-            )}
+
+               {/* Right Column: Take Action (if applicable) */}
+               {canTakeAction && (
+                  <div className="w-full md:w-[380px] bg-emerald-50/10 border-t md:border-t-0 md:border-l border-emerald-100/60 p-8 flex flex-col justify-start shrink-0 space-y-5 overflow-y-auto custom-scrollbar">
+                     <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-emerald-500 fill-emerald-500" />
+                        <h4 className="text-[10px] font-black text-emerald-950 uppercase tracking-widest">Take Action</h4>
+                     </div>
+                     
+                     <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Storage Location</Label>
+                        <Input
+                           placeholder="e.g. Store Room A, Site Office..."
+                           value={storageLocation}
+                           onChange={(e) => setStorageLocation(e.target.value)}
+                           className="h-11 rounded-xl bg-white border-zinc-100 focus:ring-emerald-500 font-bold px-4 text-xs shadow-sm"
+                        />
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <Label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Remark / Rejection Reason</Label>
+                        <Textarea
+                           placeholder="Add a remark / rejection reason (optional)..."
+                           value={remark}
+                           onChange={(e) => setRemark(e.target.value)}
+                           className="min-h-[80px] rounded-2xl bg-white border-zinc-100 focus:ring-emerald-500 font-bold p-4 text-xs shadow-sm"
+                        />
+                     </div>
+
+                     <div className="flex flex-col gap-2 pt-2">
+                        <Button
+                           onClick={handleApprove}
+                           className="h-12 w-full rounded-xl bg-emerald-500 text-white font-black text-xs gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+                        >
+                           <CheckCircle2 className="h-4 w-4" /> Approve Selected Items
+                        </Button>
+                        <Button 
+                           variant="outline" 
+                           onClick={handleReject}
+                           className="h-12 w-full rounded-xl border-rose-100 text-rose-500 font-black text-xs gap-2 hover:bg-rose-50 transition-all"
+                        >
+                           <XCircle className="h-4 w-4" /> Reject Entire Indent
+                        </Button>
+                     </div>
+                  </div>
+               )}
+            </div>
          </DialogContent>
 
          {/* Image Lightbox Dialog */}
@@ -419,7 +584,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          
          // Automatically select the new asset in the active row
          if (activeItemIndex !== null) {
-            handleItemSelect(activeItemIndex, newAsset._id || newAsset.id || "")
+            handleItemSelect(activeItemIndex, newAsset._id || "")
          }
          setIsCreateAssetOpen(false)
          // Reset form
@@ -646,28 +811,39 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          indentFor = "tower"
       }
 
-      const payload = {
-         projectId,
-         priority,
-         estimateDeliveryDate: estimateDeliveryDate ? new Date(estimateDeliveryDate).toISOString() : null,
-         indentType,
-         indentFor,
-         towerId: towerId && towerId !== "none" ? towerId : null,
-         floorId: floorId && floorId !== "none" ? floorId : null,
-         flatId: flatId && flatId !== "none" ? flatId : null,
-         outsideId: outsideId && outsideId !== "none" ? outsideId : null,
-         storageLocation,
-         items: items.map(i => ({
-            itemId: i.itemId,
-            quantity: Number(i.quantity),
-            unitId: i.unitId,
-            description: i.description || "",
-            images: i.images || []
-         }))
+      const formData = new FormData()
+      formData.append("projectId", projectId)
+      formData.append("priority", priority)
+      if (estimateDeliveryDate) {
+         formData.append("estimateDeliveryDate", new Date(estimateDeliveryDate).toISOString())
       }
+      formData.append("indentType", indentType)
+      formData.append("indentFor", indentFor)
+      if (towerId && towerId !== "none") formData.append("towerId", towerId)
+      if (floorId && floorId !== "none") formData.append("floorId", floorId)
+      if (flatId && flatId !== "none") formData.append("flatId", flatId)
+      if (outsideId && outsideId !== "none") formData.append("outsideId", outsideId)
+      if (storageLocation) formData.append("storageLocation", storageLocation)
+
+      const formattedItems = items.map(i => ({
+         itemId: i.itemId,
+         quantity: Number(i.quantity),
+         unitId: i.unitId,
+         description: i.description || ""
+      }))
+      formData.append("items", JSON.stringify(formattedItems))
+
+      // Append all uploaded files to top-level "images" field
+      items.forEach(i => {
+         if (i.files && i.files.length > 0) {
+            i.files.forEach((file: File) => {
+               formData.append("images", file)
+            })
+         }
+      })
 
       try {
-         await indentService.createIndent(payload)
+         await indentService.createIndent(formData)
          toast.success("Indent request created successfully")
          setOpen(false)
          // Reset fields
@@ -681,7 +857,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          setStorageLocation("")
          setIndentType("item")
          setLocationTab("project")
-         setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [] }])
+         setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [], files: [] }])
          if (onSuccess) onSuccess()
       } catch (err: any) {
          toast.error(err.message || "Failed to create indent request")
@@ -766,7 +942,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                           <SelectItem value="item">Item</SelectItem>
+                           <SelectItem value="material">Material</SelectItem>
                            <SelectItem value="asset">Asset</SelectItem>
                         </SelectContent>
                      </Select>
@@ -989,7 +1165,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            {/* First row: Item selection and delete button */}                           <div className="flex items-end gap-4">
                               <div className="flex-1 space-y-2">
                                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    {indentType === "item" ? "Select Item" : "Select Asset"}
+                                    {indentType === "material" ? "Select Item" : "Select Asset"}
                                  </Label>
                                  <Select 
                                     value={item.itemId} 
@@ -1006,7 +1182,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                     onOpenChange={(open) => {
                                        if (open) {
-                                          if (indentType === "item" && availableItems.length === 0) {
+                                          if (indentType === "material" && availableItems.length === 0) {
                                              fetchItems(1, true)
                                           } else if (indentType === "asset" && availableAssets.length === 0) {
                                              fetchAssets(1, true)
@@ -1015,14 +1191,14 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                  >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
-                                       <SelectValue placeholder={indentType === "item" ? "Select item" : "Select asset"} />
+                                       <SelectValue placeholder={indentType === "material" ? "Select item" : "Select asset"} />
                                     </SelectTrigger>
                                     <SelectContent 
                                        className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
                                        onScroll={(e) => {
                                           const target = e.currentTarget
                                           if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
-                                             if (indentType === "item") {
+                                             if (indentType === "material") {
                                                 if (hasMoreItems && !isLoadingItems) {
                                                    fetchItems(itemsPage + 1)
                                                 }
@@ -1034,7 +1210,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                           }
                                        }}
                                     >
-                                       {indentType === "item" ? (
+                                       {indentType === "material" ? (
                                           <SelectItem 
                                              value="CREATE_NEW_ITEM" 
                                              className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
@@ -1053,7 +1229,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                              </span>
                                           </SelectItem>
                                        )}
-                                       {indentType === "item" ? (
+                                       {indentType === "material" ? (
                                           availableItems.map(i => (
                                              <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
                                           ))
@@ -1164,7 +1340,8 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                        const results = await Promise.all(readPromises)
                                        setItems(prev => prev.map((it, i) => i === idx ? {
                                           ...it,
-                                          images: [...(it.images || []), ...results]
+                                          images: [...(it.images || []), ...results],
+                                          files: [...(it.files || []), ...files]
                                        } : it))
                                     }}
                                  />
@@ -1186,7 +1363,8 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                           onClick={() => {
                                              setItems(prev => prev.map((it, i) => i === idx ? {
                                                 ...it,
-                                                images: it.images.filter((_: any, k: number) => k !== imgIdx)
+                                                images: it.images.filter((_: any, k: number) => k !== imgIdx),
+                                                files: it.files ? it.files.filter((_: any, k: number) => k !== imgIdx) : []
                                              } : it))
                                           }}
                                           className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"

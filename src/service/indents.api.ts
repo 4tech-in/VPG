@@ -26,9 +26,11 @@ export const indentService = {
   },
 
   async createIndent(payload: any): Promise<ApiIndent> {
+    const isFormData = payload instanceof FormData;
     return apiRequest<ApiIndent>("indents", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: isFormData ? payload : JSON.stringify(payload),
+      isFormData,
     })
   },
 

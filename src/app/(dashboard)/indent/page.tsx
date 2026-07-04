@@ -303,7 +303,7 @@ export default function IndentPage() {
         const id = row.original._id
         const uiStatus = mapBackendStatusToUI(status)
         const isAdmin = user?.roleId?.name?.toLowerCase() === "admin"
-        const showDropdown = isAdmin ? (status === "ManagerApproved") : (status === "Pending")
+        const showDropdown = false
 
         if (!showDropdown) {
           return (
@@ -393,6 +393,7 @@ export default function IndentPage() {
             <ViewIndentDialog
               indent={row.original}
               onStatusChange={handleStatusChange}
+              user={user}
               trigger={
                 <Button
                   variant="ghost"
@@ -636,7 +637,7 @@ export default function IndentPage() {
                           value={item.quantity}
                           onChange={(e) => {
                             const val = e.target.value ? Number(e.target.value) : 0
-                            setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: val } : it))
+                            setApprovalItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(0, val) } : it))
                           }}
                           className="h-10 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold focus:bg-white text-xs disabled:opacity-50 px-3"
                         />
