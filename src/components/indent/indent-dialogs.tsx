@@ -528,7 +528,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    const [priority, setPriority] = useState("medium")
    const [estimateDeliveryDate, setEstimateDeliveryDate] = useState("")
    const [storageLocation, setStorageLocation] = useState("")
-   const [indentType, setIndentType] = useState("item")
+   const [indentType, setIndentType] = useState("material")
    const [locationTab, setLocationTab] = useState<"project" | "outside">("project")
    
    const [towers, setTowers] = useState<any[]>([])
@@ -855,7 +855,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          setPriority("medium")
          setEstimateDeliveryDate("")
          setStorageLocation("")
-         setIndentType("item")
+         setIndentType("material")
          setLocationTab("project")
          setItems([{ id: Date.now(), itemId: "", quantity: 1, unitId: "", description: "", images: [], files: [] }])
          if (onSuccess) onSuccess()
@@ -942,7 +942,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                           <SelectItem value="item">Material / Item</SelectItem>
+                           <SelectItem value="material">Item</SelectItem>
                            <SelectItem value="asset">Asset</SelectItem>
                         </SelectContent>
                      </Select>
@@ -1165,7 +1165,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            {/* First row: Item selection and delete button */}                           <div className="flex items-end gap-4">
                               <div className="flex-1 space-y-2">
                                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    {indentType === "item" ? "Select Item" : "Select Asset"}
+                                    {indentType === "material" ? "Select Item" : "Select Asset"}
                                  </Label>
                                  <Select 
                                     value={item.itemId} 
@@ -1182,7 +1182,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                     onOpenChange={(open) => {
                                        if (open) {
-                                          if (indentType === "item" && availableItems.length === 0) {
+                                          if (indentType === "material" && availableItems.length === 0) {
                                              fetchItems(1, true)
                                           } else if (indentType === "asset" && availableAssets.length === 0) {
                                              fetchAssets(1, true)
@@ -1191,14 +1191,14 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                  >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
-                                       <SelectValue placeholder={indentType === "item" ? "Select item" : "Select asset"} />
+                                       <SelectValue placeholder={indentType === "material" ? "Select item" : "Select asset"} />
                                     </SelectTrigger>
                                     <SelectContent 
                                        className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
                                        onScroll={(e) => {
                                           const target = e.currentTarget
                                           if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
-                                             if (indentType === "item") {
+                                             if (indentType === "material") {
                                                 if (hasMoreItems && !isLoadingItems) {
                                                    fetchItems(itemsPage + 1)
                                                 }
@@ -1210,7 +1210,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                           }
                                        }}
                                     >
-                                       {indentType === "item" ? (
+                                       {indentType === "material" ? (
                                           <SelectItem 
                                              value="CREATE_NEW_ITEM" 
                                              className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
@@ -1229,7 +1229,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                              </span>
                                           </SelectItem>
                                        )}
-                                       {indentType === "item" ? (
+                                       {indentType === "material" ? (
                                           availableItems.map(i => (
                                              <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
                                           ))

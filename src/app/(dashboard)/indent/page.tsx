@@ -35,7 +35,7 @@ import {
   ViewIndentDialog,
   CreateIndentDialog,
 } from "@/components/indent/indent-dialogs";
-import { CreatePODialog } from "@/components/purchase-order/po-dialogs";
+
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -378,18 +378,7 @@ export default function IndentPage() {
                   <span>{uiStatus}</span>
                 </div>
               </div>
-              {status === "Approved" && (
-                <CreatePODialog
-                  defaultIndentId={id}
-                  onSuccess={() => fetchIndents(searchTerm)}
-                  trigger={
-                    <Button className="h-8 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-[9px] tracking-[0.1em] uppercase transition-all shadow-sm w-[160px] gap-1.5">
-                      <Plus className="h-3.5 w-3.5" />
-                      Create PO
-                    </Button>
-                  }
-                />
-              )}
+
             </div>
           );
         }
