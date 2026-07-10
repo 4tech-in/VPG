@@ -35,6 +35,21 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import {
+   DropdownMenu,
+   DropdownMenuTrigger,
+   DropdownMenuContent,
+   DropdownMenuCheckboxItem
+} from "@/components/ui/dropdown-menu"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import {
+   Command,
+   CommandInput,
+   CommandList,
+   CommandEmpty,
+   CommandItem
+} from "@/components/ui/command"
+import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { indentService } from "@/service/indents.api"
@@ -48,7 +63,7 @@ function CreatePOContent() {
 
    const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files" >("remarks")
    const [selectedIndentId, setSelectedIndentId] = useState<string>("")
-   const [selectedVendorId, setSelectedVendorId] = useState<string>("")
+   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([])
 
    const [indents, setIndents] = useState<any[]>([])
    const [vendors, setVendors] = useState<any[]>([])
@@ -68,7 +83,7 @@ function CreatePOContent() {
 
    const handleIndentSelect = async (val: string) => {
       setSelectedIndentId(val)
-      setSelectedVendorId("")
+      setSelectedVendorIds([])
       setActiveIndent(null)
       setItems([])
       
@@ -84,7 +99,8 @@ function CreatePOContent() {
                   unitId: item.unitId?._id || item.unitId || "",
                   unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
                   price: 0,
-                  description: ""
+                  description: "",
+                  assignedVendorId: ""
                }))
             )
          }
@@ -104,7 +120,7 @@ function CreatePOContent() {
             const loadedIndents = indentsRes.data || indentsRes || []
             setIndents(loadedIndents)
             
-            const vendorsRes = await vendorService.getVendors()
+            const vendorsRes = await vendorService.getVendors({ limit: 200 })
             setVendors(vendorsRes.vendors || vendorsRes || [])
 
             if (urlIndentId) {
@@ -137,8 +153,14 @@ function CreatePOContent() {
       loadInitialData()
    }, [urlIndentId])
 
-   const handleVendorSelect = (val: string) => {
-      setSelectedVendorId(val)
+   const handleVendorToggle = (val: string) => {
+      setSelectedVendorIds(prev => 
+         prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+      )
+   }
+
+   const handleVendorAssignmentChange = (idx: number, vendorId: string) => {
+      setItems(prev => prev.map((item, i) => i === idx ? { ...item, assignedVendorId: vendorId } : item))
    }
 
    const handleQtyChange = (idx: number, val: number) => {
@@ -153,14 +175,20 @@ function CreatePOContent() {
       setItems(prev => prev.map((item, i) => i === idx ? { ...item, description: val } : item))
    }
 
-   const activeVendor = vendors.find(v => (v._id || v.id) === selectedVendorId)
+   const activeVendors = vendors.filter(v => selectedVendorIds.includes(v._id || v.id))
 
    const subtotal = items.reduce((sum, item) => sum + (item.qty * (item.price || 0)), 0)
    const grandTotal = subtotal
 
    const handleGeneratePO = async () => {
-      if (!selectedIndentId || !selectedVendorId || !activeVendor) {
-         toast.error("Please select both indent and vendor")
+      if (!selectedIndentId || selectedVendorIds.length === 0) {
+         toast.error("Please select an indent and at least one vendor")
+         return
+      }
+
+      const unassignedItems = items.filter(item => !item.assignedVendorId)
+      if (unassignedItems.length > 0) {
+         toast.error("Please assign a vendor to all requested items")
          return
       }
 
@@ -170,28 +198,40 @@ function CreatePOContent() {
       }
 
       try {
-         await purchaseOrderService.createPurchaseOrder({
-            indentId: selectedIndentId,
-            vendorId: selectedVendorId,
-            vendorName: activeVendor.name,
-            vendorMobile: activeVendor.contactNumber || "",
-            vendorAddress: activeVendor.address || "",
-            items: items.map(item => ({
-               itemId: item.itemId || null,
-               unitId: item.unitId || null,
-               indentQuantity: item.qty,
-               orderQuantity: item.qty,
-               rate: item.price,
-               description: item.description || ""
-            })),
-            validFrom: validFrom || null,
-            validTo: validTo || null,
-            expectedDeliveryDate: expectedDeliveryDate || null,
-            remark: remark || null,
-            notes: notes || null,
-            bypassApproval: true
+         const groupedItems: Record<string, any[]> = {}
+         items.forEach(item => {
+            if (!groupedItems[item.assignedVendorId]) groupedItems[item.assignedVendorId] = []
+            groupedItems[item.assignedVendorId].push(item)
          })
-         toast.success("Purchase Order created successfully")
+
+         for (const vendorId of Object.keys(groupedItems)) {
+            const vendor = vendors.find(v => (v._id || v.id) === vendorId)
+            if (!vendor) continue
+            
+            await purchaseOrderService.createPurchaseOrder({
+               indentId: selectedIndentId,
+               vendorId: vendorId,
+               vendorName: vendor.name,
+               vendorMobile: vendor.contactNumber || "",
+               vendorAddress: vendor.address || "",
+               items: groupedItems[vendorId].map(item => ({
+                  itemId: item.itemId || null,
+                  unitId: item.unitId || null,
+                  indentQuantity: item.qty,
+                  orderQuantity: item.qty,
+                  rate: item.price,
+                  description: item.description || ""
+               })),
+               validFrom: validFrom || null,
+               validTo: validTo || null,
+               expectedDeliveryDate: expectedDeliveryDate || null,
+               remark: remark || null,
+               notes: notes || null,
+               bypassApproval: true
+            })
+         }
+         
+         toast.success("Purchase Order(s) created successfully")
          router.push("/purchase-order")
       } catch (err) {}
    }
@@ -249,25 +289,68 @@ function CreatePOContent() {
                               <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary focus:bg-white transition-all shadow-sm">
                                  <SelectValue placeholder="Select Indent" />
                               </SelectTrigger>
-                              <SelectContent className="rounded-2xl">
+                              <SelectContent className="rounded-2xl p-1">
                                  {indents.map((ind) => (
-                                    <SelectItem key={ind._id} value={ind._id}>{ind.indentNo} ({ind.projectId?.projectName || ind.projectId?.name || "Project"})</SelectItem>
+                                    <SelectItem key={ind._id} value={ind._id} className="rounded-xl py-3">
+                                       <div className="flex flex-col gap-0.5">
+                                          <span className="font-black text-zinc-900 text-sm">{ind.indentId || ind.indentNo} &mdash; {ind.projectId?.projectName || ind.projectId?.name || "Project"}</span>
+                                          <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-2">
+                                             <span>By: {ind.requestedBy?.name || "Unknown"}</span>
+                                             <span>&bull;</span>
+                                             <span>{new Date(ind.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                                          </span>
+                                       </div>
+                                    </SelectItem>
                                  ))}
                               </SelectContent>
                            </Select>
                         </div>
                         <div className="space-y-3">
                            <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vendor</Label>
-                           <Select value={selectedVendorId} onValueChange={handleVendorSelect}>
-                              <SelectTrigger className="h-14 rounded-2xl border-zinc-100 font-bold focus:ring-primary transition-all shadow-sm bg-zinc-50/50 text-zinc-900">
-                                 <SelectValue placeholder="Select Vendor" />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-2xl">
-                                 {vendors.map((vendor) => (
-                                    <SelectItem key={vendor._id || vendor.id} value={vendor._id || vendor.id || ""}>{vendor.name}</SelectItem>
-                                 ))}
-                              </SelectContent>
-                           </Select>
+                           <Popover>
+                              <PopoverTrigger asChild>
+                                 <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className="w-full h-14 rounded-2xl border-zinc-100 font-bold focus:ring-primary transition-all shadow-sm bg-zinc-50/50 text-zinc-900 justify-between"
+                                 >
+                                    <span className="truncate text-left">
+                                       {selectedVendorIds.length > 0
+                                          ? `${selectedVendorIds.length} Vendor${selectedVendorIds.length > 1 ? "s" : ""} selected`
+                                          : "Select Vendors..."}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                 </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-72 p-0 rounded-2xl shadow-xl border-zinc-100" align="start">
+                                 <Command>
+                                    <CommandInput placeholder="Search vendor..." className="h-10" />
+                                    <CommandList className="max-h-60">
+                                       <CommandEmpty>No vendor found.</CommandEmpty>
+                                       {vendors.map((vendor) => {
+                                          const vId = vendor._id || vendor.id
+                                          const isSelected = selectedVendorIds.includes(vId)
+                                          return (
+                                             <CommandItem
+                                                key={vId}
+                                                value={vendor.name}
+                                                onSelect={() => handleVendorToggle(vId)}
+                                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer font-bold"
+                                             >
+                                                <div className={cn(
+                                                   "h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors",
+                                                   isSelected ? "bg-primary border-primary" : "border-zinc-300"
+                                                )}>
+                                                   {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                </div>
+                                                <span className="text-sm">{vendor.name}</span>
+                                             </CommandItem>
+                                          )
+                                       })}
+                                    </CommandList>
+                                 </Command>
+                              </PopoverContent>
+                           </Popover>
                         </div>
                      </div>
                   </div>
@@ -299,6 +382,7 @@ function CreatePOContent() {
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-left">Description</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Quantity</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price (₹)</th>
+                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Assign Vendor</th>
                                           <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Total Amount</th>
                                        </tr>
                                     </thead>
@@ -350,6 +434,27 @@ function CreatePOContent() {
                                                    />
                                                 </div>
                                              </td>
+                                             <td className="px-6 py-4 text-center w-48">
+                                                <Select 
+                                                   value={item.assignedVendorId || ""} 
+                                                   onValueChange={(val) => handleVendorAssignmentChange(idx, val)}
+                                                >
+                                                   <SelectTrigger className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-xs font-bold focus:ring-primary focus:bg-white shadow-sm">
+                                                      <SelectValue placeholder="Select Vendor" />
+                                                   </SelectTrigger>
+                                                   <SelectContent className="rounded-xl">
+                                                      {activeVendors.length > 0 ? (
+                                                         activeVendors.map(vendor => (
+                                                            <SelectItem key={vendor._id || vendor.id} value={vendor._id || vendor.id}>
+                                                               {vendor.name}
+                                                            </SelectItem>
+                                                         ))
+                                                      ) : (
+                                                         <div className="p-2 text-xs text-zinc-400 text-center font-bold">Select vendors above first</div>
+                                                      )}
+                                                   </SelectContent>
+                                                </Select>
+                                             </td>
                                              <td className="px-6 py-4 text-right">
                                                 <div className="flex flex-col">
                                                    <span className="text-sm font-black text-zinc-900">₹{(item.qty * (item.price || 0)).toLocaleString("en-IN")}</span>
@@ -364,7 +469,7 @@ function CreatePOContent() {
                            </div>
 
                            {/* Validity & Delivery Block */}
-                           {activeVendor && (
+                           {activeVendors.length > 0 && (
                               <motion.div
                                  initial={{ opacity: 0, y: 15 }}
                                  animate={{ opacity: 1, y: 0 }}
@@ -399,7 +504,7 @@ function CreatePOContent() {
                            )}
 
                            {/* Vendor Details Block */}
-                           {activeVendor && (
+                           {activeVendors.length > 0 && (
                               <motion.div
                                  initial={{ opacity: 0, y: 15 }}
                                  animate={{ opacity: 1, y: 0 }}
@@ -408,7 +513,7 @@ function CreatePOContent() {
                                  <div className="absolute top-0 right-0 h-2 w-32 bg-indigo-500/5 rounded-bl-full" />
                                  <div className="flex items-center justify-between">
                                     <div className="flex flex-col gap-1">
-                                       <h3 className="text-xl font-black text-zinc-900 leading-tight">Vendor Details</h3>
+                                       <h3 className="text-xl font-black text-zinc-900 leading-tight">Selected Vendors</h3>
                                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Verified supplier information</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
@@ -416,46 +521,50 @@ function CreatePOContent() {
                                     </div>
                                  </div>
 
-                                 <div className="grid grid-cols-2 gap-x-12 gap-y-8">
-                                    <div className="flex items-start gap-4">
-                                       <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
-                                          <User className="h-5 w-5" />
+                                 <div className="flex flex-col divide-y divide-zinc-50">
+                                    {activeVendors.map((vendor: any) => (
+                                       <div key={vendor._id || vendor.id} className="grid grid-cols-2 gap-x-12 gap-y-4 py-6 first:pt-0 last:pb-0">
+                                          <div className="flex items-start gap-4">
+                                             <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                                                <User className="h-5 w-5" />
+                                             </div>
+                                             <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Vendor Name</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.contactPerson || vendor.name}</span>
+                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">Supplier Agent</span>
+                                             </div>
+                                          </div>
+                                          <div className="flex items-start gap-4">
+                                             <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                                                <Building className="h-5 w-5" />
+                                             </div>
+                                             <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Business Address</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-tight">{vendor.address || "N/A"}</span>
+                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">{vendor.city || vendor.state || ""}</span>
+                                             </div>
+                                          </div>
+                                          <div className="flex items-start gap-4">
+                                             <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                                                <Phone className="h-5 w-5" />
+                                             </div>
+                                             <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Number</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.contactNumber}</span>
+                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">Official Mobile</span>
+                                             </div>
+                                          </div>
+                                          <div className="flex items-start gap-4">
+                                             <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
+                                                <Mail className="h-5 w-5" />
+                                             </div>
+                                             <div className="flex flex-col">
+                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Email Address</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.email || "N/A"}</span>
+                                             </div>
+                                          </div>
                                        </div>
-                                       <div className="flex flex-col">
-                                          <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Person</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.contactPerson || activeVendor.name}</span>
-                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">Supplier Agent</span>
-                                       </div>
-                                    </div>
-                                    <div className="flex items-start gap-4">
-                                       <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
-                                          <Building className="h-5 w-5" />
-                                       </div>
-                                       <div className="flex flex-col">
-                                          <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Business Address</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-tight">{activeVendor.address || "N/A"}</span>
-                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">{activeVendor.city || activeVendor.state || ""}</span>
-                                       </div>
-                                    </div>
-                                    <div className="flex items-start gap-4">
-                                       <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
-                                          <Phone className="h-5 w-5" />
-                                       </div>
-                                       <div className="flex flex-col">
-                                          <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Number</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.contactNumber}</span>
-                                          <span className="text-[10px] font-bold text-zinc-400 mt-1">Official Mobile</span>
-                                       </div>
-                                    </div>
-                                    <div className="flex items-start gap-4">
-                                       <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
-                                          <Mail className="h-5 w-5" />
-                                       </div>
-                                       <div className="flex flex-col">
-                                          <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Email Address</span>
-                                          <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{activeVendor.email || "N/A"}</span>
-                                       </div>
-                                    </div>
+                                    ))}
                                  </div>
                               </motion.div>
                            )}
@@ -566,12 +675,12 @@ function CreatePOContent() {
                         <div className="flex flex-col">
                            <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">GRAND TOTAL</span>
                            <span className="text-4xl font-black text-zinc-900 tracking-tighter mt-1">
-                              {activeVendor ? `₹ ${grandTotal.toLocaleString("en-IN")}` : "₹ 0"}
+                              {activeVendors.length > 0 ? `₹ ${grandTotal.toLocaleString("en-IN")}` : "₹ 0"}
                            </span>
                         </div>
                         <div className={cn(
                            "h-14 w-14 rounded-2xl flex items-center justify-center transition-all shadow-xl",
-                           activeVendor ? "bg-primary text-white shadow-primary/20" : "bg-zinc-50 text-zinc-300"
+                           activeVendors.length > 0 ? "bg-primary text-white shadow-primary/20" : "bg-zinc-50 text-zinc-300"
                         )}>
                            <Wallet className="h-7 w-7" />
                         </div>
@@ -596,11 +705,11 @@ function CreatePOContent() {
 
                   {/* Final Action */}
                   <Button
-                     disabled={!activeVendor}
+                     disabled={activeVendors.length === 0}
                      onClick={handleGeneratePO}
                      className={cn(
                         "w-full h-16 rounded-2xl font-black text-base gap-3 shadow-xl transition-all",
-                        activeVendor
+                        activeVendors.length > 0
                            ? "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
                            : "bg-zinc-100 text-zinc-300"
                      )}
