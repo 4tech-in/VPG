@@ -342,22 +342,32 @@ export default function AdvancePage() {
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="h-11 rounded-xl px-6 bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/20 gap-2">
+                <Button className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300">
                   <Plus className="h-4 w-4" /> New Advance
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-                <DialogHeader className="p-8 bg-zinc-900 text-white pb-10">
-                  <DialogTitle className="text-2xl font-black tracking-tight">Create Advance Record</DialogTitle>
-                  <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mt-2">
-                    New Financial Disbursement
-                  </DialogDescription>
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+                <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <DollarSign className="h-32 w-32" />
+                  </div>
+                  <div className="flex items-center gap-4 relative">
+                    <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                      <DollarSign className="h-6 w-6" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">Create Advance Record</DialogTitle>
+                      <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">
+                        New Financial Disbursement
+                      </DialogDescription>
+                    </div>
+                  </div>
                 </DialogHeader>
-                <form onSubmit={handleCreateAdvance} className="p-8 bg-white space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Select Team Member</Label>
+                <form onSubmit={handleCreateAdvance} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+                  <div className="space-y-2.5">
+                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Team Member</Label>
                     <Select onValueChange={setFormUserId} value={formUserId}>
-                      <SelectTrigger className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
+                      <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
                         <SelectValue placeholder="Choose a member" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
@@ -370,8 +380,8 @@ export default function AdvancePage() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Amount (INR)</Label>
+                  <div className="space-y-2.5">
+                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Amount (INR)</Label>
                     <div className="relative">
                       <Input
                         type="number"
@@ -379,37 +389,37 @@ export default function AdvancePage() {
                         value={formAmount}
                         onChange={(e) => setFormAmount(e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
-                        className="h-12 rounded-xl bg-zinc-50 border-none font-black text-lg pl-10 focus:ring-1 focus:ring-primary"
+                        className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-12 focus:ring-primary shadow-sm"
                         required
                       />
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-zinc-400 text-sm">₹</div>
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-zinc-400 text-lg">₹</div>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Reason for Advance</Label>
+                  <div className="space-y-2.5">
+                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Reason for Advance</Label>
                     <Input
                       placeholder="e.g. Travel, Personal, Medical"
                       value={formReason}
                       onChange={(e) => setFormReason(e.target.value)}
-                      className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary"
+                      className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
                       required
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Note (Optional)</Label>
+                  <div className="space-y-2.5">
+                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Note (Optional)</Label>
                     <Input
                       placeholder="Additional remarks"
                       value={formNote}
                       onChange={(e) => setFormNote(e.target.value)}
-                      className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary"
+                      className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
                     />
                   </div>
 
-                  <div className="pt-4 flex items-center gap-3">
-                    <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="h-12 flex-1 rounded-xl font-bold text-zinc-400">Cancel</Button>
-                    <Button type="submit" className="h-12 flex-1 rounded-xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/10">Record Advance</Button>
+                  <div className="pt-4 flex items-center gap-4">
+                    <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors">Cancel</Button>
+                    <Button type="submit" className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">Record Advance</Button>
                   </div>
                 </form>
               </DialogContent>
@@ -419,16 +429,26 @@ export default function AdvancePage() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-            <DialogHeader className="p-8 bg-zinc-900 text-white pb-10">
-              <DialogTitle className="text-2xl font-black tracking-tight">Edit Advance Record</DialogTitle>
-              <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mt-2">
-                Modify Financial Disbursement Details
-              </DialogDescription>
+          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <DollarSign className="h-32 w-32" />
+              </div>
+              <div className="flex items-center gap-4 relative">
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <DollarSign className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">Edit Advance Record</DialogTitle>
+                  <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">
+                    Modify Financial Disbursement Details
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <form onSubmit={handleUpdateAdvance} className="p-8 bg-white space-y-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Amount (INR)</Label>
+            <form onSubmit={handleUpdateAdvance} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Amount (INR)</Label>
                 <div className="relative">
                   <Input
                     type="number"
@@ -436,44 +456,44 @@ export default function AdvancePage() {
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
-                    className="h-12 rounded-xl bg-zinc-50 border-none font-black text-lg pl-10 focus:ring-1 focus:ring-primary"
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-12 focus:ring-primary shadow-sm"
                     required
                   />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-zinc-400 text-sm">₹</div>
+                  <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-zinc-400 text-lg">₹</div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Reason for Advance</Label>
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Reason for Advance</Label>
                 <Input
                   placeholder="e.g. Travel, Personal, Medical"
                   value={editReason}
                   onChange={(e) => setEditReason(e.target.value)}
-                  className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary"
+                  className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider pl-1">Note (Optional)</Label>
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Note (Optional)</Label>
                 <Input
                   placeholder="Additional remarks"
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
-                  className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary"
+                  className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
                 />
               </div>
 
-              <div className="pt-4 flex items-center gap-3">
-                <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)} className="h-12 flex-1 rounded-xl font-bold text-zinc-400">Cancel</Button>
-                <Button type="submit" className="h-12 flex-1 rounded-xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/10">Save Changes</Button>
+              <div className="pt-4 flex items-center gap-4">
+                <Button type="button" variant="ghost" onClick={() => setIsEditOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors">Cancel</Button>
+                <Button type="submit" className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">Save Changes</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
         {/* Ledger Table */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm animate-in fade-in duration-300">
+        <div className="animate-in fade-in duration-300">
           {isLoading && advances.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />

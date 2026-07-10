@@ -942,7 +942,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                           <SelectItem value="material">Material</SelectItem>
+                           <SelectItem value="item">Material / Item</SelectItem>
                            <SelectItem value="asset">Asset</SelectItem>
                         </SelectContent>
                      </Select>
@@ -1165,7 +1165,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            {/* First row: Item selection and delete button */}                           <div className="flex items-end gap-4">
                               <div className="flex-1 space-y-2">
                                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                    {indentType === "material" ? "Select Item" : "Select Asset"}
+                                    {indentType === "item" ? "Select Item" : "Select Asset"}
                                  </Label>
                                  <Select 
                                     value={item.itemId} 
@@ -1182,7 +1182,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                     onOpenChange={(open) => {
                                        if (open) {
-                                          if (indentType === "material" && availableItems.length === 0) {
+                                          if (indentType === "item" && availableItems.length === 0) {
                                              fetchItems(1, true)
                                           } else if (indentType === "asset" && availableAssets.length === 0) {
                                              fetchAssets(1, true)
@@ -1191,14 +1191,14 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                     }}
                                  >
                                     <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
-                                       <SelectValue placeholder={indentType === "material" ? "Select item" : "Select asset"} />
+                                       <SelectValue placeholder={indentType === "item" ? "Select item" : "Select asset"} />
                                     </SelectTrigger>
                                     <SelectContent 
                                        className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
                                        onScroll={(e) => {
                                           const target = e.currentTarget
                                           if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
-                                             if (indentType === "material") {
+                                             if (indentType === "item") {
                                                 if (hasMoreItems && !isLoadingItems) {
                                                    fetchItems(itemsPage + 1)
                                                 }
@@ -1210,7 +1210,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                           }
                                        }}
                                     >
-                                       {indentType === "material" ? (
+                                       {indentType === "item" ? (
                                           <SelectItem 
                                              value="CREATE_NEW_ITEM" 
                                              className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
@@ -1229,7 +1229,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                                              </span>
                                           </SelectItem>
                                        )}
-                                       {indentType === "material" ? (
+                                       {indentType === "item" ? (
                                           availableItems.map(i => (
                                              <SelectItem key={i._id} value={i._id}>{i.itemName}</SelectItem>
                                           ))
@@ -1383,7 +1383,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
 
             {/* Submit Section */}
             <div className="p-10 pt-4 bg-white shrink-0">
-               <Button onClick={handleSubmit} className="w-full h-16 rounded-2xl bg-emerald-500 text-white font-black text-lg shadow-2xl shadow-emerald-500/20 hover:bg-emerald-600 hover:scale-[1.01] transition-all transform active:scale-95">
+               <Button onClick={handleSubmit} className="w-full h-16 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-2xl shadow-primary/20 hover:bg-primary/90 hover:scale-[1.01] transition-all transform active:scale-95">
                   Submit Request
                </Button>
             </div>
@@ -1466,7 +1466,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                         <Button type="button" variant="ghost" onClick={() => setIsCreateAssetOpen(false)}>
                            Cancel
                         </Button>
-                        <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
+                        <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
                            Create Asset
                         </Button>
                      </DialogFooter>

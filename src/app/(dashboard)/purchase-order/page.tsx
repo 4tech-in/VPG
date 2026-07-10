@@ -196,7 +196,7 @@ export default function PurchaseOrderPage() {
         </div>
 
         {/* Board */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm animate-in fade-in duration-300">
+        <div className="animate-in fade-in duration-300">
            {isLoading && purchaseOrders.length === 0 ? (
              <div className="flex flex-col items-center justify-center py-20 gap-3">
                <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />

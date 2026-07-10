@@ -231,13 +231,13 @@ function CreatePOContent() {
 
                   {/* Purchase Source Block */}
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 h-2 w-32 bg-teal-500/5 rounded-bl-full" />
+                     <div className="absolute top-0 right-0 h-2 w-32 bg-primary/5 rounded-bl-full" />
                      <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
                            <h3 className="text-xl font-black text-zinc-900 leading-tight">Purchase Source</h3>
                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Select Indent and related vendor</p>
                         </div>
-                        <div className="h-10 w-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-100">
+                        <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/20">
                            <FileText className="h-5 w-5" />
                         </div>
                      </div>
@@ -246,7 +246,7 @@ function CreatePOContent() {
                         <div className="space-y-3">
                            <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Indent</Label>
                            <Select value={selectedIndentId} onValueChange={handleIndentSelect}>
-                              <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500 focus:bg-white transition-all shadow-sm">
+                              <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary focus:bg-white transition-all shadow-sm">
                                  <SelectValue placeholder="Select Indent" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
@@ -259,7 +259,7 @@ function CreatePOContent() {
                         <div className="space-y-3">
                            <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vendor</Label>
                            <Select value={selectedVendorId} onValueChange={handleVendorSelect}>
-                              <SelectTrigger className="h-14 rounded-2xl border-zinc-100 font-bold focus:ring-teal-500 transition-all shadow-sm bg-zinc-50/50 text-zinc-900">
+                              <SelectTrigger className="h-14 rounded-2xl border-zinc-100 font-bold focus:ring-primary transition-all shadow-sm bg-zinc-50/50 text-zinc-900">
                                  <SelectValue placeholder="Select Vendor" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl">
@@ -321,7 +321,7 @@ function CreatePOContent() {
                                                    placeholder="Details / specifications"
                                                    value={item.description || ""}
                                                    onChange={(e) => handleDescriptionChange(idx, e.target.value)}
-                                                   className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold focus-visible:ring-teal-500 focus:bg-white" 
+                                                   className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold focus-visible:ring-primary focus:bg-white" 
                                                 />
                                              </td>
                                              <td className="px-6 py-4 text-center w-36">
@@ -333,7 +333,7 @@ function CreatePOContent() {
                                                       value={item.qty} 
                                                       onWheel={(e) => e.currentTarget.blur()}
                                                       onChange={(e) => handleQtyChange(idx, e.target.value === "" ? 0 : Number(e.target.value))}
-                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-teal-500 focus:bg-white w-20" 
+                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-primary focus:bg-white w-20" 
                                                    />
                                                    <span className="text-[10px] font-bold text-zinc-500">{item.unit}</span>
                                                 </div>
@@ -346,7 +346,7 @@ function CreatePOContent() {
                                                       value={item.price} 
                                                       onWheel={(e) => e.currentTarget.blur()}
                                                       onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
-                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-teal-500 focus:bg-white" 
+                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-primary focus:bg-white" 
                                                    />
                                                 </div>
                                              </td>
@@ -384,15 +384,15 @@ function CreatePOContent() {
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid From</Label>
-                                       <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid To</Label>
-                                       <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
                                     <div className="space-y-3">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Est. Delivery Date</Label>
-                                       <Input type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-teal-500" />
+                                       <Input type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
                                  </div>
                               </motion.div>
@@ -477,11 +477,11 @@ function CreatePOContent() {
                               className={cn(
                                  "h-14 rounded-xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all",
                                  activeTab === tab.id
-                                    ? "bg-white text-teal-600 shadow-sm border border-zinc-100"
+                                    ? "bg-white text-primary shadow-sm border border-zinc-100"
                                     : "text-zinc-400 hover:text-zinc-600"
                               )}
                            >
-                              <tab.icon className={cn("h-4 w-4", activeTab === tab.id ? "text-teal-500" : "text-zinc-300")} />
+                              <tab.icon className={cn("h-4 w-4", activeTab === tab.id ? "text-primary" : "text-zinc-300")} />
                               {tab.label}
                            </button>
                         ))}
@@ -501,7 +501,7 @@ function CreatePOContent() {
                                     placeholder="Add general remarks about this purchase order..."
                                     value={remark}
                                     onChange={(e) => setRemark(e.target.value)}
-                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-teal-500 focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
+                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
                                  />
                               </motion.div>
                            )}
@@ -518,7 +518,7 @@ function CreatePOContent() {
                                     placeholder="Add notes for this purchase order..."
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-teal-500 focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
+                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
                                  />
                               </motion.div>
                            )}
@@ -571,7 +571,7 @@ function CreatePOContent() {
                         </div>
                         <div className={cn(
                            "h-14 w-14 rounded-2xl flex items-center justify-center transition-all shadow-xl",
-                           activeVendor ? "bg-teal-500 text-white shadow-teal-500/20" : "bg-zinc-50 text-zinc-300"
+                           activeVendor ? "bg-primary text-white shadow-primary/20" : "bg-zinc-50 text-zinc-300"
                         )}>
                            <Wallet className="h-7 w-7" />
                         </div>
@@ -581,7 +581,7 @@ function CreatePOContent() {
                   {/* Drop Location Section */}
                   <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-teal-50 flex items-center justify-center text-teal-600">
+                        <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
                            <MapPin className="h-4 w-4" />
                         </div>
                         <h4 className="text-sm font-black text-zinc-900 tracking-tight">Drop Location</h4>
@@ -590,7 +590,7 @@ function CreatePOContent() {
                         placeholder="Specify delivery drop location"
                         value={dropLocation}
                         onChange={(e) => setDropLocation(e.target.value)}
-                        className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-6 font-bold text-xs focus:ring-teal-500 transition-all shadow-inner placeholder:text-zinc-300"
+                        className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-6 font-bold text-xs focus:ring-primary transition-all shadow-inner placeholder:text-zinc-300"
                      />
                   </div>
 
@@ -601,7 +601,7 @@ function CreatePOContent() {
                      className={cn(
                         "w-full h-16 rounded-2xl font-black text-base gap-3 shadow-xl transition-all",
                         activeVendor
-                           ? "bg-[#14b8a6] hover:bg-[#0d9488] text-white shadow-teal-500/20"
+                           ? "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
                            : "bg-zinc-100 text-zinc-300"
                      )}
                   >

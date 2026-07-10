@@ -14,7 +14,8 @@ import {
   Warehouse,
   Package,
   Activity,
-  ArrowUpRight
+  ArrowUpRight,
+  Store
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -289,36 +290,46 @@ export default function StoresPage() {
               {/* Create Asset Dialog */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="h-12 rounded-2xl px-8 bg-zinc-900 text-white font-black shadow-2xl shadow-zinc-900/20 gap-3 hover:scale-[1.02] active:scale-95 transition-all">
+                  <Button className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300">
                      Add Asset
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-                  <DialogHeader className="p-10 bg-zinc-900 text-white pb-12">
-                    <DialogTitle className="text-3xl font-black tracking-tight">Register New Asset</DialogTitle>
-                    <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-3">
-                      Asset Expansion Protocol
-                    </DialogDescription>
+                <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+                  <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                       <Store className="h-32 w-32" />
+                    </div>
+                    <div className="flex items-center gap-4 relative">
+                       <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <Store className="h-6 w-6" />
+                       </div>
+                       <div className="flex flex-col gap-1">
+                          <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">Register New Asset</DialogTitle>
+                          <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">
+                            Add a new asset to the system inventory
+                          </DialogDescription>
+                       </div>
+                    </div>
                   </DialogHeader>
-                  <form onSubmit={handleAddStore} className="p-10 bg-white space-y-8">
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Name</Label>
+                  <form onSubmit={handleAddStore} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Name</Label>
                         <Input 
                           placeholder="e.g. Concrete Mixer" 
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
                           required
-                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                          className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                         />
                       </div>
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Type</Label>
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Type</Label>
                         <Select value={newType} onValueChange={setNewType}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
-                            <SelectValue />
+                          <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
+                            <SelectValue placeholder="Select type" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                          <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                             <SelectItem value="Vehicle">Vehicle</SelectItem>
                             <SelectItem value="Equipment">Equipment</SelectItem>
                             <SelectItem value="Tool">Tool</SelectItem>
@@ -329,65 +340,65 @@ export default function StoresPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Serial Number</Label>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number</Label>
                         <Input 
                           placeholder="e.g. SN-982173" 
                           value={newSerialNumber}
                           onChange={(e) => setNewSerialNumber(e.target.value)}
-                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                          className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                         />
                       </div>
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Issued Date</Label>
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Issued Date</Label>
                         <Input 
                           type="date"
                           value={newIssuedDate}
                           onChange={(e) => setNewIssuedDate(e.target.value)}
-                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                          className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Initial Status</Label>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Initial Status</Label>
                         <Select value={newStatus} onValueChange={setNewStatus}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
-                            <SelectValue />
+                          <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
+                            <SelectValue placeholder="Select status" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                          <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                             <SelectItem value="Issued">Issued</SelectItem>
                             <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
                             <SelectItem value="Returned">Returned</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="space-y-3">
-                        <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Maintenance Due</Label>
+                      <div className="space-y-2.5">
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Maintenance Due</Label>
                         <Input 
                           type="date" 
                           value={newMaintenanceDate}
                           onChange={(e) => setNewMaintenanceDate(e.target.value)}
-                          className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                          className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Extra Note</Label>
+                    <div className="space-y-2.5">
+                      <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Extra Note</Label>
                       <Textarea 
                         placeholder="Add any specific storage, operator or location remarks..."
                         value={newExtraNote}
                         onChange={(e) => setNewExtraNote(e.target.value)}
-                        className="min-h-[100px] rounded-2xl bg-zinc-50 border-none font-bold text-sm p-4 focus:ring-1 focus:ring-primary"
+                        className="min-h-[100px] rounded-2xl bg-white border-zinc-100 font-bold text-sm p-4 focus:ring-primary shadow-sm resize-none"
                       />
                     </div>
 
-                    <div className="pt-6 flex items-center gap-4">
-                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-400 hover:text-zinc-900 transition-colors">Cancel</Button>
-                      <Button type="submit" className="h-14 flex-1 rounded-2xl bg-zinc-900 font-black shadow-2xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all text-white">Register Asset</Button>
+                    <div className="pt-4 flex items-center gap-4">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors">Cancel</Button>
+                      <Button type="submit" className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">Register Asset</Button>
                     </div>
                   </form>
                 </DialogContent>
@@ -397,31 +408,41 @@ export default function StoresPage() {
 
         {/* Edit Asset Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="sm:max-w-[550px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
-            <DialogHeader className="p-10 bg-zinc-900 text-white pb-12">
-              <DialogTitle className="text-3xl font-black tracking-tight">Edit Asset</DialogTitle>
-              <DialogDescription className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-3">
-                Update Asset Specifications
-              </DialogDescription>
+          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-5">
+                  <Store className="h-32 w-32" />
+               </div>
+               <div className="flex items-center gap-4 relative">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                     <Store className="h-6 w-6" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                     <DialogTitle className="text-2xl font-black tracking-tight text-zinc-900">Edit Asset</DialogTitle>
+                     <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">
+                       Update Asset Specifications
+                     </DialogDescription>
+                  </div>
+               </div>
             </DialogHeader>
-            <form onSubmit={handleUpdateAsset} className="p-10 bg-white space-y-8">
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Name</Label>
+            <form onSubmit={handleUpdateAsset} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Name</Label>
                   <Input 
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     required
-                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Asset Type</Label>
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Type</Label>
                   <Select value={editType} onValueChange={setEditType}>
-                    <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
-                      <SelectValue />
+                    <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                       <SelectItem value="Vehicle">Vehicle</SelectItem>
                       <SelectItem value="Equipment">Equipment</SelectItem>
                       <SelectItem value="Tool">Tool</SelectItem>
@@ -432,63 +453,63 @@ export default function StoresPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Serial Number</Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number</Label>
                   <Input 
                     value={editSerialNumber}
                     onChange={(e) => setEditSerialNumber(e.target.value)}
-                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Issued Date</Label>
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Issued Date</Label>
                   <Input 
                     type="date"
                     value={editIssuedDate}
                     onChange={(e) => setEditIssuedDate(e.target.value)}
-                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Status</Label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Status</Label>
                   <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary">
-                      <SelectValue />
+                    <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
+                      <SelectValue placeholder="Select status" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl bg-white">
+                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                       <SelectItem value="Issued">Issued</SelectItem>
                       <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
                       <SelectItem value="Returned">Returned</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Maintenance Due</Label>
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Maintenance Due</Label>
                   <Input 
-                    type="date" 
+                    type="date"
                     value={editMaintenanceDate}
                     onChange={(e) => setEditMaintenanceDate(e.target.value)}
-                    className="h-14 rounded-2xl bg-zinc-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary" 
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm" 
                   />
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-1">Extra Note</Label>
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Extra Note</Label>
                 <Textarea 
                   value={editExtraNote}
                   onChange={(e) => setEditExtraNote(e.target.value)}
-                  className="min-h-[100px] rounded-2xl bg-zinc-50 border-none font-bold text-sm p-4 focus:ring-1 focus:ring-primary"
+                  className="min-h-[100px] rounded-2xl bg-white border-zinc-100 font-bold text-sm p-4 focus:ring-primary shadow-sm resize-none"
                 />
               </div>
 
-              <div className="pt-6 flex items-center gap-4">
-                <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-400 hover:text-zinc-900 transition-colors">Cancel</Button>
-                <Button type="submit" className="h-14 flex-1 rounded-2xl bg-zinc-900 font-black shadow-2xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all text-white">Save Changes</Button>
+              <div className="pt-4 flex items-center gap-4">
+                <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)} className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors">Cancel</Button>
+                <Button type="submit" className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95">Update Asset</Button>
               </div>
             </form>
           </DialogContent>

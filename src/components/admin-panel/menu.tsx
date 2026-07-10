@@ -126,35 +126,7 @@ export function Menu({ isOpen }: MenuProps) {
               )}
             </li>
           ))}
-          <li className="w-full grow flex items-end">
-            <div className={cn(
-              "w-full flex items-center p-3 mt-5 rounded-2xl bg-muted/50 border border-muted",
-              isOpen === false ? "justify-center" : "gap-3"
-            )}>
-              <div className="relative flex-shrink-0">
-                <Image
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100&h=100"
-                  alt="User"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
-                />
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-              </div>
-              <div className={cn(
-                "flex flex-col min-w-0 transition-opacity duration-300",
-                isOpen === false ? "hidden" : "opacity-100"
-              )}>
-                <span className="text-sm font-bold truncate">James William</span>
-                <span className="text-xs text-muted-foreground truncate">william01@gmail.com</span>
-              </div>
-              {isOpen !== false && (
-                <Button variant="ghost" size="icon" className="ml-auto h-8 w-8 text-muted-foreground">
-                  <LogOut size={16} />
-                </Button>
-              )}
-            </div>
-          </li>
+         
         </ul>
       </nav>
     </ScrollArea>

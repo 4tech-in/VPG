@@ -324,7 +324,7 @@ export default function ApprovalFlowPage() {
                   setStatus("active")
                   setLevels([{ level: 1, roleId: "" }])
                 }}
-                className="h-12 px-6 rounded-2xl bg-zinc-900 text-white font-black shadow-lg shadow-zinc-900/10 gap-2 hover:scale-[1.01]"
+                className="h-12 px-6 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/20 gap-2 hover:scale-[1.01] transition-all"
               >
                 <Plus className="h-4 w-4" /> Add New Flow
               </Button>
@@ -356,7 +356,7 @@ export default function ApprovalFlowPage() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm"
+              className="w-full"
             >
               {loading ? (
                 <div className="flex items-center justify-center py-24 text-zinc-400 font-bold text-sm gap-2">

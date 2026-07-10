@@ -686,34 +686,34 @@ export default function AttendancePage() {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6">
               {[
-                { label: "On Time", val: stats.onTime.toString(), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50", statusVal: "Present" },
-                { label: "Late Arrivals", val: stats.late.toString(), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50", statusVal: "Late" },
-                { label: "Half Day", val: stats.halfDay.toString(), icon: Calendar, color: "text-blue-500", bg: "bg-blue-50", statusVal: "HalfDay" },
-                { label: "Absent / Off", val: stats.absent.toString(), icon: XCircle, color: "text-rose-500", bg: "bg-rose-50", statusVal: "Absent" },
-                { label: "Weekly Off", val: stats.weeklyOff.toString(), icon: Coffee, color: "text-sky-500", bg: "bg-sky-50", statusVal: "WeeklyOff" },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  onClick={() => setSelectedStatus(prev => prev === stat.statusVal ? null : stat.statusVal)}
-                  className={cn(
-                    "bg-white p-6 rounded-[2rem] border transition-all cursor-pointer overflow-hidden relative flex items-center justify-between group",
-                    selectedStatus === stat.statusVal
-                      ? "border-zinc-900 shadow-lg ring-2 ring-zinc-900/10 scale-[1.02]"
-                      : "border-zinc-100 shadow-sm hover:shadow-xl hover:scale-[1.01]"
-                  )}
-                >
-                  <div className="flex flex-col gap-1 z-10">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{stat.label}</span>
-                    <span className="text-3xl font-black text-zinc-900 tracking-tighter">{stat.val}</span>
+                { label: "On Time", val: stats.onTime.toString(), icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-50/50", statusVal: "Present" },
+                { label: "Late Arrivals", val: stats.late.toString(), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50/50", statusVal: "Late" },
+                { label: "Half Day", val: stats.halfDay.toString(), icon: Calendar, color: "text-blue-500", bg: "bg-blue-50/50", statusVal: "HalfDay" },
+                { label: "Absent / Off", val: stats.absent.toString(), icon: XCircle, color: "text-rose-500", bg: "bg-rose-50/50", statusVal: "Absent" },
+                { label: "Weekly Off", val: stats.weeklyOff.toString(), icon: Coffee, color: "text-sky-500", bg: "bg-sky-50/50", statusVal: "WeeklyOff" },
+              ].map((stat, i) => {
+                const isActive = selectedStatus === stat.statusVal;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setSelectedStatus(prev => prev === stat.statusVal ? null : stat.statusVal)}
+                    className={cn(
+                      "bg-white p-6 rounded-[2.5rem] transition-all cursor-pointer overflow-hidden relative flex items-center justify-between group h-28",
+                      isActive
+                        ? "shadow-md ring-2 ring-zinc-900/10 scale-[1.02]"
+                        : "border border-zinc-50 shadow-sm hover:shadow-md hover:scale-[1.01]"
+                    )}
+                  >
+                    <div className="flex flex-col gap-1 z-10">
+                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest leading-none">{stat.label}</span>
+                      <span className="text-3xl font-black text-zinc-900 tracking-tighter leading-none">{stat.val}</span>
+                    </div>
+                    <div className={cn("h-12 w-12 rounded-[1.25rem] flex items-center justify-center z-10", stat.bg)}>
+                      <stat.icon className={cn("h-5 w-5", stat.color)} strokeWidth={2.5} />
+                    </div>
                   </div>
-                  <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center z-10", stat.bg)}>
-                    <stat.icon className={cn("h-6 w-6", stat.color)} />
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 opacity-[0.03] rotate-12 transition-transform group-hover:scale-110">
-                    <stat.icon className="h-24 w-24" />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Attendance Table */}

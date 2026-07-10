@@ -18,8 +18,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog"
+import { DataTable } from "@/components/ui/data-table"
+import { ColumnDef } from "@tanstack/react-table"
 import {
   Box,
   Plus,
@@ -187,6 +190,69 @@ export default function MaterialMasterPage() {
     setUpdatingItem(null)
   }
 
+  const columns: ColumnDef<MaterialReceipt>[] = [
+    {
+      accessorKey: "indentId",
+      header: "Indent Request",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
+            <ClipboardCheck className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-xs font-black text-zinc-900">{row.getValue("indentId")}</span>
+        </div>
+      )
+    },
+    {
+      accessorKey: "name",
+      header: "Material Name",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-black text-zinc-900">{row.getValue("name")}</span>
+          <span className="text-[8px] font-bold text-zinc-400 uppercase mt-0.5">{row.original.category}</span>
+        </div>
+      )
+    },
+    {
+      accessorKey: "requestedQty",
+      header: () => <div className="text-center">Requested Quantity</div>,
+      cell: ({ row }) => (
+        <div className="text-center">
+          <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">
+            {row.getValue("requestedQty")} {row.original.unit}
+          </span>
+        </div>
+      )
+    },
+    {
+      accessorKey: "receivedQty",
+      header: () => <div className="text-center">Received Quantity</div>,
+      cell: ({ row }) => (
+        <div className="text-center">
+          <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-[11px] font-black">
+            {row.getValue("receivedQty")} {row.original.unit}
+          </span>
+        </div>
+      )
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right pr-4">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex justify-end pr-4">
+          <Button 
+            onClick={() => handleOpenUpdate(row.original)}
+            variant="ghost" 
+            size="sm" 
+            className="h-8 rounded-xl font-black text-[10px] uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/10 gap-1.5"
+          >
+            <Edit className="h-3.5 w-3.5" /> Update
+          </Button>
+        </div>
+      )
+    }
+  ]
+
   return (
     <ContentLayout title="Material Master">
       <div className="flex flex-col gap-8 p-6 sm:p-12 max-w-[1500px] mx-auto min-h-screen">
@@ -196,21 +262,33 @@ export default function MaterialMasterPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-4xl font-black text-zinc-900 tracking-tighter">Material Receipts</h1>
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Inward & Goods Receipt Ledger</p>
             </div>
           </div>
 
-          <Button 
-            onClick={handleOpenAdd}
-            className="h-12 px-8 rounded-2xl bg-zinc-900 text-white font-black shadow-xl shadow-zinc-900/10 gap-2 hover:bg-zinc-800 transition-all"
-          >
-            <Plus className="h-5 w-5" /> Add Material Receipt
-          </Button>
+          <div className="flex items-center gap-3">
+            <div className="relative w-64">
+              <Input 
+                placeholder="Scan or filter registry..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 rounded-xl bg-white border-zinc-100 pl-10 font-bold text-sm shadow-sm" 
+              />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
+            </div>
+
+            <Button 
+              onClick={handleOpenAdd}
+              className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300"
+            >
+              <Plus className="h-4 w-4" /> Add Material Receipt
+            </Button>
+          </div>
         </div>
 
         {/* Simplistic Material Log Board */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-sm space-y-6">
+        <div className="animate-in fade-in duration-300 space-y-6">
           <div className="flex items-center justify-between mb-2 px-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400">
@@ -218,127 +296,65 @@ export default function MaterialMasterPage() {
               </div>
               <h3 className="text-xl font-black text-zinc-900 tracking-tight">Receipt Inward Log</h3>
             </div>
-
-            <div className="relative w-72">
-              <Input 
-                placeholder="Scan or filter registry..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-xl bg-zinc-50 border-none pl-10 font-bold text-sm" 
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
-            </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-100 overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-zinc-50/50 border-b border-zinc-100">
-                  <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-8">Indent Request</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Material Name</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Requested Quantity</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Received Quantity</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right pr-8">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50">
-                {filteredReceipts.map((item, idx) => {
-                  return (
-                    <tr key={`${item.indentId}-${item.id}`} className="group hover:bg-zinc-50 transition-colors">
-                      <td className="px-6 py-4 pl-8">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
-                            <ClipboardCheck className="h-4 w-4 text-teal-600" />
-                          </div>
-                          <span className="text-xs font-black text-zinc-900">{item.indentId}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-black text-zinc-900">{item.name}</span>
-                          <span className="text-[8px] font-bold text-zinc-400 uppercase mt-0.5">{item.category}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">
-                          {item.requestedQty} {item.unit}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-[11px] font-black">
-                          {item.receivedQty} {item.unit}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right pr-8">
-                        <Button 
-                          onClick={() => handleOpenUpdate(item)}
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 rounded-xl font-black text-[10px] uppercase tracking-wider text-teal-600 hover:text-teal-700 hover:bg-teal-50 gap-1.5"
-                        >
-                          <Edit className="h-3.5 w-3.5" /> Update
-                        </Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {filteredReceipts.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-zinc-400 font-bold">
-                      No material records found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={columns} data={filteredReceipts} />
         </div>
 
         {/* Modal: Add Material Receipt */}
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-none shadow-2xl bg-white p-8">
-            <DialogHeader className="gap-2">
-              <div className="h-10 w-10 rounded-xl bg-zinc-900 flex items-center justify-center text-white">
-                <Box className="h-5 w-5" />
+          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Box className="h-32 w-32" />
               </div>
-              <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Add Material Receipt</DialogTitle>
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Goods Inward Entry System</p>
+              <div className="flex items-center gap-4 relative">
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Box className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Add Material Receipt</DialogTitle>
+                  <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">
+                    Goods Inward Entry System
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-6 my-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Indent Request</Label>
+            <div className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Indent Request</Label>
                 <Select value={addIndentId} onValueChange={handleIndentChange}>
-                  <SelectTrigger className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm">
+                  <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
                     <SelectValue placeholder="Select Indent" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
                     {MOCK_INDENTS_CATALOG.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.id}>{ind.title}</SelectItem>
+                      <SelectItem key={ind.id} value={ind.id} className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">{ind.title}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Requested Material</Label>
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Requested Material</Label>
                 <Select value={addMaterialId} onValueChange={setAddMaterialId}>
-                  <SelectTrigger className="h-12 rounded-xl bg-zinc-50 border-none font-bold text-sm">
+                  <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
                     <SelectValue placeholder="Select Material" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
                     {activeIndentOptions?.items.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                      <SelectItem key={item.id} value={item.id} className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">{item.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               {activeMaterialOptions && (
-                <div className="grid grid-cols-2 gap-4 bg-zinc-50 p-5 rounded-2xl border border-zinc-100">
+                <div className="grid grid-cols-2 gap-4 bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
                   <div className="flex flex-col">
                     <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Requested Limit</span>
-                    <span className="text-base font-black text-zinc-900 mt-1">
+                    <span className="text-base font-black text-primary mt-1">
                       {activeMaterialOptions.requestedQty} {activeMaterialOptions.unit}
                     </span>
                   </div>
@@ -351,55 +367,64 @@ export default function MaterialMasterPage() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Received Quantity</Label>
+              <div className="space-y-2.5">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Received Quantity</Label>
                 <div className="relative">
                   <Input 
                     type="number"
                     value={addReceivedQty || ""}
                     onChange={(e) => setAddReceivedQty(Math.min(activeMaterialOptions?.requestedQty || 0, Math.max(0, parseInt(e.target.value) || 0)))}
                     placeholder="Enter received amount"
-                    className="h-12 rounded-xl bg-zinc-50 border-none font-bold pl-4 pr-12 focus:bg-white transition-all text-sm"
+                    className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-4 pr-12 focus:ring-primary shadow-sm"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-zinc-400">
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">
                     {activeMaterialOptions?.unit}
                   </span>
                 </div>
               </div>
-            </div>
 
-            <DialogFooter className="gap-3 sm:gap-0">
-              <Button 
-                variant="ghost" 
-                onClick={() => setIsAddOpen(false)}
-                className="h-12 rounded-xl font-bold text-xs uppercase tracking-widest text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAddSubmit}
-                className="h-12 px-6 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-widest"
-              >
-                Add to Log
-              </Button>
-            </DialogFooter>
+              <div className="pt-4 flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setIsAddOpen(false)}
+                  className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddSubmit}
+                  className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                >
+                  Add to Log
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
         {/* Modal: Update Received Quantity */}
         <Dialog open={isUpdateOpen} onOpenChange={setIsUpdateOpen}>
-          <DialogContent className="sm:max-w-[460px] rounded-[2rem] border-none shadow-2xl bg-white p-8">
-            <DialogHeader className="gap-2">
-              <div className="h-10 w-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
-                <Edit className="h-5 w-5" />
+          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Edit className="h-32 w-32" />
               </div>
-              <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Update Inward Quantity</DialogTitle>
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Recount physical inward registry</p>
+              <div className="flex items-center gap-4 relative">
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Edit className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Update Inward Quantity</DialogTitle>
+                  <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">
+                    Recount physical inward registry
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
             {updatingItem && (
-              <div className="space-y-6 my-6">
-                <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-100 space-y-4">
+              <div className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+                <div className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col">
                       <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Indent Source</span>
@@ -419,38 +444,38 @@ export default function MaterialMasterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">New Received Quantity</Label>
+                <div className="space-y-2.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">New Received Quantity</Label>
                   <div className="relative">
                     <Input 
                       type="number"
                       value={updatingReceivedQty || ""}
                       onChange={(e) => setUpdatingReceivedQty(Math.min(updatingItem.requestedQty, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="h-12 rounded-xl bg-zinc-50 border-none font-bold pl-4 pr-12 focus:bg-white transition-all text-sm"
+                      className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-4 pr-12 focus:ring-primary shadow-sm"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-zinc-400">
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">
                       {updatingItem.unit}
                     </span>
                   </div>
                 </div>
+
+                <div className="pt-4 flex items-center gap-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setIsUpdateOpen(false)}
+                    className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpdateSubmit}
+                    className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                  >
+                    Save Changes
+                  </Button>
+                </div>
               </div>
             )}
-
-            <DialogFooter className="gap-3 sm:gap-0">
-              <Button 
-                variant="ghost" 
-                onClick={() => setIsUpdateOpen(false)}
-                className="h-12 rounded-xl font-bold text-xs uppercase tracking-widest text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleUpdateSubmit}
-                className="h-12 px-6 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-teal-500/20"
-              >
-                Save Changes
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 

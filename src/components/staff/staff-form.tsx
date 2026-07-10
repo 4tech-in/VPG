@@ -292,328 +292,375 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   const isLoading = rolesLoading || unitsLoading || userActionLoading
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {!isDialog && (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
           <Link href="/users">
-            <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100">
+            <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100 hover:bg-zinc-50 transition-colors">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight">
-            {initialValues ? "Edit Staff Member" : "Add New Staff"}
-          </h1>
+          <div>
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">
+              {initialValues ? "Edit Staff Member" : "Add New Staff"}
+            </h1>
+            <p className="text-sm text-zinc-500 font-medium mt-1">Fill in the details below to register a corporate member.</p>
+          </div>
         </div>
       )}
 
-      <div className={cn(
-        " overflow-hidden",
-        !isDialog && "border-none shadow-sm rounded-3xl p-8 sm:p-12"
-      )}>
-        <div className="flex flex-col sm:flex-row gap-12 mb-12 items-start">
-          <div className="relative group cursor-pointer" onClick={() => document.getElementById("profile-image-upload")?.click()}>
-            <Avatar className="h-32 w-32 rounded-[2.5rem] border-4 border-zinc-50 shadow-sm bg-zinc-100 flex items-center justify-center overflow-hidden transition-all group-hover:scale-105">
-              <AvatarImage src={previewUrl} className="object-cover" />
-              <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">
-                {name ? name[0].toUpperCase() : <User className="h-12 w-12 text-zinc-300" />}
-              </AvatarFallback>
-            </Avatar>
-            <div className="absolute inset-0 bg-black/40 rounded-[2.5rem] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <Camera className="h-8 w-8 text-white" />
+      <div className="flex flex-col gap-8">
+        {/* Profile & Personal Info Card */}
+        <div className={cn(
+          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75 fill-mode-both",
+          isDialog && "border-none shadow-none p-0 hover:shadow-none"
+        )}>
+          <div className="flex flex-col sm:flex-row gap-10 items-start">
+            <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById("profile-image-upload")?.click()}>
+              <Avatar className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2rem] border-4 border-zinc-50 shadow-sm bg-zinc-100 flex items-center justify-center overflow-hidden transition-all group-hover:scale-105 group-hover:shadow-lg">
+                <AvatarImage src={previewUrl} className="object-cover" />
+                <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
+                  {name ? name[0].toUpperCase() : <User className="h-16 w-16 text-zinc-300" />}
+                </AvatarFallback>
+              </Avatar>
+              <div className="absolute inset-0 bg-black/40 rounded-[2rem] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <Camera className="h-10 w-10 text-white" />
+              </div>
+              <input
+                type="file"
+                id="profile-image-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
             </div>
-            <input
-              type="file"
-              id="profile-image-upload"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
-          </div>
 
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xl font-bold text-zinc-900">Member Profile</h2>
-            <p className="text-sm text-zinc-400 max-w-xs">
-              Fill in the corporate profile and resource mapping details for VPG Estate members.
+            <div className="flex-1 w-full">
+              <div className="flex flex-col gap-1 mb-8">
+                <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+                  Personal Details
+                </h2>
+                <p className="text-sm text-zinc-400">
+                  Basic information and contact details for the member.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Full Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter full name"
+                    className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Email Address <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <Input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="staff@vpg.estate"
+                      type="email"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                      required
+                    />
+                    <Mail className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/60" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Phone Number</Label>
+                  <div className="relative">
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                    />
+                    <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Password {initialValues && <span className="text-[10px] text-zinc-400 font-bold tracking-normal normal-case">(Leave blank to keep current)</span>} {!initialValues && <span className="text-destructive">*</span>}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 pr-12 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                      required={!initialValues}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-primary transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Corporate Profile Card */}
+        <div className={cn(
+          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both",
+          isDialog && "border-none shadow-none p-0 hover:shadow-none"
+        )}>
+          <div className="flex flex-col gap-1 mb-8">
+            <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" /> Corporate Role
+            </h2>
+            <p className="text-sm text-zinc-400">
+              Set the organization, role, and reporting structure.
             </p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Full Name <span className="text-destructive">*</span></Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter full name"
-              className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address <span className="text-destructive">*</span></Label>
-            <div className="relative">
-              <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="staff@VPG.estate"
-                type="email"
-                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
-                required
-              />
-              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Phone Number</Label>
-            <div className="relative">
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="00 0000 0000"
-                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium"
-              />
-              <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-              Password {initialValues && <span className="text-[10px] text-zinc-400 font-bold tracking-normal">(Leave blank to keep current)</span>} {!initialValues && <span className="text-destructive">*</span>}
-            </Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="********"
-                className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 pr-12 focus-visible:ring-primary font-medium"
-                required={!initialValues}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-zinc-500 transition-colors"
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-          </div>
-
-           {isSuperAdmin && (
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Organization <span className="text-destructive">*</span></Label>
-              <Select
-                value={organizationId}
-                onValueChange={setOrganizationId}
-                onOpenChange={(open) => {
-                  if (open && allOrganizations.length === 0) {
-                    refetchOrganizations()
-                  }
-                }}
-              >
-                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                  <SelectValue placeholder="Select organization" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                  {allOrganizations?.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
-            <Select
-              value={roleId}
-              onValueChange={setRoleId}
-              onOpenChange={(open) => {
-                if (open && roles.length === 0) {
-                  refetchRoles()
-                }
-              }}
-            >
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                {activeRoles.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {!isSuperAdmin && (
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
-              <Select
-                value={reportsTo}
-                onValueChange={setReportsTo}
-                onOpenChange={(open) => {
-                  if (open && allUsers.length === 0) {
-                    refetchUsers()
-                  }
-                }}
-              >
-                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                  <SelectValue placeholder="Select reporting manager" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                  <SelectItem value="none">None / Self-Managed</SelectItem>
-                  {potentialReportsTo.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name} ({u.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
-            <Select
-              value={geofenceId}
-              onValueChange={setGeofenceId}
-              onOpenChange={(open) => {
-                if (open && !hasFetchedGeofences.current && !isGeofenceFetchingRef.current) {
-                  hasFetchedGeofences.current = true
-                  fetchGeofencesPage(1)
-                }
-              }}
-            >
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select geofence boundary" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                <SelectItem value="none">None / No Geofence</SelectItem>
-                {geofencesList.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-                {hasMoreGeofences && (
-                  <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                    {isGeofencesLoading ? "Loading..." : "Scroll for more"}
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
-            <Select
-              value={projectId}
-              onValueChange={setProjectId}
-              onOpenChange={(open) => {
-                if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
-                  hasFetchedProjects.current = true
-                  fetchProjectsPage(1)
-                }
-              }}
-            >
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select corporate project" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                <SelectItem value="none">None / Unassigned</SelectItem>
-                {projectsList.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-                {hasMoreProjects && (
-                  <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                    {isProjectsLoading ? "Loading..." : "Scroll for more"}
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
-            <Select
-              value={attendancePolicyId}
-              onValueChange={setAttendancePolicyId}
-              onOpenChange={(open) => {
-                if (open && !hasFetchedPolicies.current && !isPolicyFetchingRef.current) {
-                  hasFetchedPolicies.current = true
-                  fetchPoliciesPage(1)
-                }
-              }}
-            >
-              <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                <SelectValue placeholder="Select attendance ruleset" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                <SelectItem value="none">None / System Default</SelectItem>
-                {policiesList.map((ap) => (
-                  <SelectItem key={ap.id} value={ap.id}>
-                    {ap.name}
-                  </SelectItem>
-                ))}
-                {hasMorePolicies && (
-                  <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold text-zinc-500 bg-zinc-50/50">
-                    {isPoliciesLoading ? "Loading..." : "Scroll for more"}
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-
-          {selectedNodes.length > 0 && (
-            <div className="space-y-2 md:col-span-2">
-              <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Primary Operating Unit</Label>
-              <Select
-                value={primaryNodeId}
-                onValueChange={setPrimaryNodeId}
-                onOpenChange={(open) => {
-                  if (open && units.length === 0) {
-                    refetchUnits()
-                  }
-                }}
-              >
-                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium">
-                  <SelectValue placeholder="Select primary operating unit" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                  {activeUnits
-                    .filter((u) => selectedNodes.includes(u.id))
-                    .map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.label}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            {isSuperAdmin && (
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Organization <span className="text-destructive">*</span></Label>
+                <Select
+                  value={organizationId}
+                  onValueChange={setOrganizationId}
+                  onOpenChange={(open) => {
+                    if (open && allOrganizations.length === 0) {
+                      refetchOrganizations()
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                    {allOrganizations?.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-zinc-400" />
+                          {org.name}
+                        </div>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
+              <Select
+                value={roleId}
+                onValueChange={setRoleId}
+                onOpenChange={(open) => {
+                  if (open && roles.length === 0) {
+                    refetchRoles()
+                  }
+                }}
+              >
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                  {activeRoles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-          )}
+
+            {!isSuperAdmin && (
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
+                <Select
+                  value={reportsTo}
+                  onValueChange={setReportsTo}
+                  onOpenChange={(open) => {
+                    if (open && allUsers.length === 0) {
+                      refetchUsers()
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                    <SelectValue placeholder="Select reporting manager" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                    <SelectItem value="none">None / Self-Managed</SelectItem>
+                    {potentialReportsTo.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name} <span className="text-zinc-400">({u.role})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {selectedNodes.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Primary Operating Unit</Label>
+                <Select
+                  value={primaryNodeId}
+                  onValueChange={setPrimaryNodeId}
+                  onOpenChange={(open) => {
+                    if (open && units.length === 0) {
+                      refetchUnits()
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                    <SelectValue placeholder="Select primary operating unit" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                    {activeUnits
+                      .filter((u) => selectedNodes.includes(u.id))
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.label}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex justify-end gap-4 mt-16 pt-8 border-t border-zinc-50">
+        {/* Location & Assignments Card */}
+        <div className={cn(
+          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both",
+          isDialog && "border-none shadow-none p-0 hover:shadow-none"
+        )}>
+          <div className="flex flex-col gap-1 mb-8">
+            <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+              <Network className="h-5 w-5 text-primary" /> Assignments & Tracking
+            </h2>
+            <p className="text-sm text-zinc-400">
+              Configure geofences, projects, and attendance policies.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
+              <Select
+                value={geofenceId}
+                onValueChange={setGeofenceId}
+                onOpenChange={(open) => {
+                  if (open && !hasFetchedGeofences.current && !isGeofenceFetchingRef.current) {
+                    hasFetchedGeofences.current = true
+                    fetchGeofencesPage(1)
+                  }
+                }}
+              >
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                  <SelectValue placeholder="Select geofence boundary" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                  <SelectItem value="none">None / No Geofence</SelectItem>
+                  {geofencesList.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                  {hasMoreGeofences && (
+                    <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                      {isGeofencesLoading ? "Loading..." : "Scroll for more"}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
+              <Select
+                value={projectId}
+                onValueChange={setProjectId}
+                onOpenChange={(open) => {
+                  if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
+                    hasFetchedProjects.current = true
+                    fetchProjectsPage(1)
+                  }
+                }}
+              >
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                  <SelectValue placeholder="Select corporate project" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                  <SelectItem value="none">None / Unassigned</SelectItem>
+                  {projectsList.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                  {hasMoreProjects && (
+                    <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                      {isProjectsLoading ? "Loading..." : "Scroll for more"}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
+              <Select
+                value={attendancePolicyId}
+                onValueChange={setAttendancePolicyId}
+                onOpenChange={(open) => {
+                  if (open && !hasFetchedPolicies.current && !isPolicyFetchingRef.current) {
+                    hasFetchedPolicies.current = true
+                    fetchPoliciesPage(1)
+                  }
+                }}
+              >
+                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                  <SelectValue placeholder="Select attendance ruleset" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                  <SelectItem value="none">None / System Default</SelectItem>
+                  {policiesList.map((ap) => (
+                    <SelectItem key={ap.id} value={ap.id}>
+                      {ap.name}
+                    </SelectItem>
+                  ))}
+                  {hasMorePolicies && (
+                    <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                      {isPoliciesLoading ? "Loading..." : "Scroll for more"}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-4 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
           <Button
             type="button"
             variant="outline"
             onClick={onSuccess}
-            className="rounded-2xl h-14 px-8 border-zinc-100 font-bold hover:bg-zinc-50 min-w-[140px]"
+            className="rounded-2xl h-14 px-8 border-zinc-200 font-bold hover:bg-zinc-50 min-w-[140px] text-zinc-600 transition-all hover:border-zinc-300"
             disabled={isLoading}
           >
             Cancel
           </Button>
           <Button
             type="submit"
-            className="rounded-2xl h-14 px-12 font-bold shadow-lg shadow-primary/20 min-w-[180px]"
+            className="rounded-2xl h-14 px-12 font-bold shadow-lg shadow-primary/20 min-w-[180px] transition-all hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0"
             disabled={isLoading}
           >
             {isLoading ? "Saving Profile..." : (initialValues ? "Update Member" : "Save Staff Member")}
