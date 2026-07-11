@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
-import { userService, ApiUser, CreateUserPayload } from "@/service/userService"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { userService, ApiUser, CreateUserPayload, GetUsersParams } from "@/service/userService"
 import { toast } from "sonner"
 
 export type Staff = {
@@ -74,7 +74,7 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     role: roleName,
     email: apiUser.email,
     phone: apiUser.mobile || "",
-    properties: 0, // Mocked properties count or 0 default
+    properties: 0,
     status: apiUser.isActive ? "Active" : "Inactive",
     roleId,
     nodeIds,
@@ -95,20 +95,48 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
 
 export function useUsers(options?: { skipFetch?: boolean }) {
   const skipFetch = options?.skipFetch ?? false
-  const [allUsers, setAllUsers] = useState<Staff[]>([])
+
+  const [users, setUsers] = useState<Staff[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
+  // Server-side state
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("")
+  const [roleFilter, setRoleFilter] = useState("")
+  const [sortBy, setSortBy] = useState<"name" | "email" | "createdAt" | "status">("createdAt")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
-  const fetchUsers = useCallback(async () => {
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  })
+
+  const fetchUsers = useCallback(async (params?: GetUsersParams) => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await userService.getUsers()
-      setAllUsers(response.map(mapApiUserToStaff))
+      const response = await userService.getUsers({
+        page,
+        limit,
+        search: search || undefined,
+        status: statusFilter || undefined,
+        role: roleFilter || undefined,
+        sortBy,
+        sortOrder,
+        ...params,
+      })
+      const data = response?.data || []
+      setUsers(data.map(mapApiUserToStaff))
+      if (response?.pagination) {
+        setPagination(response.pagination)
+      } else {
+        setPagination({ total: data.length, page: 1, limit: data.length || 10, totalPages: 1 })
+      }
     } catch (err: any) {
       const msg = err.message || "Failed to fetch users"
       setError(msg)
@@ -116,7 +144,7 @@ export function useUsers(options?: { skipFetch?: boolean }) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [page, limit, search, statusFilter, roleFilter, sortBy, sortOrder])
 
   const addUser = async (payload: CreateUserPayload) => {
     setIsLoading(true)
@@ -168,22 +196,20 @@ export function useUsers(options?: { skipFetch?: boolean }) {
   }
 
   const toggleUserStatus = async (id: string) => {
-    const user = allUsers.find((u) => u.id === id)
+    const user = users.find((u) => u.id === id)
     if (!user) return
 
     const nextIsActive = !user.isActive
 
     // Optimistic update
-    setAllUsers((prev) =>
+    setUsers((prev) =>
       prev.map((u) => (u.id === id ? { ...u, isActive: nextIsActive, status: nextIsActive ? "Active" : "Inactive" } : u))
     )
 
     try {
-      const updatedApiUser = await userService.updateUser(id, {
-        isActive: nextIsActive
-      })
+      const updatedApiUser = await userService.updateUser(id, { isActive: nextIsActive })
       const updatedStaff = mapApiUserToStaff(updatedApiUser)
-      setAllUsers((prev) => prev.map((u) => (u.id === id ? updatedStaff : u)))
+      setUsers((prev) => prev.map((u) => (u.id === id ? updatedStaff : u)))
       toast.success(`Member status updated to ${updatedStaff.status}`)
     } catch (err: any) {
       await fetchUsers()
@@ -191,34 +217,6 @@ export function useUsers(options?: { skipFetch?: boolean }) {
       toast.error(msg)
     }
   }
-
-  // Client-side search and pagination
-  const filteredUsers = useMemo(() => {
-    if (!search) return allUsers
-    const query = search.toLowerCase()
-    return allUsers.filter(
-      (u) =>
-        u.name.toLowerCase().includes(query) ||
-        u.role.toLowerCase().includes(query) ||
-        u.email.toLowerCase().includes(query)
-    )
-  }, [allUsers, search])
-
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (page - 1) * limit
-    return filteredUsers.slice(startIndex, startIndex + limit)
-  }, [filteredUsers, page, limit])
-
-  const pagination = useMemo(() => {
-    const totalItems = filteredUsers.length
-    const totalPages = Math.ceil(totalItems / limit) || 1
-    return {
-      totalItems,
-      totalPages,
-    }
-  }, [filteredUsers, limit])
-
-  const calledRef = useRef(false)
 
   const getUserById = useCallback(async (id: string) => {
     setIsLoading(true)
@@ -234,17 +232,22 @@ export function useUsers(options?: { skipFetch?: boolean }) {
     }
   }, [])
 
-  // Fetch on mount
+  // Re-fetch whenever any filter/page/sort param changes
+  const calledRef = useRef(false)
   useEffect(() => {
     if (skipFetch) return
-    if (calledRef.current) return
-    calledRef.current = true
     fetchUsers()
   }, [fetchUsers, skipFetch])
 
+  // Reset to page 1 when filters change (not on page change itself)
+  const setSearchWithReset = (v: string) => { setSearch(v); setPage(1) }
+  const setStatusFilterWithReset = (v: "" | "active" | "inactive") => { setStatusFilter(v); setPage(1) }
+  const setRoleFilterWithReset = (v: string) => { setRoleFilter(v); setPage(1) }
+  const setLimitWithReset = (v: number) => { setLimit(v); setPage(1) }
+
   return {
-    users: paginatedUsers,
-    allUsers,
+    users,
+    allUsers: users, // kept for backward compat
     isLoading,
     error,
     refetch: fetchUsers,
@@ -253,12 +256,22 @@ export function useUsers(options?: { skipFetch?: boolean }) {
     removeUser,
     toggleUserStatus,
     getUserById,
+    // Pagination
     page,
     setPage,
     limit,
-    setLimit,
-    search,
-    setSearch,
+    setLimit: setLimitWithReset,
     pagination,
+    // Filters & sort
+    search,
+    setSearch: setSearchWithReset,
+    statusFilter,
+    setStatusFilter: setStatusFilterWithReset,
+    roleFilter,
+    setRoleFilter: setRoleFilterWithReset,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
   }
 }

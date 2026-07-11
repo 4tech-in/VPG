@@ -102,6 +102,12 @@ export default function IndentPage() {
   const [isLoadingUnits, setIsLoadingUnits] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const fetchUnits = async (pageToFetch = 1, reset = false) => {
     if (isLoadingUnits || (!hasMoreUnits && !reset)) return;
     setIsLoadingUnits(true);
@@ -150,10 +156,10 @@ export default function IndentPage() {
     }
   }, [approvingIndent]);
 
-  const fetchIndents = async (search = "", statusFilter = selectedStatus) => {
+  const fetchIndents = async (search = "", statusFilter = selectedStatus, pageNum = page, limitNum = limit) => {
     try {
       setLoading(true);
-      const params: any = { search };
+      const params: any = { search, page: pageNum, limit: limitNum };
       if (statusFilter && statusFilter !== "all") {
         if (statusFilter === "Pending") {
           const isAdmin = user?.roleId?.name?.toLowerCase() === "admin";
@@ -163,12 +169,18 @@ export default function IndentPage() {
         }
       }
       const res = await indentService.getIndents(params);
-      if (Array.isArray(res)) {
-        setData(res);
-      } else if (res && res.data) {
+      if (res && res.data) {
         setData(res.data);
+        setTotalItems(res.total || res.data.length);
+        setTotalPages(res.totalPages || 1);
+      } else if (Array.isArray(res)) {
+        setData(res);
+        setTotalItems(res.length);
+        setTotalPages(1);
       } else {
         setData([]);
+        setTotalItems(0);
+        setTotalPages(1);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch indents");
@@ -178,11 +190,15 @@ export default function IndentPage() {
   };
 
   useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedStatus]);
+
+  useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      fetchIndents(searchTerm, selectedStatus);
+      fetchIndents(searchTerm, selectedStatus, page, limit);
     }, 400);
     return () => clearTimeout(delayDebounce);
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus, page, limit]);
 
   const handleStatusChange = async (
     id: string,
@@ -378,7 +394,6 @@ export default function IndentPage() {
                   <span>{uiStatus}</span>
                 </div>
               </div>
-
             </div>
           );
         }
@@ -535,7 +550,19 @@ export default function IndentPage() {
             Loading Indent Requests...
           </div>
         ) : (
-          <DataTable columns={columns} data={data} />
+          <DataTable
+            columns={columns}
+            data={data}
+            isServerSide={true}
+            pageIndex={page - 1}
+            pageSize={limit}
+            pageCount={totalPages}
+            totalItems={totalItems}
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            onPageChange={(p) => setPage(p + 1)}
+            onPageSizeChange={(size) => setLimit(size)}
+          />
         )}
       </div>
 

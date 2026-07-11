@@ -35,6 +35,7 @@ export default function PurchaseOrderPage() {
     page,
     setPage,
     limit,
+    setLimit,
     search,
     setSearch,
     totalPages,
@@ -42,7 +43,6 @@ export default function PurchaseOrderPage() {
     cancelPO,
     refetch
   } = usePurchaseOrders()
-
 
 
   const columns: ColumnDef<PurchaseOrder>[] = [
@@ -214,6 +214,7 @@ export default function PurchaseOrderPage() {
                searchValue={search}
                onSearchChange={setSearch}
                onPageChange={(p) => setPage(p + 1)}
+               onPageSizeChange={(size) => setLimit(size)}
              />
            )}
         </div>

@@ -10,7 +10,9 @@ import {
   Trash,
   Eye,
   EyeOff,
-  ArrowRight
+  ArrowRight,
+  ArrowUpDown,
+  Filter
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -23,6 +25,13 @@ import { ColumnDef } from "@tanstack/react-table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 import { StaffDialog } from "@/components/staff/staff-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
@@ -127,12 +136,24 @@ export default function UserPage() {
 
   const {
     users,
+    allUsers,
     search,
     setSearch,
     toggleUserStatus,
     removeUser,
     isLoading,
-    refetch
+    refetch,
+    page,
+    setPage,
+    limit,
+    setLimit,
+    pagination,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    sortOrder,
+    setSortOrder,
   } = useUsers()
 
   const [view, setView] = useState<"grid" | "table">("table")
@@ -158,6 +179,7 @@ export default function UserPage() {
     setEditingStaff(null)
     setIsDialogOpen(true)
   }
+
 
   const columns: ColumnDef<Staff>[] = [
     {
@@ -291,6 +313,52 @@ export default function UserPage() {
           </div>
         </div>
 
+        {/* Filter & Sort Bar */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+            <Filter className="h-3.5 w-3.5" />
+            <span>Filter</span>
+          </div>
+          <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v as any)}>
+            <SelectTrigger className="h-9 w-36 rounded-xl text-xs font-bold border-zinc-100 shadow-sm bg-white">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active Only</SelectItem>
+              <SelectItem value="inactive">Inactive Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-2 ml-2 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <span>Sort</span>
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+            <SelectTrigger className="h-9 w-36 rounded-xl text-xs font-bold border-zinc-100 shadow-sm bg-white">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="name">Name A–Z</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="createdAt">Newest First</SelectItem>
+              <SelectItem value="status">Active First</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as "asc" | "desc")}>
+            <SelectTrigger className="h-9 w-28 rounded-xl text-xs font-bold border-zinc-100 shadow-sm bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="desc">Desc ↓</SelectItem>
+              <SelectItem value="asc">Asc ↑</SelectItem>
+            </SelectContent>
+          </Select>
+
+        </div>
+
+        {/* Main Content */}
         {isLoading && users.length === 0 ? (
           <div className="text-center py-12 text-zinc-400 font-bold">
             {isSuperAdmin ? "Loading user profiles..." : "Loading team profiles..."}
@@ -309,6 +377,13 @@ export default function UserPage() {
             columns={columns}
             data={users}
             onRowClick={(row) => router.push(`/users/${row.id}`)}
+            isServerSide={true}
+            pageIndex={page - 1}
+            pageSize={limit}
+            pageCount={pagination.totalPages}
+            totalItems={pagination.total}
+            onPageChange={(idx) => setPage(idx + 1)}
+            onPageSizeChange={(size) => setLimit(size)}
           />
         )}
 

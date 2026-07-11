@@ -30,6 +30,7 @@ export default function ItemPage() {
       page,
       setPage,
       limit,
+      setLimit,
       search,
       setSearch,
       pagination,
@@ -234,6 +235,7 @@ export default function ItemPage() {
                   searchValue={search}
                   onSearchChange={setSearch}
                   onPageChange={(p) => setPage(p + 1)}
+                  onPageSizeChange={(size) => setLimit(size)}
                />
             {/* </div> */}
 

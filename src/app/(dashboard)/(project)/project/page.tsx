@@ -35,6 +35,7 @@ export default function ProjectPage() {
     page,
     setPage,
     limit,
+    setLimit,
     search,
     setSearch,
     pagination,
@@ -208,6 +209,7 @@ export default function ProjectPage() {
           searchValue={search}
           onSearchChange={setSearch}
           onPageChange={(p) => setPage(p + 1)}
+          onPageSizeChange={(size) => setLimit(size)}
         />
 
         {/* Dialog */}

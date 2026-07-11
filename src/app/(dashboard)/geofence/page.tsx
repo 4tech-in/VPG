@@ -19,6 +19,7 @@ export default function GeofencePage() {
     page,
     setPage,
     limit,
+    setLimit,
     search,
     setSearch,
     pagination,
@@ -143,6 +144,7 @@ export default function GeofencePage() {
           searchValue={search}
           onSearchChange={setSearch}
           onPageChange={(p) => setPage(p + 1)}
+          onPageSizeChange={(size) => setLimit(size)}
         />
       </div>
 

@@ -130,7 +130,8 @@ export default function AttendancePage() {
     if ((isMarkModalOpen || isLeaveModalOpen) && users.length === 0) {
       const fetchUsers = async () => {
         try {
-          const usersList = await userService.getUsers()
+          const response = await userService.getUsers({ limit: 200 })
+          const usersList = Array.isArray(response) ? response : (response?.data || [])
           setUsers(usersList)
         } catch (err: any) {
           toast.error("Failed to load users list")

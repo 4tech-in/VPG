@@ -38,6 +38,7 @@ export default function VendorPage() {
     page,
     setPage,
     limit,
+    setLimit,
     search,
     setSearch,
     pagination,
@@ -302,6 +303,7 @@ export default function VendorPage() {
             searchValue={search}
             onSearchChange={setSearch}
             onPageChange={(p) => setPage(p + 1)}
+            onPageSizeChange={(size) => setLimit(size)}
           />
       </div>
 
