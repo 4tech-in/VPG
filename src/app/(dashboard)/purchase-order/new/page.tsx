@@ -19,7 +19,11 @@ import {
    Building,
    UploadCloud,
    Box,
-   Loader2
+   Loader2,
+   Plus,
+   Calculator,
+   ShieldCheck,
+   Trash2
 } from "lucide-react"
 import { toast } from "sonner"
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -35,12 +39,6 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import {
-   DropdownMenu,
-   DropdownMenuTrigger,
-   DropdownMenuContent,
-   DropdownMenuCheckboxItem
-} from "@/components/ui/dropdown-menu"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import {
    Command,
@@ -61,7 +59,7 @@ function CreatePOContent() {
    const searchParams = useSearchParams()
    const urlIndentId = searchParams.get("indentId")
 
-   const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files" >("remarks")
+   const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files">("remarks")
    const [selectedIndentId, setSelectedIndentId] = useState<string>("")
    const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([])
 
@@ -175,6 +173,26 @@ function CreatePOContent() {
       setItems(prev => prev.map((item, i) => i === idx ? { ...item, description: val } : item))
    }
 
+   const handleAddAnotherItem = () => {
+      setItems(prev => [
+         ...prev,
+         {
+            itemId: `custom-${Date.now()}`,
+            name: "New Item",
+            qty: 1,
+            unitId: "",
+            unit: "Pcs",
+            price: 0,
+            description: "",
+            assignedVendorId: selectedVendorIds[0] || ""
+         }
+      ])
+   }
+
+   const handleRemoveItem = (idx: number) => {
+      setItems(prev => prev.filter((_, i) => i !== idx))
+   }
+
    const activeVendors = vendors.filter(v => selectedVendorIds.includes(v._id || v.id))
 
    const subtotal = items.reduce((sum, item) => sum + (item.qty * (item.price || 0)), 0)
@@ -215,7 +233,7 @@ function CreatePOContent() {
                vendorMobile: vendor.contactNumber || "",
                vendorAddress: vendor.address || "",
                items: groupedItems[vendorId].map(item => ({
-                  itemId: item.itemId || null,
+                  itemId: item.itemId.startsWith("custom-") ? null : item.itemId,
                   unitId: item.unitId || null,
                   indentQuantity: item.qty,
                   orderQuantity: item.qty,
@@ -249,7 +267,7 @@ function CreatePOContent() {
 
    return (
       <ContentLayout title="Create Purchase Order">
-         <div className="flex flex-col gap-8 p-6 sm:p-10 max-w-[1600px] mx-auto min-h-screen">
+         <div className="flex flex-col gap-6 max-w-full mx-auto">
 
             {/* Header Navigation */}
             <div className="flex items-center gap-4">
@@ -264,35 +282,39 @@ function CreatePOContent() {
                <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Create Purchase Order</h1>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr,400px] gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr,360px] gap-6 items-start">
 
                {/* Left Column: Form Details */}
-               <div className="space-y-8">
+               <div className="space-y-6 min-w-0">
 
                   {/* Purchase Source Block */}
-                  <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 h-2 w-32 bg-primary/5 rounded-bl-full" />
+                  <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6 relative overflow-hidden">
                      <div className="flex items-center justify-between">
-                        <div className="flex flex-col gap-1">
-                           <h3 className="text-xl font-black text-zinc-900 leading-tight">Purchase Source</h3>
-                           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Select Indent and related vendor</p>
+                        <div className="flex items-center gap-4">
+                           <div className="h-12 w-12 rounded-full bg-[#EAF6F5] flex items-center justify-center text-[#0A5C53] border border-[#D1ECE8]">
+                              <Box className="h-5 w-5" />
+                           </div>
+                           <div className="flex flex-col">
+                              <h3 className="text-lg font-black text-zinc-900 leading-tight">Purchase Source</h3>
+                              <p className="text-xs font-bold text-zinc-400">Select indent and vendor details</p>
+                           </div>
                         </div>
-                        <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/20">
+                        <div className="h-10 w-10 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400">
                            <FileText className="h-5 w-5" />
                         </div>
                      </div>
 
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-3">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <div className="space-y-2">
                            <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Indent</Label>
                            <Select value={selectedIndentId} onValueChange={handleIndentSelect}>
-                              <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary focus:bg-white transition-all shadow-sm">
+                              <SelectTrigger className="h-16 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary focus:bg-white transition-all shadow-sm">
                                  <SelectValue placeholder="Select Indent" />
                               </SelectTrigger>
                               <SelectContent className="rounded-2xl p-1">
                                  {indents.map((ind) => (
                                     <SelectItem key={ind._id} value={ind._id} className="rounded-xl py-3">
-                                       <div className="flex flex-col gap-0.5">
+                                       <div className="flex flex-col gap-0.5 text-left">
                                           <span className="font-black text-zinc-900 text-sm">{ind.indentId || ind.indentNo} &mdash; {ind.projectId?.projectName || ind.projectId?.name || "Project"}</span>
                                           <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-2">
                                              <span>By: {ind.requestedBy?.name || "Unknown"}</span>
@@ -305,16 +327,16 @@ function CreatePOContent() {
                               </SelectContent>
                            </Select>
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                            <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vendor</Label>
                            <Popover>
                               <PopoverTrigger asChild>
                                  <Button
                                     variant="outline"
                                     role="combobox"
-                                    className="w-full h-14 rounded-2xl border-zinc-100 font-bold focus:ring-primary transition-all shadow-sm bg-zinc-50/50 text-zinc-900 justify-between"
+                                    className="w-full h-16 rounded-2xl border-zinc-100 font-bold focus:ring-primary transition-all shadow-sm bg-zinc-50/50 text-zinc-900 justify-between px-4"
                                  >
-                                    <span className="truncate text-left">
+                                    <span className="truncate text-left font-black">
                                        {selectedVendorIds.length > 0
                                           ? `${selectedVendorIds.length} Vendor${selectedVendorIds.length > 1 ? "s" : ""} selected`
                                           : "Select Vendors..."}
@@ -342,8 +364,8 @@ function CreatePOContent() {
                                                    isSelected ? "bg-primary border-primary" : "border-zinc-300"
                                                 )}>
                                                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                                                </div>
-                                                <span className="text-sm">{vendor.name}</span>
+                                                 </div>
+                                                 <span className="text-sm">{vendor.name}</span>
                                              </CommandItem>
                                           )
                                        })}
@@ -360,55 +382,55 @@ function CreatePOContent() {
                         <motion.div
                            initial={{ opacity: 0, y: 20 }}
                            animate={{ opacity: 1, y: 0 }}
-                           className="space-y-8"
+                           className="space-y-6"
                         >
                            {/* Order Items Block */}
-                           <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
+                           <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6">
                               <div className="flex items-center justify-between">
-                                 <div className="flex flex-col gap-1">
-                                    <h3 className="text-xl font-black text-zinc-900 leading-tight">Requested Items</h3>
-                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Materials requested in {activeIndent?.indentNo}</p>
+                                 <div className="flex flex-col">
+                                    <h3 className="text-lg font-black text-zinc-900 leading-tight">Requested Items</h3>
+                                    <p className="text-xs font-bold text-zinc-400">Materials requested to purchase</p>
                                  </div>
-                                 <Badge className="bg-emerald-50 text-emerald-600 border-none rounded-full px-4 py-1 font-black text-[10px]">
+                                 <Badge className="bg-[#EAF6F5] text-[#0A5C53] border-none rounded-full px-4 py-1.5 font-black text-xs">
                                     {items.length} {items.length === 1 ? "Item" : "Items"}
                                  </Badge>
                               </div>
 
-                              <div className="rounded-2xl border border-zinc-100 overflow-hidden">
-                                 <table className="w-full text-left border-collapse">
+                              <div className="rounded-2xl border border-zinc-150 overflow-x-auto">
+                                 <table className="w-full text-left border-collapse min-w-[760px]">
                                     <thead>
                                        <tr className="bg-zinc-50/50 border-b border-zinc-100">
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Item Information</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-left">Description</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Quantity</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price (₹)</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Assign Vendor</th>
-                                          <th className="px-6 py-4 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Total Amount</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Item Information</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-left">Description</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Quantity</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Unit Price (₹)</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Assign Vendor</th>
+                                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">Total Amount</th>
                                        </tr>
                                     </thead>
                                     <tbody className="divide-y divide-zinc-50">
                                        {items.map((item, idx) => (
-                                          <tr key={idx} className="group hover:bg-zinc-50 transition-colors">
-                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-4">
-                                                   <div className="h-10 w-10 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-400 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                                                      <Box className="h-5 w-5" />
+                                          <tr key={idx} className="group hover:bg-zinc-50/50 transition-colors">
+                                             <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                   <div className="h-9 w-9 rounded-lg bg-[#F0F5FA] flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
+                                                      <Box className="h-4.5 w-4.5" />
                                                    </div>
-                                                   <div className="flex flex-col">
-                                                      <span className="text-sm font-black text-zinc-900">{item.name}</span>
-                                                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">ID: {item.itemId.slice(-6).toUpperCase()}</span>
+                                                   <div className="flex flex-col min-w-0">
+                                                      <span className="text-xs font-black text-zinc-900 truncate">{item.name}</span>
+                                                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">ID: {item.itemId.slice(-6).toUpperCase()}</span>
                                                    </div>
                                                 </div>
                                              </td>
-                                             <td className="px-6 py-4 w-48">
+                                             <td className="px-4 py-3 w-36">
                                                 <Input 
-                                                   placeholder="Details / specifications"
+                                                   placeholder="Details"
                                                    value={item.description || ""}
                                                    onChange={(e) => handleDescriptionChange(idx, e.target.value)}
-                                                   className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold focus-visible:ring-primary focus:bg-white" 
+                                                   className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold focus-visible:ring-primary focus:bg-white" 
                                                 />
                                              </td>
-                                             <td className="px-6 py-4 text-center w-36">
+                                             <td className="px-4 py-3 text-center w-28">
                                                 <div className="flex items-center justify-center gap-1.5">
                                                    <Input 
                                                       type="number" 
@@ -417,29 +439,28 @@ function CreatePOContent() {
                                                       value={item.qty} 
                                                       onWheel={(e) => e.currentTarget.blur()}
                                                       onChange={(e) => handleQtyChange(idx, e.target.value === "" ? 0 : Number(e.target.value))}
-                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-primary focus:bg-white w-20" 
+                                                      className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold text-center focus-visible:ring-primary focus:bg-white w-14" 
                                                    />
-                                                   <span className="text-[10px] font-bold text-zinc-500">{item.unit}</span>
+                                                   <span className="text-[9px] font-bold text-zinc-500">{item.unit}</span>
                                                 </div>
                                              </td>
-                                             <td className="px-6 py-4 text-center w-36">
-                                                <div className="relative">
-                                                   <Input 
-                                                      type="number" 
-                                                      min="0"
-                                                      value={item.price} 
-                                                      onWheel={(e) => e.currentTarget.blur()}
-                                                      onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
-                                                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-sm font-bold text-center focus-visible:ring-primary focus:bg-white" 
-                                                   />
-                                                </div>
+                                             <td className="px-4 py-3 text-center w-28">
+                                                <Input 
+                                                   type="number" 
+                                                   min="0"
+                                                   value={item.price || ""} 
+                                                   placeholder="—"
+                                                   onWheel={(e) => e.currentTarget.blur()}
+                                                   onChange={(e) => handlePriceChange(idx, Number(e.target.value))}
+                                                   className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold text-center focus-visible:ring-primary focus:bg-white" 
+                                                />
                                              </td>
-                                             <td className="px-6 py-4 text-center w-48">
+                                             <td className="px-4 py-3 text-center w-36">
                                                 <Select 
                                                    value={item.assignedVendorId || ""} 
                                                    onValueChange={(val) => handleVendorAssignmentChange(idx, val)}
                                                 >
-                                                   <SelectTrigger className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-xs font-bold focus:ring-primary focus:bg-white shadow-sm">
+                                                   <SelectTrigger className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-[11px] font-bold focus:ring-primary focus:bg-white shadow-sm">
                                                       <SelectValue placeholder="Select Vendor" />
                                                    </SelectTrigger>
                                                    <SelectContent className="rounded-xl">
@@ -450,15 +471,25 @@ function CreatePOContent() {
                                                             </SelectItem>
                                                          ))
                                                       ) : (
-                                                         <div className="p-2 text-xs text-zinc-400 text-center font-bold">Select vendors above first</div>
+                                                         <div className="p-2 text-xs text-zinc-400 text-center font-bold">Select vendors first</div>
                                                       )}
                                                    </SelectContent>
                                                 </Select>
                                              </td>
-                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex flex-col">
-                                                   <span className="text-sm font-black text-zinc-900">₹{(item.qty * (item.price || 0)).toLocaleString("en-IN")}</span>
-                                                   <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mt-0.5">Incl. Tax</span>
+                                             <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-2.5">
+                                                   <div className="flex flex-col">
+                                                      <span className="text-xs font-black text-zinc-900">₹{(item.qty * (item.price || 0)).toLocaleString("en-IN")}</span>
+                                                      <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mt-0.5">Incl. Tax</span>
+                                                   </div>
+                                                   <Button 
+                                                      variant="ghost" 
+                                                      size="icon" 
+                                                      onClick={() => handleRemoveItem(idx)}
+                                                      className="h-7 w-7 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                                   >
+                                                      <Trash2 className="h-3.5 w-3.5" />
+                                                   </Button>
                                                 </div>
                                              </td>
                                           </tr>
@@ -466,6 +497,8 @@ function CreatePOContent() {
                                     </tbody>
                                  </table>
                               </div>
+
+                            
                            </div>
 
                            {/* Validity & Delivery Block */}
@@ -473,29 +506,28 @@ function CreatePOContent() {
                               <motion.div
                                  initial={{ opacity: 0, y: 15 }}
                                  animate={{ opacity: 1, y: 0 }}
-                                 className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden"
+                                 className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6 relative overflow-hidden"
                               >
-                                 <div className="absolute top-0 right-0 h-2 w-32 bg-amber-500/5 rounded-bl-full" />
                                  <div className="flex items-center justify-between">
-                                    <div className="flex flex-col gap-1">
-                                       <h3 className="text-xl font-black text-zinc-900 leading-tight">Validity & Delivery</h3>
-                                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Specify order validity and expected timeline</p>
+                                    <div className="flex flex-col">
+                                       <h3 className="text-lg font-black text-zinc-900 leading-tight">Validity & Delivery</h3>
+                                       <p className="text-xs font-bold text-zinc-400">Specify order validity and expected timeline</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100">
                                        <CalendarDays className="h-5 w-5" />
                                     </div>
                                  </div>
 
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-3">
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                                    <div className="space-y-2">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid From</Label>
                                        <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valid To</Label>
                                        <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-2">
                                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Est. Delivery Date</Label>
                                        <Input type="date" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.target.value)} className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary" />
                                     </div>
@@ -508,59 +540,56 @@ function CreatePOContent() {
                               <motion.div
                                  initial={{ opacity: 0, y: 15 }}
                                  animate={{ opacity: 1, y: 0 }}
-                                 className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden"
+                                 className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6 relative overflow-hidden"
                               >
-                                 <div className="absolute top-0 right-0 h-2 w-32 bg-indigo-500/5 rounded-bl-full" />
                                  <div className="flex items-center justify-between">
-                                    <div className="flex flex-col gap-1">
-                                       <h3 className="text-xl font-black text-zinc-900 leading-tight">Selected Vendors</h3>
-                                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Verified supplier information</p>
+                                    <div className="flex flex-col">
+                                       <h3 className="text-lg font-black text-zinc-900 leading-tight">Selected Vendors</h3>
+                                       <p className="text-xs font-bold text-zinc-400">Verified supplier information</p>
                                     </div>
                                     <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
                                        <Store className="h-5 w-5" />
                                     </div>
                                  </div>
 
-                                 <div className="flex flex-col divide-y divide-zinc-50">
+                                 <div className="flex flex-col divide-y divide-zinc-100">
                                     {activeVendors.map((vendor: any) => (
-                                       <div key={vendor._id || vendor.id} className="grid grid-cols-2 gap-x-12 gap-y-4 py-6 first:pt-0 last:pb-0">
-                                          <div className="flex items-start gap-4">
+                                       <div key={vendor._id || vendor.id} className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6 first:pt-2 last:pb-2">
+                                          <div className="flex items-center gap-3">
                                              <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
                                                 <User className="h-5 w-5" />
                                              </div>
                                              <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Vendor Name</span>
-                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.contactPerson || vendor.name}</span>
-                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">Supplier Agent</span>
+                                                <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Vendor Name</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-0.5">{vendor.name}</span>
+                                                {vendor.contactPerson && <span className="text-[10px] font-bold text-zinc-400">{vendor.contactPerson}</span>}
                                              </div>
                                           </div>
-                                          <div className="flex items-start gap-4">
+                                          <div className="flex items-center gap-3">
                                              <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
                                                 <Building className="h-5 w-5" />
                                              </div>
                                              <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Business Address</span>
-                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-tight">{vendor.address || "N/A"}</span>
-                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">{vendor.city || vendor.state || ""}</span>
+                                                <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Business Address</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-0.5">{vendor.address || "N/A"}</span>
                                              </div>
                                           </div>
-                                          <div className="flex items-start gap-4">
+                                          <div className="flex items-center gap-3">
                                              <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
                                                 <Phone className="h-5 w-5" />
                                              </div>
                                              <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Contact Number</span>
-                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.contactNumber}</span>
-                                                <span className="text-[10px] font-bold text-zinc-400 mt-1">Official Mobile</span>
+                                                <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Contact Number</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-0.5">{vendor.contactNumber || "N/A"}</span>
                                              </div>
                                           </div>
-                                          <div className="flex items-start gap-4">
+                                          <div className="flex items-center gap-3">
                                              <div className="h-10 w-10 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400 shrink-0">
                                                 <Mail className="h-5 w-5" />
                                              </div>
                                              <div className="flex flex-col">
-                                                <span className="text-[10px] font-black text-zinc-300 uppercase tracking-widest leading-none">Email Address</span>
-                                                <span className="text-sm font-black text-zinc-900 mt-1 leading-none">{vendor.email || "N/A"}</span>
+                                                <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Email Address</span>
+                                                <span className="text-sm font-black text-zinc-900 mt-0.5">{vendor.email || "N/A"}</span>
                                              </div>
                                           </div>
                                        </div>
@@ -573,7 +602,7 @@ function CreatePOContent() {
                   </AnimatePresence>
 
                   {/* Tabs Section */}
-                  <div className="bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden flex flex-col">
+                  <div className="bg-white rounded-[2rem] border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
                      <div className="grid grid-cols-3 bg-zinc-50/50 p-1">
                         {[
                            { id: "remarks", label: "REMARKS", icon: MessageSquare },
@@ -584,7 +613,7 @@ function CreatePOContent() {
                               key={tab.id}
                               onClick={() => setActiveTab(tab.id as any)}
                               className={cn(
-                                 "h-14 rounded-xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all",
+                                 "h-12 rounded-xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest transition-all",
                                  activeTab === tab.id
                                     ? "bg-white text-primary shadow-sm border border-zinc-100"
                                     : "text-zinc-400 hover:text-zinc-600"
@@ -595,7 +624,7 @@ function CreatePOContent() {
                            </button>
                         ))}
                      </div>
-                     <div className="p-10 min-h-[250px]">
+                     <div className="p-6 min-h-[200px]">
                         <AnimatePresence mode="wait">
                            {activeTab === "remarks" && (
                               <motion.div
@@ -603,14 +632,14 @@ function CreatePOContent() {
                                  initial={{ opacity: 0, x: -10 }}
                                  animate={{ opacity: 1, x: 0 }}
                                  exit={{ opacity: 0, x: 10 }}
-                                 className="flex flex-col gap-4"
+                                 className="flex flex-col gap-3"
                               >
                                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">INTERNAL ORDER REMARKS</h4>
                                  <Textarea
                                     placeholder="Add general remarks about this purchase order..."
                                     value={remark}
                                     onChange={(e) => setRemark(e.target.value)}
-                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
+                                    className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-5 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
                                  />
                               </motion.div>
                            )}
@@ -620,14 +649,14 @@ function CreatePOContent() {
                                  initial={{ opacity: 0, x: -10 }}
                                  animate={{ opacity: 1, x: 0 }}
                                  exit={{ opacity: 0, x: 10 }}
-                                 className="flex flex-col gap-4"
+                                 className="flex flex-col gap-3"
                               >
                                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">ORDER NOTES</h4>
                                  <Textarea
                                     placeholder="Add notes for this purchase order..."
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="min-h-[160px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-8 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
+                                    className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-5 font-bold text-sm focus:ring-primary focus:bg-white transition-all shadow-inner placeholder:text-zinc-300"
                                  />
                               </motion.div>
                            )}
@@ -637,14 +666,14 @@ function CreatePOContent() {
                                  initial={{ opacity: 0, x: -10 }}
                                  animate={{ opacity: 1, x: 0 }}
                                  exit={{ opacity: 0, x: 10 }}
-                                 className="flex flex-col items-center justify-center h-full py-10 gap-6"
+                                 className="flex flex-col items-center justify-center h-full py-6 gap-4"
                               >
-                                 <div className="h-20 w-20 rounded-[2rem] bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300 border-dashed">
-                                    <UploadCloud className="h-10 w-10" />
+                                 <div className="h-16 w-16 rounded-[1.5rem] bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300 border-dashed">
+                                    <UploadCloud className="h-8 w-8" />
                                  </div>
-                                 <div className="flex flex-col items-center gap-1">
-                                    <span className="text-[11px] font-black text-zinc-900 uppercase tracking-widest">CLICK OR DROP FILES TO UPLOAD</span>
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">PDF, JPG, PNG (MAX 10MB)</span>
+                                 <div className="flex flex-col items-center gap-0.5">
+                                    <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">CLICK OR DROP FILES TO UPLOAD</span>
+                                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">PDF, JPG, PNG (MAX 10MB)</span>
                                  </div>
                               </motion.div>
                            )}
@@ -654,43 +683,40 @@ function CreatePOContent() {
                </div>
 
                {/* Right Column: Order Summary & Logistics */}
-               <div className="space-y-8">
+               <div className="space-y-6 min-w-0">
 
                   {/* Order Summary Card */}
-                  <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden">
-                     <div className="absolute top-0 right-0 h-2 w-32 bg-zinc-500/5 rounded-bl-full" />
-                     <div className="flex flex-col gap-1">
-                        <h3 className="text-xl font-black text-zinc-900 tracking-tight">Order Summary</h3>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Final payable amount</p>
+                  <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6 relative overflow-hidden">
+                     <div className="flex flex-col">
+                        <h3 className="text-lg font-black text-zinc-900 tracking-tight">Order Summary</h3>
+                        <p className="text-xs font-bold text-zinc-400">Final payable amount</p>
                      </div>
 
-                     <div className="space-y-4 pt-4">
+                     <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
                            <span className="text-xs font-bold text-zinc-500">Subtotal</span>
                            <span className="text-sm font-black text-zinc-900">{activeIndent ? `₹ ${subtotal.toLocaleString("en-IN")}` : "₹ 0"}</span>
                         </div>
                      </div>
 
-                     <div className="pt-6 border-t border-zinc-50 flex items-center justify-between">
+                     {/* Grand Total box matching screenshot exactly */}
+                     <div className="bg-[#EAF6F5] p-5 rounded-3xl flex items-center justify-between border border-[#D5EFEF]">
                         <div className="flex flex-col">
-                           <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">GRAND TOTAL</span>
-                           <span className="text-4xl font-black text-zinc-900 tracking-tighter mt-1">
+                           <span className="text-[9px] font-black text-[#0A5C53]/70 uppercase tracking-widest">GRAND TOTAL</span>
+                           <span className="text-3xl font-black text-[#0A5C53] tracking-tighter mt-0.5">
                               {activeVendors.length > 0 ? `₹ ${grandTotal.toLocaleString("en-IN")}` : "₹ 0"}
                            </span>
                         </div>
-                        <div className={cn(
-                           "h-14 w-14 rounded-2xl flex items-center justify-center transition-all shadow-xl",
-                           activeVendors.length > 0 ? "bg-primary text-white shadow-primary/20" : "bg-zinc-50 text-zinc-300"
-                        )}>
-                           <Wallet className="h-7 w-7" />
+                        <div className="h-12 w-12 rounded-xl bg-[#0A5C53] text-white flex items-center justify-center shadow-lg shadow-[#0A5C53]/20">
+                           <Calculator className="h-6 w-6" />
                         </div>
                      </div>
                   </div>
 
                   {/* Drop Location Section */}
-                  <div className="bg-white p-8 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
+                  <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-4">
                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+                        <div className="h-8 w-8 rounded-lg bg-[#EAF6F5] flex items-center justify-center text-[#0A5C53]">
                            <MapPin className="h-4 w-4" />
                         </div>
                         <h4 className="text-sm font-black text-zinc-900 tracking-tight">Drop Location</h4>
@@ -699,23 +725,29 @@ function CreatePOContent() {
                         placeholder="Specify delivery drop location"
                         value={dropLocation}
                         onChange={(e) => setDropLocation(e.target.value)}
-                        className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-6 font-bold text-xs focus:ring-primary transition-all shadow-inner placeholder:text-zinc-300"
+                        className="min-h-[90px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-5 font-bold text-xs focus:ring-primary transition-all shadow-inner placeholder:text-zinc-300"
                      />
                   </div>
 
                   {/* Final Action */}
-                  <Button
-                     disabled={activeVendors.length === 0}
-                     onClick={handleGeneratePO}
-                     className={cn(
-                        "w-full h-16 rounded-2xl font-black text-base gap-3 shadow-xl transition-all",
-                        activeVendors.length > 0
-                           ? "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
-                           : "bg-zinc-100 text-zinc-300"
-                     )}
-                  >
-                     <ClipboardCheck className="h-5 w-5" /> Generate PO
-                  </Button>
+                  <div className="space-y-3">
+                     <Button
+                        disabled={activeVendors.length === 0}
+                        onClick={handleGeneratePO}
+                        className={cn(
+                           "w-full h-16 rounded-2xl font-black text-base gap-3 shadow-xl transition-all",
+                           activeVendors.length > 0
+                              ? "bg-[#0A5C53] hover:bg-[#084A42] text-white shadow-[#0A5C53]/20"
+                              : "bg-zinc-100 text-zinc-300"
+                        )}
+                     >
+                        <ClipboardCheck className="h-5 w-5" /> Generate PO
+                     </Button>
+                     <p className="text-[10px] font-bold text-zinc-400 flex items-center justify-center gap-1.5 text-center mt-1">
+                        <ShieldCheck className="h-4 w-4 text-zinc-400" />
+                        Please review all details before generating
+                     </p>
+                  </div>
                </div>
             </div>
          </div>
