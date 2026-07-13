@@ -61,12 +61,20 @@ export async function apiRequest<T>(
       }
       throw new Error(message);
     }
-
     if (data && typeof data === "object") {
       if (data.pagination !== undefined && data.data !== undefined) {
         return {
           data: data.data,
           pagination: data.pagination,
+        } as unknown as T;
+      }
+      if (data.totalPages !== undefined && data.data !== undefined) {
+        return {
+          data: data.data,
+          totalPages: data.totalPages,
+          total: data.total,
+          page: data.page,
+          count: data.count,
         } as unknown as T;
       }
       if (data.token !== undefined) {
