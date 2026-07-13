@@ -117,4 +117,11 @@ export const vendorService = {
   async deleteVendor(id: string): Promise<void> {
     return apiRequest(`vendors/${id}`, { method: "DELETE" })
   },
+
+  async bulkAction(action: "block" | "soft-delete" | "export", ids: string[]): Promise<any> {
+    return apiRequest<any>("vendors/bulk", {
+      method: "POST",
+      body: JSON.stringify({ action, ids }),
+    })
+  },
 }

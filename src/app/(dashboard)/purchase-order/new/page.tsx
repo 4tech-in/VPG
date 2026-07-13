@@ -76,6 +76,7 @@ function CreatePOContent() {
    const [validFrom, setValidFrom] = useState("2026-05-12")
    const [validTo, setValidTo] = useState("2026-06-01")
    const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("")
+   const [poImages, setPoImages] = useState<File[]>([])
 
    const calledRef = useRef(false)
 
@@ -245,7 +246,8 @@ function CreatePOContent() {
                expectedDeliveryDate: expectedDeliveryDate || null,
                remark: remark || null,
                notes: notes || null,
-               bypassApproval: true
+               bypassApproval: true,
+               images: poImages
             })
          }
          
@@ -666,15 +668,46 @@ function CreatePOContent() {
                                  initial={{ opacity: 0, x: -10 }}
                                  animate={{ opacity: 1, x: 0 }}
                                  exit={{ opacity: 0, x: 10 }}
-                                 className="flex flex-col items-center justify-center h-full py-6 gap-4"
+                                 className="flex flex-col gap-4"
                               >
-                                 <div className="h-16 w-16 rounded-[1.5rem] bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-300 border-dashed">
-                                    <UploadCloud className="h-8 w-8" />
+                                 <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">PURCHASE ORDER IMAGES / ATTACHMENTS</h4>
+                                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 rounded-2xl p-6 hover:bg-zinc-50 transition-colors cursor-pointer relative">
+                                    <input
+                                       type="file"
+                                       multiple
+                                       accept="image/*,application/pdf"
+                                       onChange={(e) => {
+                                          const selectedFiles = Array.from(e.target.files || []);
+                                          setPoImages(prev => [...prev, ...selectedFiles]);
+                                       }}
+                                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    />
+                                    <div className="h-12 w-12 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 mb-3">
+                                       <UploadCloud className="h-6 w-6" />
+                                    </div>
+                                    <span className="text-xs font-bold text-zinc-700 text-center">Click or Drop files to upload</span>
+                                    <span className="text-[9px] text-zinc-400 font-medium text-center mt-1">PDF, JPG, PNG (MAX 10MB)</span>
                                  </div>
-                                 <div className="flex flex-col items-center gap-0.5">
-                                    <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">CLICK OR DROP FILES TO UPLOAD</span>
-                                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">PDF, JPG, PNG (MAX 10MB)</span>
-                                 </div>
+
+                                 {poImages.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                       <h5 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Selected Files:</h5>
+                                       {poImages.map((file, idx) => (
+                                          <div key={idx} className="flex items-center justify-between p-2.5 bg-zinc-50 rounded-xl border border-zinc-100">
+                                             <span className="text-xs font-bold text-zinc-700 truncate max-w-[200px]">{file.name}</span>
+                                             <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                type="button"
+                                                onClick={() => setPoImages(prev => prev.filter((_, i) => i !== idx))}
+                                                className="h-7 w-7 text-zinc-400 hover:text-red-500"
+                                             >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                             </Button>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
                               </motion.div>
                            )}
                         </AnimatePresence>

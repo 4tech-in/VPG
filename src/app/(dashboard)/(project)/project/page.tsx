@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable } from "@/components/ui/data-table"
 import { cn } from "@/lib/utils"
 import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { ProjectForm } from "@/components/project-form"
 import { useProjects, Project } from "@/hooks/use-projects"
+import { projectService } from "@/service/projectService"
+import { toast } from "sonner"
 
 export default function ProjectPage() {
   const {
@@ -39,10 +42,12 @@ export default function ProjectPage() {
     search,
     setSearch,
     pagination,
+    refetch,
   } = useProjects()
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
 
   const handleStatusToggle = useCallback(async (id: string) => {
     try {
@@ -83,7 +88,53 @@ export default function ProjectPage() {
     }
   }
 
+  const handleBulkAction = async (action: "block" | "soft-delete" | "export") => {
+    const selectedIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    if (selectedIds.length === 0) return;
+    
+    try {
+      if (action === "export") {
+        const data = await projectService.bulkAction(action, selectedIds);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `projects-export-${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Projects exported successfully");
+      } else {
+        await projectService.bulkAction(action, selectedIds);
+        toast.success(`Bulk action '${action}' completed successfully`);
+        setRowSelection({});
+        refetch();
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Bulk action failed");
+    }
+  };
+
   const columns = useMemo<ColumnDef<Project>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "id",
       header: () => <div className="text-center w-full">S.No</div>,
@@ -210,6 +261,8 @@ export default function ProjectPage() {
           onSearchChange={setSearch}
           onPageChange={(p) => setPage(p + 1)}
           onPageSizeChange={(size) => setLimit(size)}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
         />
 
         {/* Dialog */}
@@ -237,11 +290,48 @@ export default function ProjectPage() {
                   status: editingProject.status,
                   projectNotes: editingProject.notes,
                   startDate: editingProject.startDate,
+                  file: editingProject.file,
                 } : undefined}
               />
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Floating Bulk Actions Bar */}
+        {Object.keys(rowSelection).filter(id => rowSelection[id]).length > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-md border border-zinc-200 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <span className="text-sm font-bold text-zinc-600">
+              <span className="text-primary font-black">{Object.keys(rowSelection).filter(id => rowSelection[id]).length}</span> selected
+            </span>
+            <div className="h-4 w-px bg-zinc-200" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction("block")}
+                className="h-9 px-4 rounded-xl font-bold border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+              >
+                Block
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction("soft-delete")}
+                className="h-9 px-4 rounded-xl font-bold border-zinc-200 text-red-600 hover:bg-red-50 hover:border-red-200"
+              >
+                Delete
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => handleBulkAction("export")}
+                className="h-9 px-4 rounded-xl font-bold bg-primary text-white hover:bg-primary/95"
+              >
+                Export
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </ContentLayout>
   )

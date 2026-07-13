@@ -85,9 +85,33 @@ export const purchaseOrderService = {
   },
 
   async createPurchaseOrder(payload: any): Promise<PurchaseOrder> {
+    const hasImages = payload.images && Array.isArray(payload.images) && payload.images.length > 0;
+    let body: any;
+    let isFormData = false;
+
+    if (hasImages) {
+      isFormData = true;
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, val]) => {
+        if (key === "images") {
+          payload.images.forEach((file: File) => {
+            formData.append("images", file);
+          });
+        } else if (key === "items") {
+          formData.append("items", typeof val === "string" ? val : JSON.stringify(val));
+        } else if (val !== null && val !== undefined) {
+          formData.append(key, String(val));
+        }
+      });
+      body = formData;
+    } else {
+      body = JSON.stringify(payload);
+    }
+
     const response = await apiRequest<any>("purchase-orders", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body,
+      isFormData,
     });
     return response?.data || response;
   },
@@ -133,5 +157,12 @@ export const purchaseOrderService = {
       method: "PATCH",
     });
     return response?.data || response;
+  },
+
+  async bulkAction(action: "block" | "soft-delete" | "export", ids: string[]): Promise<any> {
+    return apiRequest<any>("purchase-orders/bulk", {
+      method: "POST",
+      body: JSON.stringify({ action, ids }),
+    });
   },
 };

@@ -285,7 +285,6 @@ export default function PODetailPage() {
                     </div>
                  </div>
               </div>
-
               {/* Cost Summary Card */}
               <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-8 relative overflow-hidden">
                  <div className="absolute top-0 right-0 h-2 w-32 bg-zinc-500/5 rounded-bl-full" />
@@ -315,7 +314,43 @@ export default function PODetailPage() {
                  </div>
 
               </div>
-           </div>
+
+              {/* Attachments / Images Card */}
+              {po.images && po.images.length > 0 && (
+                 <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-6 relative overflow-hidden">
+                    <div className="flex items-center gap-4">
+                       <div className="h-10 w-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
+                          <ImageIcon className="h-5 w-5" />
+                       </div>
+                       <h4 className="text-sm font-black text-zinc-900 tracking-tight uppercase tracking-[0.2em]">Attachments</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       {po.images.map((img: string, idx: number) => {
+                          const backendBase = process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || '';
+                          const fullUrl = `${backendBase}${img}`;
+                          const isPdf = img.toLowerCase().endsWith(".pdf");
+                          return (
+                             <a
+                                key={idx}
+                                href={fullUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex flex-col items-center justify-center border border-zinc-100 rounded-2xl p-4 hover:bg-zinc-50 transition-colors group"
+                             >
+                                {isPdf ? (
+                                   <FileText className="h-8 w-8 text-zinc-400 group-hover:text-primary transition-colors" />
+                                ) : (
+                                   <img src={fullUrl} alt="PO Attachment" className="h-16 w-16 object-cover rounded-xl" />
+                                )}
+                                <span className="text-[10px] font-bold text-zinc-500 mt-2 truncate w-full text-center">
+                                   {img.split("/").pop()}
+                                </span>
+                             </a>
+                          );
+                       })}
+                    </div>
+                 </div>
+              )}           </div>
         </div>
       </div>
     </ContentLayout>

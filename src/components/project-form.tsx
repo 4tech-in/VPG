@@ -48,7 +48,7 @@ const formSchema = z.object({
 
 interface ProjectFormProps {
   onSuccess?: () => void
-  initialValues?: Partial<z.infer<typeof formSchema>>
+  initialValues?: any
   onSubmit?: (values: any) => Promise<void>
 }
 
@@ -56,6 +56,7 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
   const [selectedCountry, setSelectedCountry] = useState<string>(initialValues?.country || "")
   const [selectedState, setSelectedState] = useState<string>(initialValues?.state || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -117,6 +118,7 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
         startDate: values.startDate,
         notes: values.projectNotes || "",
         status: values.status === "Active" ? "active" : "inactive" as any,
+        file: selectedFile || undefined,
       }
       await onSubmitProp?.(payload)
       onSuccess?.()
@@ -332,6 +334,33 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
           )}
         />
 
+        {/* File Upload */}
+        <div className="space-y-2">
+          <label className="text-sm font-bold text-zinc-600">Project File / Document (optional)</label>
+          <Input 
+            type="file" 
+            onChange={(e) => {
+              const selectedFile = e.target.files?.[0] || null
+              setSelectedFile(selectedFile)
+            }}
+            className="h-10 cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+          {initialValues?.file && (
+            <div className="text-xs text-zinc-500 mt-1">
+              Current File:{" "}
+              <a 
+                href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${initialValues.file}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-primary font-bold hover:underline"
+              >
+                {initialValues.file.split("/").pop()}
+              </a>
+            </div>
+          )}
+        </div>
+
+
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="outline" type="button" onClick={onSuccess} disabled={isSubmitting}>
             Cancel
@@ -344,3 +373,4 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
     </Form>
   )
 }
+

@@ -737,6 +737,30 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     </p>
                   </div>
                 </div>
+
+                {/* Project File / Document Section */}
+                {project.file && (
+                  <div className="space-y-4 pt-8 border-t border-zinc-100">
+                    <div className="flex items-center gap-2 text-primary/60">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Project Document</span>
+                    </div>
+                    <div className="bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-6 w-6 text-emerald-600 animate-pulse" />
+                        <span className="text-sm font-bold text-zinc-700">{project.file.split("/").pop()}</span>
+                      </div>
+                      <a 
+                        href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${project.file}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#00A991] font-black text-sm hover:underline"
+                      >
+                        Download Document
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -805,8 +829,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           </TabsContent>
 
           <TabsContent value="documents" className="mt-0 focus-visible:outline-none">
-            <div className="bg-white border border-zinc-200 rounded-[32px] p-6 shadow-sm overflow-hidden">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="bg-white border border-zinc-200 rounded-[32px] p-6 shadow-sm overflow-hidden space-y-6">
+              
+              {/* Header */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <h2 className="text-xl font-black text-zinc-900 tracking-tight">Project Documents</h2>
                   <p className="text-sm font-medium text-zinc-500">Manage documents for this project</p>
@@ -822,31 +848,58 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
               </div>
 
-              {documentsData?.length > 0 ? (
-                <DataTable
-                  columns={documentColumns}
-                  data={documentsData}
-                  searchKey="title"
-                  isServerSide={true}
-                  searchValue={documentSearch}
-                  onSearchChange={setDocumentSearch}
-                  pageIndex={documentPage - 1}
-                  pageSize={10}
-                  pageCount={documentPageCount}
-                  totalItems={documentTotal}
-                  onPageChange={(page) => setDocumentPage(page + 1)}
-                />
-              ) : (
-                <div className="border-2 border-dashed border-zinc-200 rounded-[24px] p-12 text-center flex flex-col items-center justify-center space-y-4">
-                  <div className="h-16 w-16 rounded-2xl bg-zinc-50 flex items-center justify-center shadow-inner">
-                    <FileStack className="h-8 w-8 text-zinc-300" />
+              {/* Main Project Document */}
+              {project.file && (
+                <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-100/75 flex items-center justify-center text-emerald-700">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest leading-none">Main Project File</span>
+                      <span className="text-sm font-bold text-zinc-700 mt-1">{project.file.split("/").pop()}</span>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-zinc-900 tracking-tight">No Documents</h3>
-                    <p className="text-zinc-500 font-medium">Upload a document to get started.</p>
-                  </div>
+                  <a 
+                    href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${project.file}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-9 px-4 inline-flex items-center justify-center rounded-xl bg-[#00A991] text-white text-xs font-black hover:bg-[#008F7A] transition-colors"
+                  >
+                    Download Document
+                  </a>
                 </div>
               )}
+
+              {/* Additional Documents Section */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-zinc-400 uppercase tracking-[0.2em]">Additional Documents</h3>
+                {documentsData?.length > 0 ? (
+                  <DataTable
+                    columns={documentColumns}
+                    data={documentsData}
+                    searchKey="title"
+                    isServerSide={true}
+                    searchValue={documentSearch}
+                    onSearchChange={setDocumentSearch}
+                    pageIndex={documentPage - 1}
+                    pageSize={10}
+                    pageCount={documentPageCount}
+                    totalItems={documentTotal}
+                    onPageChange={(page) => setDocumentPage(page + 1)}
+                  />
+                ) : (
+                  <div className="border-2 border-dashed border-zinc-200 rounded-[24px] p-12 text-center flex flex-col items-center justify-center space-y-4">
+                    <div className="h-16 w-16 rounded-2xl bg-zinc-50 flex items-center justify-center shadow-inner">
+                      <FileStack className="h-8 w-8 text-zinc-300" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-base font-bold text-zinc-800">No Additional Documents</h4>
+                      <p className="text-zinc-500 font-medium text-xs">Upload more documents using the button above.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 

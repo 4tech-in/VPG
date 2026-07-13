@@ -9,6 +9,7 @@ export type ApiProject = {
   notes?: string
   status: "active" | "inactive"
   createdAt?: string
+  file?: string
 }
 
 export type GetProjectsResponse = {
@@ -69,21 +70,42 @@ export const projectService = {
     }
   },
 
-  async createProject(payload: CreateProjectPayload): Promise<ApiProject> {
+  async createProject(payload: CreateProjectPayload & { file?: File }): Promise<ApiProject> {
+    const formData = new FormData()
+    formData.append("projectName", payload.projectName)
+    formData.append("address", typeof payload.address === "string" ? payload.address : JSON.stringify(payload.address))
+    formData.append("startDate", payload.startDate instanceof Date ? payload.startDate.toISOString() : String(payload.startDate))
+    if (payload.notes) formData.append("notes", payload.notes)
+    if (payload.status) formData.append("status", payload.status)
+    if (payload.file) formData.append("file", payload.file)
+
     return apiRequest<ApiProject>("projects", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: formData,
+      isFormData: true,
     })
   },
 
-  async updateProject(id: string, payload: Partial<CreateProjectPayload>): Promise<ApiProject> {
+  async updateProject(id: string, payload: Partial<CreateProjectPayload> & { file?: File }): Promise<ApiProject> {
+    const body: any = {
+      projectName: payload.projectName,
+      notes: payload.notes,
+      status: payload.status,
+    }
+
+    if (payload.address) {
+      body.address = typeof payload.address === "string" ? payload.address : JSON.stringify(payload.address)
+    }
+
+    if (payload.startDate) {
+      body.startDate = payload.startDate instanceof Date ? payload.startDate.toISOString() : String(payload.startDate)
+    }
+
     return apiRequest<ApiProject>(`projects/${id}`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     })
-  },
-
-  async getProjectById(id: string): Promise<ApiProject> {
+  },  async getProjectById(id: string): Promise<ApiProject> {
     return apiRequest<ApiProject>(`projects/${id}`)
   },
 
@@ -96,5 +118,12 @@ export const projectService = {
 
   async deleteProject(id: string): Promise<void> {
     return apiRequest(`projects/${id}`, { method: "DELETE" })
+  },
+
+  async bulkAction(action: "block" | "soft-delete" | "export", ids: string[]): Promise<any> {
+    return apiRequest<any>("projects/bulk", {
+      method: "POST",
+      body: JSON.stringify({ action, ids }),
+    })
   },
 }

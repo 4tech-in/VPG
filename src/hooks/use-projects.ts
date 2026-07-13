@@ -15,6 +15,7 @@ export type Project = {
   notes: string
   status: "Active" | "Inactive"
   createdAt: string
+  file?: string
 }
 
 const mapApiProjectToProject = (apiProject: ApiProject): Project => {
@@ -51,6 +52,7 @@ const mapApiProjectToProject = (apiProject: ApiProject): Project => {
     notes: apiProject.notes || "",
     status: apiProject.status === "active" ? "Active" : "Inactive",
     createdAt: apiProject.createdAt ? apiProject.createdAt.split("T")[0] : "",
+    file: apiProject.file,
   }
 }
 
@@ -106,7 +108,7 @@ export function useProjects(autoFetch = true) {
     }
   }, [limit, page, search])
 
-  const addProject = async (payload: CreateProjectPayload) => {
+  const addProject = async (payload: CreateProjectPayload & { file?: File }) => {
     setIsLoading(true)
     try {
       const newApiProject = await projectService.createProject(payload)
@@ -124,7 +126,7 @@ export function useProjects(autoFetch = true) {
     }
   }
 
-  const editProject = async (id: string, payload: Partial<CreateProjectPayload>) => {
+  const editProject = async (id: string, payload: Partial<CreateProjectPayload> & { file?: File }) => {
     setIsLoading(true)
     try {
       const updatedApiProject = await projectService.updateProject(id, payload)

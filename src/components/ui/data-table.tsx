@@ -51,7 +51,26 @@ interface DataTableProps<TData, TValue> {
   onSearchChange?: (value: string) => void;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
+
+  // Selection props
+  rowSelection?: Record<string, boolean>;
+  onRowSelectionChange?: React.Dispatch<React.SetStateAction<any>>;
 }
+
+const isRowBlocked = (original: any): boolean => {
+  if (!original) return false;
+  const statusStr = String(original.status || "").toLowerCase();
+  if (statusStr === "inactive" || statusStr === "blocked" || statusStr === "inactive_blocked") {
+    return true;
+  }
+  if (original.isActive === false || original.isActive === "false") {
+    return true;
+  }
+  if (original.blockItem === true || original.blockItem === "true") {
+    return true;
+  }
+  return false;
+};
 
 export function DataTable<TData, TValue>({
   columns,
@@ -67,6 +86,8 @@ export function DataTable<TData, TValue>({
   onSearchChange,
   onPageChange,
   onPageSizeChange,
+  rowSelection: externalRowSelection,
+  onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -74,11 +95,14 @@ export function DataTable<TData, TValue>({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
+  
+  const [internalRowSelection, setInternalRowSelection] = React.useState({});
+  const finalRowSelection = externalRowSelection !== undefined ? externalRowSelection : internalRowSelection;
+  const finalSetRowSelection = onRowSelectionChange !== undefined ? onRowSelectionChange : setInternalRowSelection;
   const table = useReactTable({
     data,
     columns,
+    getRowId: (row: any) => row._id || row.id || "",
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -86,7 +110,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: isServerSide ? undefined : getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: finalSetRowSelection,
     pageCount: isServerSide ? pageCount : undefined,
     manualPagination: isServerSide,
     manualFiltering: isServerSide,
@@ -94,7 +118,7 @@ export function DataTable<TData, TValue>({
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
+      rowSelection: finalRowSelection,
       ...(isServerSide ? { pagination: { pageIndex, pageSize } } : {}),
     },
     initialState: {
@@ -229,14 +253,20 @@ export function DataTable<TData, TValue>({
                 <td colSpan={columns.length} className="p-0 border-none" />
               </tr>
             )}
-            {visibleRows.length ? (
-              visibleRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className={cn("group", onRowClick && "cursor-pointer")}
-                  onClick={() => onRowClick?.(row.original)}
-                >
+             {visibleRows.length ? (
+               visibleRows.map((row) => {
+                 const blocked = isRowBlocked(row.original);
+                 return (
+                   <TableRow
+                     key={row.id}
+                     data-state={row.getIsSelected() && "selected"}
+                     className={cn(
+                       "group transition-all duration-200", 
+                       onRowClick && "cursor-pointer",
+                       blocked && "opacity-50 grayscale bg-zinc-50/60 hover:bg-zinc-50/60 border-zinc-200/50"
+                     )}
+                     onClick={() => onRowClick?.(row.original)}
+                   >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
@@ -249,7 +279,8 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell
