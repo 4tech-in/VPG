@@ -235,7 +235,7 @@ export function CreatePODialog({
 
     setIsFormSubmitting(true);
     try {
-      await purchaseOrderService.createPurchaseOrder({
+      const res = await purchaseOrderService.createPurchaseOrder({
         indentId: selectedIndentId,
         vendorId: selectedVendorId,
         vendorName: activeVendor.name,
@@ -244,7 +244,7 @@ export function CreatePODialog({
         items: selectedItems.map((item) => ({
           itemId: item.itemId || null,
           unitId: item.unitId || null,
-          indentQuantity: item.qty, // or original indent quantity, but using item.qty for requested quantity is fine. Let's see if we should send indentQuantity as the original one? No, the backend defaults to item.indentQuantity || original_qty. Sending item.qty is correct.
+          indentQuantity: item.qty,
           orderQuantity: item.qty,
           rate: item.price,
           description: item.description || ""
@@ -255,6 +255,16 @@ export function CreatePODialog({
         otherCharges: Number(otherCharges) || 0,
         gst: Number(gst) || 0
       });
+
+      const poId = res?._id || res?.id;
+      if (poId) {
+        try {
+          await purchaseOrderService.approvePurchaseOrder(poId, { status: "Approved" });
+        } catch (approveErr) {
+          console.error("Failed to auto-approve PO", poId, approveErr);
+        }
+      }
+
       toast.success("Purchase Order created successfully");
       setIsOpen(false);
       if (onSuccess) {

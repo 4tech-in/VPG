@@ -261,7 +261,7 @@ function CreatePOContent() {
         const vendor = vendors.find((v) => (v._id || v.id) === vendorId);
         if (!vendor) continue;
 
-        await purchaseOrderService.createPurchaseOrder({
+        const res = await purchaseOrderService.createPurchaseOrder({
           indentId: selectedIndentId,
           vendorId: vendorId,
           vendorName: vendor.name,
@@ -287,6 +287,15 @@ function CreatePOContent() {
           otherCharges: Number(otherCharges) || 0,
           gst: Number(gst) || 0
         });
+
+        const poId = res?._id || res?.id;
+        if (poId) {
+          try {
+            await purchaseOrderService.approvePurchaseOrder(poId, { status: "Approved" });
+          } catch (approveErr) {
+            console.error("Failed to auto-approve PO", poId, approveErr);
+          }
+        }
       }
 
       toast.success("Purchase Order(s) created successfully");
