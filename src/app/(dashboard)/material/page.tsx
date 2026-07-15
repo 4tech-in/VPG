@@ -1,276 +1,431 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { ContentLayout } from "@/components/admin-panel/content-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
 } from "@/components/ui/dialog"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import {
   Box,
-  Plus,
-  Edit,
-  ClipboardCheck,
   Search,
-  Scale
+  Scale,
+  Loader2,
+  Truck,
+  CheckCircle,
+  ClipboardList,
+  RefreshCw,
+  Eye,
+  Layers
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-type MaterialReceipt = {
-  id: string
-  indentId: string
-  name: string
-  requestedQty: number
-  receivedQty: number
-  unit: string
-  category: string
-}
-
-const MOCK_INDENTS_CATALOG = [
-  {
-    id: "IND-001",
-    title: "IND-001 (VPG Grande - Tower A)",
-    items: [
-      { id: "MAT-101", name: "Grade 53 Cement", requestedQty: 150, unit: "Bags", category: "Raw Materials" },
-      { id: "MAT-102", name: "Coarse River Sand", requestedQty: 50, unit: "Tons", category: "Raw Materials" },
-      { id: "MAT-103", name: "TMT Steel Rods (12mm)", requestedQty: 30, unit: "Tons", category: "Structural Steel" },
-    ]
-  },
-  {
-    id: "IND-007",
-    title: "IND-007 (VPG Twin Towers - Tower D)",
-    items: [
-      { id: "MAT-201", name: "LED Panel Lights (12W)", requestedQty: 100, unit: "Pcs", category: "Electrical" },
-      { id: "MAT-202", name: "Copper Wiring Rolls (1.5mm)", requestedQty: 25, unit: "Rolls", category: "Electrical" },
-    ]
-  },
-  {
-    id: "IND-008",
-    title: "IND-008 (VPG Grande - Tower A)",
-    items: [
-      { id: "MAT-301", name: "Premium PVC Glue", requestedQty: 20, unit: "Cans", category: "Adhesives" },
-      { id: "MAT-302", name: "CPVC Pipes (2 inch)", requestedQty: 120, unit: "Pcs", category: "Plumbing" },
-    ]
-  }
-]
-
-const INITIAL_RECEIPTS: MaterialReceipt[] = [
-  { id: "MAT-101", indentId: "IND-001", name: "Grade 53 Cement", requestedQty: 150, receivedQty: 90, unit: "Bags", category: "Raw Materials" },
-  { id: "MAT-102", indentId: "IND-001", name: "Coarse River Sand", requestedQty: 50, receivedQty: 25, unit: "Tons", category: "Raw Materials" },
-  { id: "MAT-103", indentId: "IND-001", name: "TMT Steel Rods (12mm)", requestedQty: 30, receivedQty: 12, unit: "Tons", category: "Structural Steel" },
-  { id: "MAT-201", indentId: "IND-007", name: "LED Panel Lights (12W)", requestedQty: 100, receivedQty: 80, unit: "Pcs", category: "Electrical" },
-  { id: "MAT-202", indentId: "IND-007", name: "Copper Wiring Rolls (1.5mm)", requestedQty: 25, receivedQty: 15, unit: "Rolls", category: "Electrical" },
-  { id: "MAT-301", indentId: "IND-008", name: "Premium PVC Glue", requestedQty: 20, receivedQty: 5, unit: "Cans", category: "Adhesives" },
-  { id: "MAT-302", indentId: "IND-008", name: "CPVC Pipes (2 inch)", requestedQty: 120, receivedQty: 100, unit: "Pcs", category: "Plumbing" },
-]
+import { purchaseOrderService } from "@/service/purchaseOrderService"
 
 export default function MaterialMasterPage() {
-  const [receipts, setReceipts] = useState<MaterialReceipt[]>(INITIAL_RECEIPTS)
+  const router = useRouter()
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isProcessingAction, setIsProcessingAction] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("All")
 
-  // Add Receipt dialog state
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const [addIndentId, setAddIndentId] = useState("")
-  const [addMaterialId, setAddMaterialId] = useState("")
-  const [addReceivedQty, setAddReceivedQty] = useState<number>(0)
+  // Receive Dialog State
+  const [isReceiveOpen, setIsReceiveOpen] = useState(false)
+  const [selectedPO, setSelectedPO] = useState<any | null>(null)
+  const [receiveQuantities, setReceiveQuantities] = useState<Record<string, number>>({})
+  const [isReceivingSubmit, setIsReceivingSubmit] = useState(false)
 
-  // Update Receipt dialog state
-  const [isUpdateOpen, setIsUpdateOpen] = useState(false)
-  const [updatingItem, setUpdatingItem] = useState<MaterialReceipt | null>(null)
-  const [updatingReceivedQty, setUpdatingReceivedQty] = useState<number>(0)
+  // Issue Dialog State
+  const [isIssueOpen, setIsIssueOpen] = useState(false)
+  const [issueQuantities, setIssueQuantities] = useState<Record<string, number>>({})
+  const [isIssuingSubmit, setIsIssuingSubmit] = useState(false)
 
-  // Computed helper items for Add dialog
-  const activeIndentOptions = MOCK_INDENTS_CATALOG.find(ind => ind.id === addIndentId)
-  const activeMaterialOptions = activeIndentOptions?.items.find(item => item.id === addMaterialId)
-
-  // Filtered receipts list
-  const filteredReceipts = receipts.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.indentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const handleOpenAdd = () => {
-    setAddIndentId(MOCK_INDENTS_CATALOG[0].id)
-    setAddMaterialId(MOCK_INDENTS_CATALOG[0].items[0].id)
-    setAddReceivedQty(0)
-    setIsAddOpen(true)
-  }
-
-  const handleIndentChange = (val: string) => {
-    setAddIndentId(val)
-    const nextIndent = MOCK_INDENTS_CATALOG.find(ind => ind.id === val)
-    if (nextIndent && nextIndent.items.length > 0) {
-      setAddMaterialId(nextIndent.items[0].id)
-    } else {
-      setAddMaterialId("")
+  const fetchPurchaseOrders = async () => {
+    setIsLoading(true)
+    try {
+      const response = await purchaseOrderService.getPurchaseOrders({ limit: 200 })
+      const pos = response.data || []
+      
+      // Filter out POs that are Draft, PendingApproval, Rejected, or Cancelled
+      // Only keep POs that are Approved, Ordered, PartiallyReceived, Received, or Issued
+      const activePOs = pos.filter((po: any) =>
+        ["Approved", "Ordered", "PartiallyReceived", "Received", "Issued"].includes(po.status)
+      )
+      setPurchaseOrders(activePOs)
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err.message || "Failed to load Purchase Orders")
+    } finally {
+      setIsLoading(false)
     }
-    setAddReceivedQty(0)
   }
 
-  const handleAddSubmit = () => {
-    if (!activeIndentOptions || !activeMaterialOptions) return
+  useEffect(() => {
+    fetchPurchaseOrders()
+  }, [])
 
-    // Check if this material is already in our receipts register
-    const existingIndex = receipts.findIndex(
-      r => r.indentId === addIndentId && r.id === addMaterialId
-    )
+  // Filtered POs list based on search and status tabs
+  const filteredPOs = useMemo(() => {
+    return purchaseOrders.filter((po) => {
+      const matchesSearch =
+        po.poNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        po.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (po.projectId?.projectName || po.projectId?.name || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())
 
-    if (existingIndex > -1) {
-      // Overwrite/Update existing inward quantity
-      const updated = [...receipts]
-      const current = updated[existingIndex]
-      current.receivedQty = Math.min(current.requestedQty, current.receivedQty + addReceivedQty)
-      setReceipts(updated)
-      toast.success("Receipt quantity appended to existing item", {
-        description: `Added ${addReceivedQty} ${current.unit} to ${current.name} for ${addIndentId}.`
-      })
-    } else {
-      // Add as a new inward row
-      const newRow: MaterialReceipt = {
-        id: activeMaterialOptions.id,
-        indentId: addIndentId,
-        name: activeMaterialOptions.name,
-        requestedQty: activeMaterialOptions.requestedQty,
-        receivedQty: Math.min(activeMaterialOptions.requestedQty, addReceivedQty),
-        unit: activeMaterialOptions.unit,
-        category: activeMaterialOptions.category
-      }
-      setReceipts([newRow, ...receipts])
-      toast.success("New Material Receipt added successfully", {
-        description: `Received ${newRow.receivedQty} ${newRow.unit} of ${newRow.name}.`
-      })
+      const matchesStatus =
+        statusFilter === "All" ||
+        (statusFilter === "PendingOrder" && po.status === "Approved") ||
+        (statusFilter === "InTransit" && po.status === "Ordered") ||
+        (statusFilter === "PartiallyReceived" && po.status === "PartiallyReceived") ||
+        (statusFilter === "Received" && po.status === "Received") ||
+        (statusFilter === "Issued" && po.status === "Issued")
+
+      return matchesSearch && matchesStatus
+    })
+  }, [purchaseOrders, searchQuery, statusFilter])
+
+  // Count helper for Approved POs
+  const approvedPOCount = useMemo(() => {
+    return purchaseOrders.filter((po) => po.status === "Approved").length
+  }, [purchaseOrders])
+
+  // Mark PO as Ordered
+  const handleMarkOrdered = async (id: string) => {
+    setIsProcessingAction(id)
+    try {
+      await purchaseOrderService.markPurchaseOrderOrdered(id)
+      toast.success("Purchase Order marked as Ordered successfully")
+      await fetchPurchaseOrders()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to order materials")
+    } finally {
+      setIsProcessingAction(null)
     }
-
-    setIsAddOpen(false)
   }
 
-  const handleOpenUpdate = (item: MaterialReceipt) => {
-    setUpdatingItem(item)
-    setUpdatingReceivedQty(item.receivedQty)
-    setIsUpdateOpen(true)
-  }
+  // Bulk Approve / Order All Approved POs
+  const handleOrderAllApproved = async () => {
+    const approvedPOs = purchaseOrders.filter((po) => po.status === "Approved")
+    if (approvedPOs.length === 0) return
 
-  const handleUpdateSubmit = () => {
-    if (!updatingItem) return
+    setIsProcessingAction("bulk-order")
+    let successCount = 0
+    let failCount = 0
 
-    setReceipts(prev => prev.map(item => {
-      if (item.indentId === updatingItem.indentId && item.id === updatingItem.id) {
-        return {
-          ...item,
-          receivedQty: Math.min(item.requestedQty, Math.max(0, updatingReceivedQty))
+    try {
+      for (const po of approvedPOs) {
+        const poId = po._id || po.id
+        if (poId) {
+          try {
+            await purchaseOrderService.markPurchaseOrderOrdered(poId)
+            successCount++
+          } catch (e) {
+            failCount++
+          }
         }
       }
-      return item
-    }))
-
-    toast.success("Material quantity updated successfully", {
-      description: `New balance: ${updatingReceivedQty} out of ${updatingItem.requestedQty} ${updatingItem.unit}.`
-    })
-
-    setIsUpdateOpen(false)
-    setUpdatingItem(null)
+      
+      if (successCount > 0) {
+        toast.success(`Successfully marked ${successCount} PO(s) as Ordered`)
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to process ${failCount} PO(s)`)
+      }
+      await fetchPurchaseOrders()
+    } catch (err: any) {
+      toast.error(err.message || "Bulk processing failed")
+    } finally {
+      setIsProcessingAction(null)
+    }
   }
 
-  const columns: ColumnDef<MaterialReceipt>[] = [
+  // Open Receive Material Dialog
+  const handleOpenReceive = (po: any) => {
+    setSelectedPO(po)
+    
+    // Pre-populate receive quantities with remaining quantities to receive
+    const initialQuantities: Record<string, number> = {}
+    if (po.items && Array.isArray(po.items)) {
+      po.items.forEach((item: any) => {
+        const itemId = item.itemId?._id || item.itemId
+        const remaining = (item.orderQuantity || 0) - (item.receivedQuantity || 0)
+        initialQuantities[itemId] = Math.max(0, remaining)
+      });
+    }
+    setReceiveQuantities(initialQuantities)
+    setIsReceiveOpen(true)
+  }
+
+  // Submit Receive Quantities
+  const handleReceiveSubmit = async () => {
+    if (!selectedPO) return
+
+    const itemsPayload = Object.entries(receiveQuantities)
+      .map(([itemId, qty]) => ({
+        itemId,
+        receivedQuantity: Number(qty) || 0,
+      }))
+      .filter((item) => item.receivedQuantity > 0)
+
+    if (itemsPayload.length === 0) {
+      toast.error("Please enter a received quantity greater than 0 for at least one item.")
+      return
+    }
+
+    setIsReceivingSubmit(true)
+    try {
+      const poId = selectedPO._id || selectedPO.id
+      await purchaseOrderService.receivePurchaseOrderMaterial(poId, { items: itemsPayload })
+      toast.success("Material receipt recorded successfully")
+      setIsReceiveOpen(false)
+      setSelectedPO(null)
+      await fetchPurchaseOrders()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to record material receipt")
+    } finally {
+      setIsReceivingSubmit(false)
+    }
+  }
+
+  // Open Issue Material Dialog
+  const handleOpenIssue = (po: any) => {
+    setSelectedPO(po)
+    
+    // Pre-populate issue quantities with remaining received quantities to supply
+    const initialQuantities: Record<string, number> = {}
+    if (po.items && Array.isArray(po.items)) {
+      po.items.forEach((item: any) => {
+        const itemId = item.itemId?._id || item.itemId
+        const remainingToIssue = (item.receivedQuantity || 0) - (item.issuedToRequesterQuantity || 0)
+        initialQuantities[itemId] = Math.max(0, remainingToIssue)
+      });
+    }
+    setIssueQuantities(initialQuantities)
+    setIsIssueOpen(true)
+  }
+
+  // Submit Issue Quantities
+  const handleIssueSubmit = async () => {
+    if (!selectedPO) return
+
+    const itemsPayload = Object.entries(issueQuantities)
+      .map(([itemId, qty]) => ({
+        itemId,
+        supplyQuantity: Number(qty) || 0,
+      }))
+      .filter((item) => item.supplyQuantity > 0)
+
+    if (itemsPayload.length === 0) {
+      toast.error("Please enter a supply quantity greater than 0 for at least one item.")
+      return
+    }
+
+    setIsIssuingSubmit(true)
+    try {
+      const poId = selectedPO._id || selectedPO.id
+      await purchaseOrderService.issueMaterialToRequester(poId, { items: itemsPayload })
+      toast.success("Materials issued to requester successfully")
+      setIsIssueOpen(false)
+      setSelectedPO(null)
+      await fetchPurchaseOrders()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to issue materials")
+    } finally {
+      setIsIssuingSubmit(false)
+    }
+  }
+
+  const columns: ColumnDef<any>[] = [
     {
-      accessorKey: "indentId",
-      header: "Indent Request",
+      accessorKey: "poNo",
+      header: "PO ID",
       cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-400">
-            <ClipboardCheck className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-xs font-black text-zinc-900">{row.getValue("indentId")}</span>
+        <div 
+          onClick={() => router.push(`/purchase-order/${row.original._id || row.original.id}`)}
+          className="font-bold text-teal-600 hover:underline cursor-pointer flex items-center gap-1.5"
+        >
+          <ClipboardList className="h-4 w-4 shrink-0 text-teal-600" />
+          {row.getValue("poNo")}
         </div>
-      )
+      ),
     },
     {
-      accessorKey: "name",
-      header: "Material Name",
+      accessorKey: "projectId",
+      header: "Project",
+      cell: ({ row }) => (
+        <div className="font-bold text-zinc-800">
+          {row.original.projectId?.projectName || row.original.projectId?.name || "N/A"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "vendorName",
+      header: "Vendor",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="text-sm font-black text-zinc-900">{row.getValue("name")}</span>
-          <span className="text-[8px] font-bold text-zinc-400 uppercase mt-0.5">{row.original.category}</span>
+          <span className="font-bold text-zinc-900">{row.original.vendorName}</span>
+          <span className="text-[10px] text-zinc-400 font-medium">{row.original.vendorMobile || "No contact"}</span>
         </div>
-      )
+      ),
     },
     {
-      accessorKey: "requestedQty",
-      header: () => <div className="text-center">Requested Quantity</div>,
-      cell: ({ row }) => (
-        <div className="text-center">
-          <span className="bg-zinc-100 px-3 py-1 rounded-lg text-[11px] font-black text-zinc-600">
-            {row.getValue("requestedQty")} {row.original.unit}
-          </span>
-        </div>
-      )
+      id: "materials",
+      header: "Procured Items",
+      cell: ({ row }) => {
+        const items = row.original.items || []
+        return (
+          <div className="flex flex-col gap-1 max-w-xs">
+            {items.slice(0, 3).map((item: any, i: number) => {
+              const name = item.itemId?.itemName || item.itemId?.name || "Material"
+              const unit = item.unitId?.unitName || item.unitId?.name || "Nos"
+              return (
+                <div key={i} className="text-[11px] font-bold text-zinc-500 truncate flex items-center justify-between border-b border-zinc-100/50 pb-0.5 last:border-none">
+                  <span>{name}</span>
+                  <span className="shrink-0 text-zinc-800 ml-2 font-extrabold">
+                    {item.receivedQuantity || 0}/{item.orderQuantity} {unit}
+                  </span>
+                </div>
+              )
+            })}
+            {items.length > 3 && (
+              <span className="text-[9px] font-bold text-teal-600 uppercase mt-0.5">
+                + {items.length - 3} more item(s)
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
-      accessorKey: "receivedQty",
-      header: () => <div className="text-center">Received Quantity</div>,
-      cell: ({ row }) => (
-        <div className="text-center">
-          <span className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-[11px] font-black">
-            {row.getValue("receivedQty")} {row.original.unit}
-          </span>
-        </div>
-      )
+      accessorKey: "status",
+      header: "Lifecycle Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string
+        return (
+          <Badge
+            className={cn(
+              "px-3 py-1 rounded-full font-black text-[9px] gap-1.5 border-none shadow-sm uppercase tracking-wider",
+              status === "Approved" ? "bg-blue-50 text-blue-700 hover:bg-blue-50" :
+              status === "Ordered" ? "bg-amber-50 text-amber-700 hover:bg-amber-50" :
+              status === "PartiallyReceived" ? "bg-teal-50 text-teal-700 hover:bg-teal-50" :
+              status === "Received" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50" :
+              status === "Issued" ? "bg-purple-50 text-purple-700 hover:bg-purple-50" :
+              "bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
+            )}
+          >
+            <span className="h-1 w-1 rounded-full bg-current shrink-0" />
+            {status === "Approved" ? "Approved (Pending Order)" :
+             status === "Ordered" ? "Ordered (In-Transit)" :
+             status === "PartiallyReceived" ? "Partially Received" :
+             status === "Received" ? "Received (At Store)" :
+             status === "Issued" ? "Issued (Completed)" :
+             status}
+          </Badge>
+        )
+      },
     },
     {
       id: "actions",
-      header: () => <div className="text-right pr-4">Actions</div>,
-      cell: ({ row }) => (
-        <div className="flex justify-end pr-4">
-          <Button 
-            onClick={() => handleOpenUpdate(row.original)}
-            variant="ghost" 
-            size="sm" 
-            className="h-8 rounded-xl font-black text-[10px] uppercase tracking-wider text-primary hover:text-primary hover:bg-primary/10 gap-1.5"
-          >
-            <Edit className="h-3.5 w-3.5" /> Update
-          </Button>
-        </div>
-      )
-    }
+      header: () => <div className="text-right pr-4">Action Hub</div>,
+      cell: ({ row }) => {
+        const po = row.original
+        const id = po._id || po.id
+        const isProcessing = isProcessingAction === id
+
+        return (
+          <div className="flex items-center justify-end gap-2 pr-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => router.push(`/purchase-order/${id}`)}
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-800 border-zinc-200 hover:bg-zinc-50 rounded-xl"
+              title="View PO Details"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+
+            {po.status === "Approved" && (
+              <Button
+                size="sm"
+                onClick={() => handleMarkOrdered(id)}
+                disabled={isProcessing}
+                className="h-8 rounded-xl bg-amber-500 hover:bg-amber-600 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Truck className="h-3.5 w-3.5" />
+                )}
+                Mark Ordered
+              </Button>
+            )}
+
+            {(po.status === "Ordered" || po.status === "PartiallyReceived") && (
+              <Button
+                size="sm"
+                onClick={() => handleOpenReceive(po)}
+                disabled={isProcessing}
+                className="h-8 rounded-xl bg-teal-600 hover:bg-teal-700 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
+              >
+                <Layers className="h-3.5 w-3.5" />
+                Receive Goods
+              </Button>
+            )}
+
+            {(po.status === "Received" || po.status === "PartiallyReceived") && (
+              <Button
+                size="sm"
+                onClick={() => handleOpenIssue(po)}
+                disabled={isProcessing}
+                className="h-8 rounded-xl bg-purple-600 hover:bg-purple-700 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                Issue Material
+              </Button>
+            )}
+
+            {po.status === "Issued" && (
+              <Badge className="bg-emerald-50 text-emerald-700 border-none shadow-none font-bold text-[9px] uppercase h-8 rounded-xl flex items-center justify-center px-3 gap-1 pointer-events-none">
+                <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> Finished
+              </Badge>
+            )}
+          </div>
+        )
+      },
+    },
   ]
 
   return (
     <ContentLayout title="Material Master">
-      <div className="flex flex-col gap-8 p-6 sm:p-12 max-w-[1500px] mx-auto min-h-screen">
+      <div className="flex flex-col gap-8 p-6 sm:p-12 max-w-[1600px] mx-auto min-h-screen">
 
-        {/* Breathtaking Control Hub */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        {/* Header Control Hub */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl font-black text-zinc-900 tracking-tighter">Material Receipts</h1>
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tighter">Material Receipts & Goods Inward</h1>
             <div className="flex items-center gap-3">
               <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Inward & Goods Receipt Ledger</p>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Goods Inward & Material Lifecycle Management</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative w-64">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="relative w-full sm:w-64 shrink-0">
               <Input 
-                placeholder="Scan or filter registry..." 
+                placeholder="Search POs or vendors..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-11 rounded-xl bg-white border-zinc-100 pl-10 font-bold text-sm shadow-sm" 
@@ -278,200 +433,321 @@ export default function MaterialMasterPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
             </div>
 
+            {approvedPOCount > 0 && (
+              <Button 
+                onClick={handleOrderAllApproved}
+                disabled={isProcessingAction === "bulk-order"}
+                className="h-11 rounded-xl px-5 font-black shadow-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-2 transition-all active:scale-95 duration-300"
+              >
+                {isProcessingAction === "bulk-order" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Truck className="h-4 w-4" />
+                )}
+                Order All Approved ({approvedPOCount})
+              </Button>
+            )}
+
             <Button 
-              onClick={handleOpenAdd}
-              className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300"
+              variant="outline"
+              onClick={fetchPurchaseOrders}
+              className="h-11 w-11 rounded-xl p-0 border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800"
+              title="Refresh ledger"
             >
-              <Plus className="h-4 w-4" /> Add Material Receipt
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Simplistic Material Log Board */}
-        <div className="animate-in fade-in duration-300 space-y-6">
-          <div className="flex items-center justify-between mb-2 px-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center text-zinc-400">
-                <Scale className="h-5 w-5 text-zinc-500" />
-              </div>
-              <h3 className="text-xl font-black text-zinc-900 tracking-tight">Receipt Inward Log</h3>
-            </div>
-          </div>
-
-          <DataTable columns={columns} data={filteredReceipts} />
+        {/* Tab-like Filters */}
+        <div className="flex items-center gap-2 border-b border-zinc-200 pb-px overflow-x-auto">
+          {[
+            { id: "All", label: "All POs" },
+            { id: "PendingOrder", label: "Pending Order (Approved)" },
+            { id: "InTransit", label: "In-Transit (Ordered)" },
+            { id: "PartiallyReceived", label: "Partially Received" },
+            { id: "Received", label: "Received (At Store)" },
+            { id: "Issued", label: "Issued (Completed)" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={cn(
+                "h-10 px-4 font-black text-xs uppercase tracking-wider border-b-2 transition-all whitespace-nowrap",
+                statusFilter === tab.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-zinc-400 hover:text-zinc-600 hover:border-zinc-200"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Modal: Add Material Receipt */}
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+        {/* Table Board */}
+        <div className="bg-white rounded-[2rem] border border-zinc-200/60 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
+              <Scale className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-black text-zinc-900 tracking-tight">Ledger Inward Registry</h3>
+          </div>
+
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+              <p className="text-zinc-500 font-bold text-sm">Loading procurement ledger...</p>
+            </div>
+          ) : (
+            <DataTable columns={columns} data={filteredPOs} />
+          )}
+        </div>
+
+        {/* Dialog: Receive Material */}
+        <Dialog open={isReceiveOpen} onOpenChange={setIsReceiveOpen}>
+          <DialogContent className="sm:max-w-[650px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
             <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <Box className="h-32 w-32" />
               </div>
               <div className="flex items-center gap-4 relative">
-                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <div className="h-14 w-14 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-150 shrink-0">
                   <Box className="h-6 w-6" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Add Material Receipt</DialogTitle>
+                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Receive Material Goods</DialogTitle>
                   <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">
-                    Goods Inward Entry System
+                    Record Goods Inward Registry
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Indent Request</Label>
-                <Select value={addIndentId} onValueChange={handleIndentChange}>
-                  <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
-                    <SelectValue placeholder="Select Indent" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
-                    {MOCK_INDENTS_CATALOG.map((ind) => (
-                      <SelectItem key={ind.id} value={ind.id} className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">{ind.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Requested Material</Label>
-                <Select value={addMaterialId} onValueChange={setAddMaterialId}>
-                  <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
-                    <SelectValue placeholder="Select Material" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
-                    {activeIndentOptions?.items.map((item) => (
-                      <SelectItem key={item.id} value={item.id} className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">{item.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {activeMaterialOptions && (
-                <div className="grid grid-cols-2 gap-4 bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm">
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Requested Limit</span>
-                    <span className="text-base font-black text-primary mt-1">
-                      {activeMaterialOptions.requestedQty} {activeMaterialOptions.unit}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Category</span>
-                    <span className="text-xs font-black text-zinc-600 mt-1">
-                      {activeMaterialOptions.category}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2.5">
-                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Received Quantity</Label>
-                <div className="relative">
-                  <Input 
-                    type="number"
-                    value={addReceivedQty || ""}
-                    onChange={(e) => setAddReceivedQty(Math.min(activeMaterialOptions?.requestedQty || 0, Math.max(0, parseInt(e.target.value) || 0)))}
-                    placeholder="Enter received amount"
-                    className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-4 pr-12 focus:ring-primary shadow-sm"
-                  />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">
-                    {activeMaterialOptions?.unit}
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setIsAddOpen(false)}
-                  className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddSubmit}
-                  className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
-                >
-                  Add to Log
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal: Update Received Quantity */}
-        <Dialog open={isUpdateOpen} onOpenChange={setIsUpdateOpen}>
-          <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
-            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <Edit className="h-32 w-32" />
-              </div>
-              <div className="flex items-center gap-4 relative">
-                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Edit className="h-6 w-6" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Update Inward Quantity</DialogTitle>
-                  <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">
-                    Recount physical inward registry
-                  </DialogDescription>
-                </div>
-              </div>
-            </DialogHeader>
-
-            {updatingItem && (
-              <div className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+            {selectedPO && (
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-zinc-50/20">
                 <div className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col">
-                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Indent Source</span>
-                      <span className="text-sm font-black text-zinc-900 mt-1">{updatingItem.indentId}</span>
+                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Purchase Order ID</span>
+                      <span className="text-sm font-black text-zinc-900 mt-1">{selectedPO.poNo}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Material Name</span>
-                      <span className="text-sm font-black text-zinc-900 mt-1 truncate">{updatingItem.name}</span>
+                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Vendor Name</span>
+                      <span className="text-sm font-black text-zinc-900 mt-1 truncate">{selectedPO.vendorName}</span>
                     </div>
-                  </div>
-                  <div className="h-px bg-zinc-100" />
-                  <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Requested Quantity limit</span>
-                    <span className="text-sm font-black text-zinc-600 mt-1">
-                      {updatingItem.requestedQty} {updatingItem.unit}
-                    </span>
                   </div>
                 </div>
 
-                <div className="space-y-2.5">
-                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">New Received Quantity</Label>
-                  <div className="relative">
-                    <Input 
-                      type="number"
-                      value={updatingReceivedQty || ""}
-                      onChange={(e) => setUpdatingReceivedQty(Math.min(updatingItem.requestedQty, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="h-14 rounded-2xl bg-white border-zinc-100 font-black text-lg pl-4 pr-12 focus:ring-primary shadow-sm"
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-black text-zinc-400">
-                      {updatingItem.unit}
-                    </span>
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Inward Quantity Grid</Label>
+                  <div className="border border-zinc-150 rounded-2xl bg-white overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 border-b border-zinc-200">
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Material</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Ordered</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Received</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right pr-6 w-32">Receiving Now</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {selectedPO.items?.map((item: any, idx: number) => {
+                          const itemId = item.itemId?._id || item.itemId
+                          const name = item.itemId?.itemName || item.itemId?.name || "Material"
+                          const unit = item.unitId?.unitName || item.unitId?.name || "Nos"
+                          const remaining = (item.orderQuantity || 0) - (item.receivedQuantity || 0)
+
+                          return (
+                            <tr key={idx}>
+                              <td className="px-4 py-4 text-xs font-bold text-zinc-800">{name}</td>
+                              <td className="px-4 py-4 text-xs text-center font-bold text-zinc-500">
+                                {item.orderQuantity} {unit}
+                              </td>
+                              <td className="px-4 py-4 text-xs text-center font-bold text-zinc-500">
+                                {item.receivedQuantity || 0} {unit}
+                              </td>
+                              <td className="px-4 py-4 text-right pr-6 w-32">
+                                <div className="relative">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={remaining}
+                                    value={receiveQuantities[itemId] !== undefined ? receiveQuantities[itemId] : remaining}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, Math.min(remaining, Number(e.target.value) || 0))
+                                      setReceiveQuantities(prev => ({
+                                        ...prev,
+                                        [itemId]: val
+                                      }))
+                                    }}
+                                    disabled={remaining <= 0}
+                                    className="h-9 w-24 text-right rounded-lg bg-zinc-50 border-zinc-200 font-bold text-xs pr-7 disabled:bg-zinc-100"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-zinc-400 pointer-events-none">
+                                    {unit}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
                 <div className="pt-4 flex items-center gap-4">
                   <Button 
                     variant="ghost" 
-                    onClick={() => setIsUpdateOpen(false)}
+                    onClick={() => {
+                      setIsReceiveOpen(false)
+                      setSelectedPO(null)
+                    }}
                     className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors"
                   >
                     Cancel
                   </Button>
                   <Button 
-                    onClick={handleUpdateSubmit}
-                    className="h-14 flex-1 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95"
+                    onClick={handleReceiveSubmit}
+                    disabled={isReceivingSubmit}
+                    className="h-14 flex-1 rounded-2xl bg-teal-600 text-white font-black shadow-lg shadow-teal-500/20 hover:bg-teal-700 transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
-                    Save Changes
+                    {isReceivingSubmit ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" /> Recording...
+                      </>
+                    ) : (
+                      <>
+                        <Scale className="h-5 w-5" /> Save Inward Receipt
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Issue Material */}
+        <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
+          <DialogContent className="sm:max-w-[650px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
+            <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Box className="h-32 w-32" />
+              </div>
+              <div className="flex items-center gap-4 relative">
+                <div className="h-14 w-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100 shrink-0">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight">Issue Material to Requester</DialogTitle>
+                  <DialogDescription className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">
+                    Supply Inward Stock to Requester
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {selectedPO && (
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-zinc-50/20">
+                <div className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Purchase Order ID</span>
+                      <span className="text-sm font-black text-zinc-900 mt-1">{selectedPO.poNo}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Requester / Project</span>
+                      <span className="text-sm font-black text-zinc-900 mt-1 truncate">
+                        {selectedPO.requesterId?.name || "Requester"} ({selectedPO.projectId?.projectName || selectedPO.projectId?.name || "N/A"})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Supply Quantity Grid</Label>
+                  <div className="border border-zinc-150 rounded-2xl bg-white overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-zinc-50 border-b border-zinc-200">
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">Material</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Received</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">Already Issued</th>
+                          <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right pr-6 w-32">Supplying Now</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {selectedPO.items?.map((item: any, idx: number) => {
+                          const itemId = item.itemId?._id || item.itemId
+                          const name = item.itemId?.itemName || item.itemId?.name || "Material"
+                          const unit = item.unitId?.unitName || item.unitId?.name || "Nos"
+                          const remainingToIssue = (item.receivedQuantity || 0) - (item.issuedToRequesterQuantity || 0)
+
+                          return (
+                            <tr key={idx}>
+                              <td className="px-4 py-4 text-xs font-bold text-zinc-800">{name}</td>
+                              <td className="px-4 py-4 text-xs text-center font-bold text-zinc-500">
+                                {item.receivedQuantity || 0} {unit}
+                              </td>
+                              <td className="px-4 py-4 text-xs text-center font-bold text-zinc-500">
+                                {item.issuedToRequesterQuantity || 0} {unit}
+                              </td>
+                              <td className="px-4 py-4 text-right pr-6 w-32">
+                                <div className="relative">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={remainingToIssue}
+                                    value={issueQuantities[itemId] !== undefined ? issueQuantities[itemId] : remainingToIssue}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, Math.min(remainingToIssue, Number(e.target.value) || 0))
+                                      setIssueQuantities(prev => ({
+                                        ...prev,
+                                        [itemId]: val
+                                      }))
+                                    }}
+                                    disabled={remainingToIssue <= 0}
+                                    className="h-9 w-24 text-right rounded-lg bg-zinc-50 border-zinc-200 font-bold text-xs pr-7 disabled:bg-zinc-100"
+                                  />
+                                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-zinc-400 pointer-events-none">
+                                    {unit}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="pt-4 flex items-center gap-4">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => {
+                      setIsIssueOpen(false)
+                      setSelectedPO(null)
+                    }}
+                    className="h-14 flex-1 rounded-2xl font-black text-zinc-500 hover:bg-zinc-100 transition-colors"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleIssueSubmit}
+                    disabled={isIssuingSubmit}
+                    className="h-14 flex-1 rounded-2xl bg-purple-600 text-white font-black shadow-lg shadow-purple-500/20 hover:bg-purple-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isIssuingSubmit ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" /> Supplying...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5" /> Confirm Issue Supply
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>

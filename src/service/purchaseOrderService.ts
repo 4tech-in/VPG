@@ -145,9 +145,13 @@ export const purchaseOrderService = {
     return response?.data || response;
   },
 
-  async issueMaterialToRequester(id: string): Promise<PurchaseOrder> {
+  async issueMaterialToRequester(
+    id: string,
+    payload: { items: { itemId: string; supplyQuantity: number }[] },
+  ): Promise<PurchaseOrder> {
     const response = await apiRequest<any>(`purchase-orders/issue/${id}`, {
       method: "PATCH",
+      body: JSON.stringify(payload),
     });
     return response?.data || response;
   },

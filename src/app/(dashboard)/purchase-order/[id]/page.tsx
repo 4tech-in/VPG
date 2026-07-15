@@ -336,9 +336,7 @@ export default function PODetailPage() {
                         <td className="px-4 py-3.5 text-right">
                           <div className="flex flex-col items-end gap-1.5 pr-1">
                             <span className="text-xs font-black text-zinc-900">₹{Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0))).toLocaleString("en-IN")}</span>
-                            <Badge className="bg-amber-100/50 hover:bg-amber-100/50 text-amber-700 border-none px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest uppercase">
-                              Pending
-                            </Badge>
+                           
                           </div>
                         </td>
                       </tr>
@@ -392,74 +390,7 @@ export default function PODetailPage() {
             </div>
 
             {/* Approval Workflow Timeline Card */}
-            <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                  <ShieldCheck className="h-4.5 w-4.5" />
-                </div>
-                <h4 className="text-xs font-black text-zinc-900 uppercase tracking-wider">Approval Workflow</h4>
-              </div>
-
-              {/* Horizontal Timeline */}
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-2 pb-1 px-2 relative">
-                {/* Connecting Line (Desktop) */}
-                <div className="hidden md:block absolute top-[22px] left-[10%] right-[10%] h-0.5 bg-zinc-200 -z-0" />
-                
-                {/* Step 1: PO Created */}
-                <div className="flex flex-col items-center text-center gap-1.5 relative z-10 shrink-0">
-                  <div className="h-9 w-9 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center text-white shadow-sm">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-black text-zinc-900">PO Created</span>
-                    <span className="text-[9px] font-bold text-zinc-400">Initiated by {po.createdBy?.name || "N/A"}</span>
-                    <span className="text-[8px] font-bold text-zinc-400">
-                      {po.createdAt ? `${new Date(po.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • ${new Date(po.createdAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : "N/A"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Step 2: Approved status check */}
-                <div className="flex flex-col items-center text-center gap-1.5 relative z-10 shrink-0">
-                  <div className={cn(
-                    "h-9 w-9 rounded-full border-4 border-white flex items-center justify-center text-white shadow-sm",
-                    po.status === "Approved" || po.status === "Ordered" || po.status === "Received" || po.status === "PartiallyReceived" || po.status === "Issued"
-                      ? "bg-blue-500"
-                      : "bg-zinc-300"
-                  )}>
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-black text-zinc-900">Approved</span>
-                    <span className="text-[9px] font-bold text-zinc-400">Authorized by {po.approvedBy?.name || "N/A"}</span>
-                    <span className="text-[8px] font-bold text-zinc-400">
-                      {po.approvedAt ? `${new Date(po.approvedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • ${new Date(po.approvedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : "N/A"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Step 3: Completed state check */}
-                <div className="flex flex-col items-center text-center gap-1.5 relative z-10 shrink-0">
-                  <div className={cn(
-                    "h-9 w-9 rounded-full border-4 border-white flex items-center justify-center text-white shadow-sm",
-                    po.status === "Received" || po.status === "Issued"
-                      ? "bg-emerald-500"
-                      : po.status === "Approved" || po.status === "Ordered" || po.status === "PartiallyReceived"
-                        ? "bg-emerald-500" // also completed PO approval
-                        : "bg-zinc-300"
-                  )}>
-                    <Check className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[11px] font-black text-zinc-900">Completed</span>
-                    <span className="text-[9px] font-bold text-zinc-400">PO Approved</span>
-                    <span className="text-[8px] font-bold text-zinc-400">
-                      {po.approvedAt ? `${new Date(po.approvedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • ${new Date(po.approvedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : "N/A"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          
 
             {/* Governance and Attachments dual panel */}
             <div className="grid grid-cols-1 md:grid-cols-[1.1fr,1.3fr] gap-6">
@@ -635,47 +566,7 @@ export default function PODetailPage() {
             </div>
 
             {/* Quick Actions Sidebar Card */}
-            <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                  <ShieldCheck className="h-4.5 w-4.5" />
-                </div>
-                <h4 className="text-xs font-black text-zinc-900 tracking-tight uppercase tracking-[0.12em]">Quick Actions</h4>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => exportPurchaseOrderReceipt(po)}
-                  className="flex flex-col items-center justify-center border border-zinc-200 hover:bg-zinc-50 rounded-lg p-3 gap-1.5 transition-all group"
-                >
-                  <Printer className="h-4.5 w-4.5 text-zinc-400 group-hover:text-teal-600 transition-colors" />
-                  <span className="text-[9px] font-black text-zinc-500 uppercase">Print</span>
-                </button>
-                <button 
-                  onClick={() => exportPurchaseOrderReceipt(po)}
-                  className="flex flex-col items-center justify-center border border-zinc-200 hover:bg-zinc-50 rounded-lg p-3 gap-1.5 transition-all group"
-                >
-                  <Download className="h-4.5 w-4.5 text-zinc-400 group-hover:text-blue-600 transition-colors" />
-                  <span className="text-[9px] font-black text-zinc-500 uppercase">Download PDF</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    toast.info("Duplication is not implemented yet")
-                  }}
-                  className="flex flex-col items-center justify-center border border-zinc-200 hover:bg-zinc-50 rounded-lg p-3 gap-1.5 transition-all group"
-                >
-                  <Copy className="h-4.5 w-4.5 text-zinc-400 group-hover:text-amber-600 transition-colors" />
-                  <span className="text-[9px] font-black text-zinc-500 uppercase">Duplicate PO</span>
-                </button>
-                <button 
-                  onClick={handleCancelPO}
-                  className="flex flex-col items-center justify-center border border-zinc-200 hover:bg-rose-50 rounded-lg p-3 gap-1.5 transition-all group border-rose-100/50"
-                >
-                  <Trash2 className="h-4.5 w-4.5 text-rose-400 group-hover:text-rose-600 transition-colors" />
-                  <span className="text-[9px] font-black text-zinc-500 group-hover:text-rose-600 uppercase">Cancel PO</span>
-                </button>
-              </div>
-            </div>
+           
           </div>
         </div>
       </div>

@@ -67,9 +67,9 @@ export function usePurchaseOrders() {
     } catch (err) {}
   };
 
-  const issuePO = async (id: string) => {
+  const issuePO = async (id: string, payload: { items: { itemId: string; supplyQuantity: number }[] }) => {
     try {
-      await purchaseOrderService.issueMaterialToRequester(id);
+      await purchaseOrderService.issueMaterialToRequester(id, payload);
       toast.success("Materials issued to requester");
       fetchPOs();
     } catch (err) {}
