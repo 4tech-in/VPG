@@ -24,6 +24,7 @@ export type Staff = {
   geofenceName?: string
   projectName?: string
   attendancePolicyName?: string
+  reportsToName?: string
   organizationId?: string
 }
 
@@ -50,6 +51,10 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
 
   const geofenceName = typeof apiUser.geofenceId === "object" && apiUser.geofenceId
     ? apiUser.geofenceId.name
+    : undefined
+    
+  const reportsToName = typeof apiUser.reportsTo === "object" && apiUser.reportsTo
+    ? apiUser.reportsTo.name
     : undefined
 
   const projectId = typeof apiUser.projectId === "object" && apiUser.projectId
@@ -88,6 +93,7 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     geofenceName,
     projectName,
     attendancePolicyName,
+    reportsToName,
     organizationId: apiUser.organizationId,
     password: apiUser.password,
   }

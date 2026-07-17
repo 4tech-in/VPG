@@ -584,8 +584,8 @@ export default function MaterialDetailPage() {
                 {[
                   { label: "Indent Created", done: !!po.indentId },
                   { label: "PO Created", done: true },
-                  { label: "Approved", done: ["Approved", "Ordered", "PartiallyReceived", "Received", "Completed", "PendingVerification"].includes(po.status) },
-                  { label: "Completed", done: po.status === "Completed" || po.status === "Received" },
+                  { label: "Approved", done: ["Approved", "Ordered", "PartiallyReceived", "Received", "Completed", "PendingVerification", "Issued"].includes(po.status) },
+                  { label: "Issued", done: ["Completed", "Received", "Issued"].includes(po.status) },
                 ].map((step, i, arr) => (
                   <div key={i} className="flex items-center shrink-0">
                     <div className={cn(

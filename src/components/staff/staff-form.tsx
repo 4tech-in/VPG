@@ -471,6 +471,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                  {initialValues?.roleId && !activeRoles.some(r => r.id === initialValues.roleId) && (
+                    <SelectItem value={initialValues.roleId}>{initialValues.role || "Current Role"}</SelectItem>
+                  )}
                   {activeRoles.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}
@@ -497,6 +500,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
                     <SelectItem value="none">None / Self-Managed</SelectItem>
+                    {initialValues?.reportsTo && initialValues.reportsTo !== "none" && !potentialReportsTo.some(u => u.id === initialValues.reportsTo) && (
+                      <SelectItem value={initialValues.reportsTo}>{initialValues.reportsToName || "Current Manager"}</SelectItem>
+                    )}
                     {potentialReportsTo.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name} <span className="text-zinc-400">({u.role})</span>
@@ -569,6 +575,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                   <SelectItem value="none">None / No Geofence</SelectItem>
+                  {initialValues?.geofenceId && initialValues.geofenceId !== "none" && !geofencesList.some(g => g.id === initialValues.geofenceId) && (
+                    <SelectItem value={initialValues.geofenceId}>{initialValues.geofenceName || "Current Geofence"}</SelectItem>
+                  )}
                   {geofencesList.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.name}
@@ -600,6 +609,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                   <SelectItem value="none">None / Unassigned</SelectItem>
+                  {initialValues?.projectId && initialValues.projectId !== "none" && !projectsList.some(p => p.id === initialValues.projectId) && (
+                    <SelectItem value={initialValues.projectId}>{initialValues.projectName || "Current Project"}</SelectItem>
+                  )}
                   {projectsList.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -631,6 +643,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                   <SelectItem value="none">None / System Default</SelectItem>
+                  {initialValues?.attendancePolicyId && initialValues.attendancePolicyId !== "none" && !policiesList.some(ap => ap.id === initialValues.attendancePolicyId) && (
+                    <SelectItem value={initialValues.attendancePolicyId}>{initialValues.attendancePolicyName || "Current Policy"}</SelectItem>
+                  )}
                   {policiesList.map((ap) => (
                     <SelectItem key={ap.id} value={ap.id}>
                       {ap.name}

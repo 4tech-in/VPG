@@ -5,21 +5,25 @@ import { useRouter } from "next/navigation";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import { 
-  BookOpen, 
   Users, 
-  BookmarkCheck, 
-  Clock, 
   Search, 
   Bell, 
   Globe, 
   Plus,
+  ClipboardCheck,
   ArrowUpRight,
-  ArrowDownRight,
-  MoreHorizontal,
-  ClipboardCheck
+  UserCheck,
+  UserX,
+  CalendarDays,
+  ClipboardList,
+  FileText,
+  ShoppingCart,
+  Package,
+  Wrench,
+  ArrowDownRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -39,8 +43,8 @@ export default function DashboardPage() {
         {/* Top Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
-            <p className="text-muted-foreground">Good morning James 👋</p>
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard</h1>
+           
           </div>
           
           <div className="flex items-center gap-3">
@@ -56,17 +60,9 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-border shadow-sm">
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg"><Globe className="h-4 w-4" /></Button>
-              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </Button>
-            </div>
             
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 rounded-xl h-11 px-6 shadow-lg shadow-primary/20">
-              <Plus className="h-4 w-4" /> Add Member
-            </Button>
+            
+            
           </div>
         </div>
 
@@ -98,10 +94,46 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { title: "Total Books", value: "12,856", icon: BookOpen, change: "+120", trend: "up", sub: "In collection", color: "text-blue-600", bg: "bg-blue-50" },
-            { title: "Active Members", value: "2,170+", icon: Users, change: "+3.7%", trend: "up", sub: "This month", color: "text-emerald-600", bg: "bg-emerald-50" },
-            { title: "Borrowed Books", value: "4,793+", icon: BookmarkCheck, change: "+25%", trend: "up", sub: "Books borrowed", color: "text-orange-600", bg: "bg-orange-50" },
-            { title: "Overdue Returns", value: "237+", icon: Clock, change: "-5.8%", trend: "down", sub: "Item overdue", color: "text-rose-600", bg: "bg-rose-50" },
+            { 
+              title: "Present", 
+              value: "128", 
+              icon: UserCheck, 
+              sub: "72% of Total", 
+              color: "text-emerald-500", 
+              bg: "bg-emerald-50",
+              graphColor: "text-emerald-500",
+              points: "0,15 10,25 20,10 30,15 40,5 50,15 60,0"
+            },
+            { 
+              title: "Absent", 
+              value: "32", 
+              icon: UserX, 
+              sub: "18% of Total", 
+              color: "text-rose-500", 
+              bg: "bg-rose-50",
+              graphColor: "text-rose-500",
+              points: "0,25 10,20 20,30 30,15 40,25 50,10 60,20"
+            },
+            { 
+              title: "On Leave", 
+              value: "18", 
+              icon: CalendarDays, 
+              sub: "10% of Total", 
+              color: "text-amber-500", 
+              bg: "bg-amber-50",
+              graphColor: "text-amber-500",
+              points: "0,20 10,15 20,25 30,10 40,20 50,5 60,15"
+            },
+            { 
+              title: "Total Employees", 
+              value: "178", 
+              icon: Users, 
+              sub: "+6 from last month", 
+              color: "text-blue-500", 
+              bg: "bg-blue-50",
+              graphColor: "text-blue-500",
+              points: "0,25 10,20 20,22 30,15 40,18 50,5 60,10"
+            },
           ].map((stat, i) => (
             <motion.div
               key={stat.title}
@@ -109,26 +141,32 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <Card className="border-none shadow-sm hover:shadow-md transition-shadow rounded-2xl overflow-hidden">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={stat.bg + " p-3 rounded-xl " + stat.color}>
-                      <stat.icon className="h-6 w-6" />
-                    </div>
-                    <div className={cn(
-                      "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-                      stat.trend === "up" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                    )}>
-                      {stat.trend === "up" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                      {stat.change}
+              <Card className="border border-zinc-100 shadow-sm rounded-2xl overflow-hidden bg-white">
+                <CardContent className="p-5 flex flex-col justify-between h-full">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2.5 rounded-full flex items-center justify-center", stat.bg, stat.color)}>
+                        <stat.icon className="h-5 w-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-zinc-900">{stat.title}</span>
+                        <span className={cn("text-3xl font-black mt-1", stat.color)}>{stat.value}</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-muted-foreground">{stat.title}</h3>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold">{stat.value}</span>
-                      <span className="text-[10px] text-muted-foreground">{stat.sub}</span>
-                    </div>
+                  <div className="flex items-end justify-between mt-4 gap-2">
+                    <span className="text-[11px] font-bold text-zinc-500">{stat.sub}</span>
+                    <svg viewBox="0 0 60 30" className="w-16 h-8 overflow-visible">
+                      <polyline
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={stat.points}
+                        className={stat.graphColor}
+                      />
+                    </svg>
                   </div>
                 </CardContent>
               </Card>
@@ -136,148 +174,58 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Main Charts Section */}
+        {/* Middle Section: Pending Tasks & Request Summary */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Revenue Breakdown */}
-          <Card className="lg:col-span-2 border-none shadow-sm rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Revenue Breakdown</CardTitle>
-                <p className="text-sm text-muted-foreground">Total → <span className="font-bold text-foreground text-lg">$20,671</span></p>
+          {/* Pending Tasks Table */}
+          <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Pending Tasks</CardTitle>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl h-8">This week</Button>
+              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
             </CardHeader>
-            <CardContent className="h-[300px] flex items-end justify-between gap-2 pt-0">
-              {[
-                { label: "Membership Fees", value: 60, color: "bg-primary/20", height: "h-[60%]" },
-                { label: "Overdue Fines", value: 45, color: "bg-primary/40", height: "h-[45%]" },
-                { label: "Events", value: 85, color: "bg-primary", height: "h-[85%]", active: true },
-                { label: "Others", value: 30, color: "bg-primary/10", height: "h-[30%]" },
-              ].map((bar) => (
-                <div key={bar.label} className="flex-1 flex flex-col items-center gap-4 group">
-                  <div className="relative w-full h-full flex items-end justify-center px-4">
-                    <motion.div 
-                      className={cn(
-                        "w-full rounded-t-xl transition-all duration-300",
-                        bar.color,
-                        bar.height,
-                        bar.active ? "shadow-lg shadow-primary/20" : ""
-                      )}
-                      initial={{ height: 0 }}
-                      animate={{ height: bar.height === "h-[60%]" ? "60%" : bar.height === "h-[45%]" ? "45%" : bar.height === "h-[85%]" ? "85%" : "30%" }}
-                    />
-                    {bar.active && (
-                      <div className="absolute top-10 bg-black text-white p-2 rounded-lg text-[10px] shadow-xl z-10">
-                        <div className="font-bold mb-1">Revenue</div>
-                        <div className="text-sm">$4,910</div>
-                        <div className="flex items-center gap-1 text-emerald-400 mt-1">
-                          <ArrowUpRight size={10} /> +3.7%
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground font-medium text-center">{bar.label}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Most Borrowed Categories */}
-          <Card className="border-none shadow-sm rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Most Borrowed</CardTitle>
-              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-            </CardHeader>
-            <CardContent>
-              <div className="relative h-[200px] flex items-center justify-center mb-6">
-                <svg className="w-40 h-40 transform -rotate-90">
-                  <circle cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-muted/20" />
-                  <circle 
-                    cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" 
-                    strokeDasharray={440} 
-                    strokeDashoffset={440 * 0.65}
-                    strokeLinecap="round"
-                    className="text-primary" 
-                  />
-                  <circle 
-                    cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="12" 
-                    strokeDasharray={440} 
-                    strokeDashoffset={440 * 0.9}
-                    strokeLinecap="round"
-                    className="text-emerald-400" 
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-sm font-bold">Fiction</span>
-                  <span className="text-[10px] text-muted-foreground">35% - 1,677 Books</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {[
-                  { name: "Fiction", value: "35%", color: "bg-primary" },
-                  { name: "Children's", value: "15%", color: "bg-emerald-400" },
-                  { name: "History", value: "17%", color: "bg-blue-400" },
-                  { name: "Novels", value: "23%", color: "bg-orange-400" },
-                ].map((cat) => (
-                  <div key={cat.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full", cat.color)} />
-                      <span className="text-sm">{cat.name}</span>
-                    </div>
-                    <span className="text-sm font-bold">{cat.value}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           {/* Overdue Summary Table */}
-           <Card className="lg:col-span-2 border-none shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Overdue Items Summary</CardTitle>
-              <Button variant="outline" size="sm" className="rounded-xl h-8">This week</Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+            <CardContent className="p-0 flex-1">
+              <div className="overflow-x-auto h-full">
+                <table className="w-full text-sm h-full">
                   <thead>
-                    <tr className="bg-muted/50 border-y border-border">
-                      <th className="text-left py-3 px-6 font-medium text-muted-foreground">Borrower</th>
-                      <th className="text-left py-3 px-6 font-medium text-muted-foreground">Book Info</th>
-                      <th className="text-left py-3 px-6 font-medium text-muted-foreground">Days O/D</th>
-                      <th className="text-left py-3 px-6 font-medium text-muted-foreground">Fine</th>
-                      <th className="text-right py-3 px-6 font-medium text-muted-foreground">Action</th>
+                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
+                      <th className="text-left py-3 px-6 font-semibold">Task</th>
+                      <th className="text-left py-3 px-6 font-semibold">Project</th>
+                      <th className="text-left py-3 px-6 font-semibold">Assigned To</th>
+                      <th className="text-left py-3 px-6 font-semibold">Due Date</th>
+                      <th className="text-left py-3 px-6 font-semibold">Priority</th>
+                      <th className="text-left py-3 px-6 font-semibold">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-zinc-50">
                     {[
-                      { name: "John Smith", id: "USR-2007", book: "Don Quixote", author: "Miguel de Cervantes", days: "05 Days", fine: "$4.5", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100&h=100" },
-                      { name: "Emma", id: "USR-2025", book: "Pride and Prejudice", author: "Jane Austen", days: "04 Days", fine: "$3.5", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100&h=100" },
-                      { name: "Sarah", id: "USR-2058", book: "The Alchemist", author: "Paulo Coelho", days: "07 Days", fine: "$5.5", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100&h=100" },
+                      { task: "Design Review", project: "Website Redesign", assignee: "Rohit Sharma", date: "20 Jul 2026", priority: "High", priorityColor: "bg-rose-500", status: "Pending", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" },
+                      { task: "Client Meeting", project: "Mobile App", assignee: "Neha Verma", date: "18 Jul 2026", priority: "Medium", priorityColor: "bg-orange-500", status: "Pending", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
+                      { task: "API Integration", project: "HRMS Module", assignee: "Sanjay Patel", date: "21 Jul 2026", priority: "High", priorityColor: "bg-rose-500", status: "Pending", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" },
+                      { task: "Testing & QA", project: "CRM System", assignee: "Pooja Singh", date: "19 Jul 2026", priority: "Medium", priorityColor: "bg-orange-500", status: "Pending", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" },
+                      { task: "Documentation", project: "Inventory Module", assignee: "Amit Kumar", date: "22 Jul 2026", priority: "Low", priorityColor: "bg-emerald-500", status: "Pending", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" },
                     ].map((row, i) => (
-                      <tr key={i} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <Image src={row.img} className="w-8 h-8 rounded-full" alt="" width={32} height={32} />
-                            <div className="flex flex-col">
-                              <span className="font-bold text-xs">{row.name}</span>
-                              <span className="text-[10px] text-muted-foreground">ID: {row.id}</span>
-                            </div>
+                      <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.task}</td>
+                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.project}</td>
+                        <td className="py-3 px-6">
+                          <div className="flex items-center gap-2">
+                            <Image src={row.img} alt={row.assignee} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
+                            <span className="text-xs font-semibold text-zinc-700">{row.assignee}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-xs">{row.book}</span>
-                            <span className="text-[10px] text-muted-foreground">{row.author}</span>
+                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.date}</td>
+                        <td className="py-3 px-6">
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn("w-2 h-2 rounded-full shadow-sm", row.priorityColor)} />
+                            <span className="text-xs font-semibold text-zinc-700">{row.priority}</span>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-xs">{row.days}</td>
-                        <td className="py-4 px-6 font-bold text-xs">{row.fine}</td>
-                        <td className="py-4 px-6 text-right">
-                          <Button variant="outline" size="sm" className="h-8 rounded-lg text-primary border-primary/20 hover:bg-primary/5">Notify</Button>
+                        <td className="py-3 px-6">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50">
+                            {row.status}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -287,35 +235,175 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Top Authors */}
-          <Card className="border-none shadow-sm rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg">Top Authors</CardTitle>
-              <Button variant="ghost" size="sm" className="text-primary text-xs">View all</Button>
+          {/* Request Summary */}
+          <Card className="border border-zinc-100 shadow-sm rounded-2xl bg-white flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-purple-100 p-1 rounded relative">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 absolute m-[3px] shadow top-0 left-0" />
+                  <div className="border-[1.5px] border-purple-500 border-dashed w-4 h-4 rounded" />
+                </div>
+                <CardTitle className="text-sm font-black text-zinc-800">Request Summary</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6 pt-2">
-                {[
-                  { name: "Miguel de Cervantes", books: 13, borrowers: 617, rank: 1, img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100&h=100" },
-                  { name: "Jane Austen", books: 11, borrowers: 587, rank: 2, img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100&h=100" },
-                  { name: "Paulo Coelho", books: 10, borrowers: 497, rank: 3, img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=100&h=100" },
-                ].map((author, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="relative">
-                      <Image src={author.img} className="w-10 h-10 rounded-full" alt="" width={40} height={40} />
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white">
-                        {author.rank}
-                      </div>
+            <CardContent className="p-5 pt-2 flex flex-col gap-4 flex-1 justify-center">
+              {[
+                { label: "Indent Requests", value: "12", pending: "03 Pending", icon: FileText, bg: "bg-indigo-50", color: "text-indigo-600" },
+                { label: "PO Requests", value: "08", pending: "02 Pending", icon: ShoppingCart, bg: "bg-blue-50", color: "text-blue-500" },
+                { label: "Asset Requests", value: "06", pending: "01 Pending", icon: Package, bg: "bg-emerald-50", color: "text-emerald-500" },
+              ].map((req, i) => (
+                <div key={i} className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("p-2.5 rounded-xl", req.bg, req.color)}>
+                      <req.icon className="h-5 w-5" />
                     </div>
-                    <div className="flex flex-col flex-1">
-                      <span className="font-bold text-sm">{author.name}</span>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><BookOpen size={10} /> {author.books} Books</span>
-                        <span className="flex items-center gap-1"><Users size={10} /> {author.borrowers} Borrowers</span>
-                      </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-zinc-900">{req.label}</span>
+                      <span className={cn("text-xl font-black leading-tight", req.color)}>{req.value}</span>
                     </div>
                   </div>
-                ))}
+                  <div className="flex flex-col items-end justify-between self-stretch gap-2">
+                    <Button variant="link" className="text-blue-600 font-bold text-[10px] h-auto p-0 hover:underline">View All</Button>
+                    <span className="text-[10px] font-bold text-orange-500">{req.pending}</span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bottom Section: Assets & Attendance */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Assets on Maintenance Table */}
+          <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Assets on Maintenance</CardTitle>
+              </div>
+              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
+            </CardHeader>
+            <CardContent className="p-0 flex-1">
+              <div className="overflow-x-auto h-full">
+                <table className="w-full text-sm h-full">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
+                      <th className="text-left py-3 px-6 font-semibold">Asset Name</th>
+                      <th className="text-left py-3 px-6 font-semibold">Asset ID</th>
+                      <th className="text-left py-3 px-6 font-semibold">Requested By</th>
+                      <th className="text-left py-3 px-6 font-semibold">Maintenance Type</th>
+                      <th className="text-left py-3 px-6 font-semibold">Status</th>
+                      <th className="text-left py-3 px-6 font-semibold">Expected Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-50">
+                    {[
+                      { asset: "Dell Laptop", id: "AST-1001", requester: "Rohit Sharma", type: "Hardware Repair", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "20 Jul 2026", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" },
+                      { asset: "HP Printer", id: "AST-1002", requester: "Neha Verma", type: "Hardware Repair", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "19 Jul 2026", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
+                      { asset: "Projector", id: "AST-1003", requester: "Sanjay Patel", type: "General Service", status: "Pending", statusColor: "text-orange-600 bg-orange-50 border-orange-100", date: "21 Jul 2026", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" },
+                      { asset: "Office Chair", id: "AST-1004", requester: "Pooja Singh", type: "Part Replacement", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "22 Jul 2026", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" },
+                      { asset: "AC Unit", id: "AST-1005", requester: "Amit Kumar", type: "General Service", status: "Pending", statusColor: "text-orange-600 bg-orange-50 border-orange-100", date: "23 Jul 2026", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" },
+                    ].map((row, i) => (
+                      <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.asset}</td>
+                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.id}</td>
+                        <td className="py-3 px-6">
+                          <div className="flex items-center gap-2">
+                            <Image src={row.img} alt={row.requester} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
+                            <span className="text-xs font-semibold text-zinc-700">{row.requester}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.type}</td>
+                        <td className="py-3 px-6">
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border", row.statusColor)}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Attendance Overview Donut Chart */}
+          <Card className="border border-zinc-100 shadow-sm rounded-2xl bg-white flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 pb-0">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Attendance Overview</CardTitle>
+              </div>
+              <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold rounded-lg px-2">This Week <ArrowDownRight className="h-3 w-3 ml-1" /></Button>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center p-6 flex-1">
+              <div className="flex w-full items-center justify-between gap-6">
+                
+                {/* SVG Donut Chart */}
+                <div className="relative h-40 w-40 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-40 h-40 transform -rotate-90">
+                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" className="text-zinc-50" />
+                    
+                    {/* Absent (Red) - 18% */}
+                    <circle 
+                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                      strokeDasharray="376.99" 
+                      strokeDashoffset={376.99 * (1 - 0.18)}
+                      className="text-rose-500" 
+                    />
+                    
+                    {/* On Leave (Yellow) - 10% (Offset by 18%) */}
+                    <circle 
+                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                      strokeDasharray="376.99" 
+                      strokeDashoffset={376.99 * (1 - 0.10)}
+                      className="text-amber-400" 
+                      style={{ transformOrigin: "80px 80px", transform: `rotate(${0.18 * 360}deg)` }}
+                    />
+                    
+                    {/* Present (Green) - 72% (Offset by 28%) */}
+                    <circle 
+                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                      strokeDasharray="376.99" 
+                      strokeDashoffset={376.99 * (1 - 0.72)}
+                      className="text-emerald-500" 
+                      style={{ transformOrigin: "80px 80px", transform: `rotate(${0.28 * 360}deg)` }}
+                    />
+                    
+                    {/* White gaps between segments to match design */}
+                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset="0" />
+                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-376.99 * 0.18} />
+                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-376.99 * 0.28} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl font-black text-zinc-900 leading-none">178</span>
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Total</span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-col gap-4 flex-1">
+                  {[
+                    { label: "Present", value: "128", pct: "(72%)", color: "bg-emerald-500" },
+                    { label: "Absent", value: "32", pct: "(18%)", color: "bg-rose-500" },
+                    { label: "On Leave", value: "18", pct: "(10%)", color: "bg-amber-400" },
+                  ].map(leg => (
+                    <div key={leg.label} className="flex flex-col gap-1 w-full">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("w-2 h-2 rounded-full shadow-sm", leg.color)} />
+                          <span className="text-[11px] font-bold text-zinc-600">{leg.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-black text-zinc-900">{leg.value}</span>
+                          <span className="text-[10px] font-semibold text-zinc-400">{leg.pct}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
               </div>
             </CardContent>
           </Card>

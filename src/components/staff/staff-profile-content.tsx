@@ -245,6 +245,10 @@ export function StaffProfileContent({ id }: { id: string }) {
                       <p className="text-lg font-bold text-zinc-900">{user.projectName || "-"}</p>
                     </div>
                     <div>
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Reporter</p>
+                      <p className="text-lg font-bold text-zinc-900">{user.reportsToName || "-"}</p>
+                    </div>
+                    <div>
                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Attendance Policy</p>
                       <p className="text-lg font-bold text-zinc-900">{user.attendancePolicyName || "-"}</p>
                     </div>
