@@ -54,13 +54,14 @@ export default function MaterialMasterPage() {
   const fetchPurchaseOrders = async () => {
     setIsLoading(true)
     try {
-      const response = await purchaseOrderService.getPurchaseOrders({ limit: 200 })
+      const response = await purchaseOrderService.getPurchaseOrders({ limit: 200, purchaseOrderType: "material" })
       const pos = response.data || []
       
       // Filter out POs that are Draft, PendingApproval, Rejected, or Cancelled
       // Only keep POs that are Approved, Ordered, PartiallyReceived, Received, or Issued
       const activePOs = pos.filter((po: any) =>
-        ["Approved", "Ordered", "PartiallyReceived", "Received", "Issued"].includes(po.status)
+        ["Approved", "Ordered", "PartiallyReceived", "Received", "Issued", "Completed", "PendingVerification"].includes(po.status) &&
+        po.purchaseOrderType === "material"
       )
       setPurchaseOrders(activePOs)
     } catch (err: any) {
@@ -350,58 +351,12 @@ export default function MaterialMasterPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => router.push(`/purchase-order/${id}`)}
+              onClick={() => router.push(`/material/${id}`)}
               className="h-8 w-8 text-zinc-500 hover:text-zinc-800 border-zinc-200 hover:bg-zinc-50 rounded-xl"
-              title="View PO Details"
+              title="View Material Ledger Details"
             >
               <Eye className="h-4 w-4" />
             </Button>
-
-            {po.status === "Approved" && (
-              <Button
-                size="sm"
-                onClick={() => handleMarkOrdered(id)}
-                disabled={isProcessing}
-                className="h-8 rounded-xl bg-amber-500 hover:bg-amber-600 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Truck className="h-3.5 w-3.5" />
-                )}
-                Mark Ordered
-              </Button>
-            )}
-
-            {(po.status === "Ordered" || po.status === "PartiallyReceived") && (
-              <Button
-                size="sm"
-                onClick={() => handleOpenReceive(po)}
-                disabled={isProcessing}
-                className="h-8 rounded-xl bg-teal-600 hover:bg-teal-700 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
-              >
-                <Layers className="h-3.5 w-3.5" />
-                Receive Goods
-              </Button>
-            )}
-
-            {(po.status === "Received" || po.status === "PartiallyReceived") && (
-              <Button
-                size="sm"
-                onClick={() => handleOpenIssue(po)}
-                disabled={isProcessing}
-                className="h-8 rounded-xl bg-purple-600 hover:bg-purple-700 font-black text-[10px] uppercase tracking-wider text-white border-none shadow-sm gap-1.5"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                Issue Material
-              </Button>
-            )}
-
-            {po.status === "Issued" && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-none shadow-none font-bold text-[9px] uppercase h-8 rounded-xl flex items-center justify-center px-3 gap-1 pointer-events-none">
-                <CheckCircle className="h-3.5 w-3.5 text-emerald-600" /> Finished
-              </Badge>
-            )}
           </div>
         )
       },

@@ -26,7 +26,8 @@ import {
    Trash2,
    Zap,
    Eye,
-   X
+   X,
+   Check
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -88,14 +89,19 @@ export function ViewIndentDialog({
    const [storageLocation, setStorageLocation] = useState("")
    const [selectedImage, setSelectedImage] = useState<string | null>(null)
    const [itemStatuses, setItemStatuses] = useState<Record<number, "Approved" | "Rejected">>({})
+   const [itemQuantities, setItemQuantities] = useState<Record<number, number>>({})
 
    useEffect(() => {
       if (open && indent?.items) {
-         const initial: Record<number, "Approved" | "Rejected"> = {}
-         indent.items.forEach((_: any, idx: number) => {
-            initial[idx] = "Approved"
+         const initialStatuses: Record<number, "Approved" | "Rejected"> = {}
+         const initialQuantities: Record<number, number> = {}
+         
+         indent.items.forEach((item: any, idx: number) => {
+            initialStatuses[idx] = "Approved"
+            initialQuantities[idx] = Number(item.quantity) || 1
          })
-         setItemStatuses(initial)
+         setItemStatuses(initialStatuses)
+         setItemQuantities(initialQuantities)
          setStorageLocation(indent.storageLocation || "")
          setRemark("")
       }
@@ -118,13 +124,16 @@ export function ViewIndentDialog({
          return
       }
 
-      const formattedItems = approvedItems.map((i: any) => ({
-         itemId: i.itemId?._id || i.itemId,
-         unitId: i.unitId?._id || i.unitId,
-         quantity: Number(i.quantity),
-         description: i.description || "",
-         images: i.images || []
-      }))
+      const formattedItems = approvedItems.map((i: any, originalIndex: number) => {
+         const idx = indent.items.indexOf(i);
+         return {
+            itemId: i.itemId?._id || i.itemId,
+            unitId: i.unitId?._id || i.unitId,
+            quantity: itemQuantities[idx] || Number(i.quantity),
+            description: i.description || "",
+            images: i.images || []
+         }
+      })
 
       if (onStatusChange) {
          onStatusChange(indent._id, "Approved", remark, formattedItems, storageLocation)
@@ -224,6 +233,48 @@ export function ViewIndentDialog({
                      ))}
                   </div>
 
+                  {/* Timeline Card */}
+                  <div className="bg-white p-5 rounded-[2rem] border border-zinc-100 shadow-sm space-y-4">
+                     <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                           <Clock className="h-4.5 w-4.5" />
+                        </div>
+                        <h4 className="text-xs font-black text-zinc-900 uppercase tracking-wider">Material Request Journey</h4>
+                     </div>
+                     <div className="flex items-center gap-2 pt-2 px-2 overflow-x-auto pb-4">
+                        {[
+                           { label: "Request Created", done: true },
+                           { label: "Manager Approved", done: ["ManagerApproved", "Approved", "ConvertedToPO"].includes(indent.status) },
+                           { label: "Final Approved", done: ["Approved", "ConvertedToPO"].includes(indent.status) },
+                           { label: "PO Created", done: indent.status === "ConvertedToPO" },
+                        ].map((step, i, arr) => (
+                           <div key={i} className="flex items-center shrink-0">
+                              <div className={cn(
+                                 "flex flex-col items-center justify-center gap-2",
+                                 step.done ? "opacity-100" : "opacity-40"
+                              )}>
+                                 <div className={cn(
+                                    "h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-sm z-10",
+                                    step.done ? "bg-emerald-500" : "bg-zinc-300"
+                                 )}>
+                                    {step.done ? <Check className="h-4 w-4" /> : i + 1}
+                                 </div>
+                                 <span className={cn(
+                                    "text-[10px] font-black uppercase tracking-wider text-center w-24 leading-tight",
+                                    step.done ? "text-emerald-700" : "text-zinc-500"
+                                 )}>{step.label}</span>
+                              </div>
+                              {i < arr.length - 1 && (
+                                 <div className={cn(
+                                    "h-1 w-12 mx-1 md:w-16 md:mx-2 rounded-full mt-[-20px]",
+                                    step.done && arr[i+1].done ? "bg-emerald-500" : "bg-zinc-200"
+                                 )} />
+                              )}
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+
                   {/* Explanation: Leaner */}
                   {indent.rejectionReason && (
                      <div className="p-5 bg-rose-50 rounded-2xl border border-rose-100 border-dashed">
@@ -279,36 +330,30 @@ export function ViewIndentDialog({
                                  {canTakeAction ? (
                                     <div className="flex items-center gap-1 bg-zinc-50 p-1 rounded-xl border border-zinc-100 shrink-0">
                                        <Button
-                                          type="button"
-                                          variant="ghost"
+                                          variant={itemStatuses[i] === "Approved" ? "default" : "outline"}
                                           size="sm"
-                                          onClick={() => {
-                                             setItemStatuses(prev => ({ ...prev, [i]: "Approved" }))
-                                          }}
+                                          onClick={() => setItemStatuses(prev => ({ ...prev, [i]: "Approved" }))}
                                           className={cn(
-                                             "h-7 px-3 rounded-lg text-[9px] font-black tracking-wider uppercase transition-all",
+                                             "h-7 text-[10px] font-black uppercase px-3 transition-all",
                                              itemStatuses[i] === "Approved"
                                                 ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
-                                                : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                                                : "text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50"
                                           )}
                                        >
-                                          Approve
+                                          Accept
                                        </Button>
                                        <Button
-                                          type="button"
-                                          variant="ghost"
+                                          variant={itemStatuses[i] === "Rejected" ? "default" : "outline"}
                                           size="sm"
-                                          onClick={() => {
-                                             setItemStatuses(prev => ({ ...prev, [i]: "Rejected" }))
-                                          }}
+                                          onClick={() => setItemStatuses(prev => ({ ...prev, [i]: "Rejected" }))}
                                           className={cn(
-                                             "h-7 px-3 rounded-lg text-[9px] font-black tracking-wider uppercase transition-all",
+                                             "h-7 text-[10px] font-black uppercase px-3 transition-all",
                                              itemStatuses[i] === "Rejected"
                                                 ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
                                                 : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100"
                                           )}
                                        >
-                                          Reject
+                                          Cancel
                                        </Button>
                                     </div>
                                  ) : (
@@ -323,7 +368,33 @@ export function ViewIndentDialog({
                            <div className="grid grid-cols-3 gap-4">
                               <div>
                                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Quantity</span>
-                                 <span className="text-xs font-bold text-zinc-900">{item.quantity}</span>
+                                 {canTakeAction ? (
+                                    <div className="flex flex-col gap-1">
+                                       <Input
+                                          type="number"
+                                          min={1}
+                                          max={Number(item.quantity)}
+                                          value={itemQuantities[i] || ""}
+                                          onChange={(e) => {
+                                             const val = Number(e.target.value);
+                                             setItemQuantities(prev => ({ ...prev, [i]: val }));
+                                          }}
+                                          onBlur={(e) => {
+                                             const val = Number(e.target.value);
+                                             if (val < 1 || isNaN(val)) setItemQuantities(prev => ({ ...prev, [i]: 1 }));
+                                             else if (val > Number(item.quantity)) setItemQuantities(prev => ({ ...prev, [i]: Number(item.quantity) }));
+                                          }}
+                                          className="h-7 w-20 text-xs font-bold px-2"
+                                       />
+                                       {itemQuantities[i] > 0 && itemQuantities[i] < Number(item.quantity) && (
+                                          <span className="text-[9px] text-amber-600 font-bold leading-tight">
+                                             {Number(item.quantity) - itemQuantities[i]} will automatically retry
+                                          </span>
+                                       )}
+                                    </div>
+                                 ) : (
+                                    <span className="text-xs font-bold text-zinc-900">{item.quantity}</span>
+                                 )}
                               </div>
                               <div>
                                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">Unit</span>
@@ -764,11 +835,20 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
    }, [floorId])
 
    const handleItemSelect = (index: number, itemId: string) => {
-      const selectedItemObj = indentType === "item"
+      const selectedItemObj = (indentType === "material" || indentType === "item")
          ? availableItems.find(i => i._id === itemId)
          : availableAssets.find(a => a._id === itemId)
       const defaultUnitId = selectedItemObj?.unitId?._id || selectedItemObj?.unitId || ""
       
+      if (selectedItemObj?.unitId && typeof selectedItemObj.unitId === 'object') {
+         setUnits(prev => {
+            if (!prev.some(u => u._id === selectedItemObj.unitId._id)) {
+               return [...prev, selectedItemObj.unitId]
+            }
+            return prev
+         })
+      }
+
       setItems(prev => prev.map((item, idx) => idx === index ? {
          ...item,
          itemId,

@@ -41,13 +41,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet"
 
-export default function PODetailPage() {
+export default function MaterialDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [po, setPo] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false)
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false)
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [receiveData, setReceiveData] = useState<{ itemId: string; suppliedQuantity: number; remaining: number; name: string }[]>([])
+  const [issueData, setIssueData] = useState<{ itemId: string; suppliedQuantity: number; remaining: number; name: string }[]>([])
 
   const fetchPO = async () => {
     try {
@@ -89,6 +93,18 @@ export default function PODetailPage() {
 
   const items = po.items || []
   
+  const hasRemainingToReceive = items.some((item: any) => {
+    const orderQty = item.orderQuantity || item.indentQuantity || 0;
+    const receivedQty = item.receivedQuantity || 0;
+    return receivedQty < orderQty;
+  });
+
+  const hasRemainingToIssue = items.some((item: any) => {
+    const receivedQty = item.receivedQuantity || 0;
+    const issuedQty = item.issuedToRequesterQuantity || 0;
+    return issuedQty < receivedQty;
+  });
+  
   // Calculations
   const calculatedSubtotal = items.reduce((acc: number, item: any) => {
     return acc + Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0)))
@@ -124,16 +140,108 @@ export default function PODetailPage() {
     return `${diffDays} Days`
   }
 
-  const handleCancelPO = async () => {
-    if (confirm("Are you sure you want to cancel this purchase order?")) {
-      try {
-        await purchaseOrderService.cancelPurchaseOrder(po._id || po.id)
-        toast.success("Purchase order cancelled successfully")
-        await fetchPO()
-      } catch (err: any) {
-        toast.error(err.message || "Failed to cancel Purchase Order")
-      }
+  const handleOpenIssueModal = () => {
+    const defaultData = items.map((item: any) => {
+      const receivedQty = item.receivedQuantity || 0;
+      const issuedQty = item.issuedToRequesterQuantity || 0;
+      const remaining = Math.max(receivedQty - issuedQty, 0);
+      return {
+        itemId: item.itemId?._id || item.itemId?.id,
+        name: item.itemId?.itemName || item.itemId?.name || "Material",
+        suppliedQuantity: remaining,
+        remaining
+      };
+    }).filter((i: any) => i.remaining > 0);
+    
+    if (defaultData.length === 0) {
+      toast.info("All received items have already been fully issued.");
+      return;
     }
+    
+    setIssueData(defaultData);
+    setIsIssueModalOpen(true);
+  }
+
+  const handleIssueGoods = async () => {
+    try {
+      setIsSubmitting(true)
+      const validItems = issueData.filter(i => Number(i.suppliedQuantity) > 0)
+      if (validItems.length === 0) {
+        toast.error("Please enter a valid issue quantity for at least one item.")
+        return
+      }
+
+      await purchaseOrderService.issueMaterialToRequester(po._id || po.id, {
+        items: validItems.map(i => ({ itemId: i.itemId, supplyQuantity: Number(i.suppliedQuantity) }))
+      })
+      toast.success("Material issued successfully.")
+      setIsIssueModalOpen(false)
+      await fetchPO()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to issue material")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const updateIssueQty = (index: number, val: string) => {
+    setIssueData(prev => {
+      const copy = [...prev]
+      copy[index].suppliedQuantity = Number(val)
+      return copy
+    })
+  }
+
+  const handleOpenReceiveModal = () => {
+    const defaultData = items.map((item: any) => {
+      const orderQty = item.orderQuantity || item.indentQuantity || 0;
+      const receivedQty = item.receivedQuantity || 0;
+      const remaining = Math.max(orderQty - receivedQty, 0);
+      return {
+        itemId: item.itemId?._id || item.itemId?.id,
+        name: item.itemId?.itemName || item.itemId?.name || "Material",
+        suppliedQuantity: remaining,
+        remaining
+      };
+    }).filter((i: any) => i.remaining > 0);
+    
+    if (defaultData.length === 0) {
+      toast.info("All items have already been fully received.");
+      return;
+    }
+    
+    setReceiveData(defaultData);
+    setIsReceiveModalOpen(true);
+  }
+
+  const handleReceiveGoods = async () => {
+    try {
+      setIsSubmitting(true)
+      const validItems = receiveData.filter(i => Number(i.suppliedQuantity) > 0)
+      if (validItems.length === 0) {
+        toast.error("Please enter a valid received quantity for at least one item.")
+        return
+      }
+
+      await purchaseOrderService.submitGoodsReceipt(po._id || po.id, {
+        items: validItems.map(i => ({ itemId: i.itemId, suppliedQuantity: Number(i.suppliedQuantity) }))
+      })
+      toast.success("Receipt submitted successfully. Waiting for Admin Verification.")
+      setIsReceiveModalOpen(false)
+      await fetchPO()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit goods receipt")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const updateReceiveQty = (index: number, val: string) => {
+    setReceiveData(prev => {
+      const copy = [...prev]
+      copy[index].suppliedQuantity = Number(val)
+      return copy
+    })
   }
 
   return (
@@ -350,11 +458,11 @@ export default function PODetailPage() {
                             </span>
                             {!isPendingVerification && (
                               <div className="flex flex-col items-center gap-0.5 mt-1 border-t border-zinc-100 pt-1 w-full">
-                                <span className="text-[9px] text-zinc-400 font-semibold">
-                                  Received: <strong className="text-emerald-600 font-bold">{item.receivedQuantity || 0}</strong>
+                                <span className="text-[10px] text-zinc-600 font-bold">
+                                  Received: <strong className="text-emerald-600 font-black">{item.receivedQuantity || 0}</strong>
                                 </span>
-                                <span className="text-[9px] text-zinc-400 font-semibold">
-                                  Remaining: <strong className="text-amber-600 font-bold">
+                                <span className="text-[10px] text-zinc-600 font-bold">
+                                  Remaining: <strong className="text-amber-600 font-black">
                                     {Math.max((item.orderQuantity || item.indentQuantity || 0) - (item.receivedQuantity || 0), 0)}
                                   </strong>
                                 </span>
@@ -464,7 +572,47 @@ export default function PODetailPage() {
               </div>
             )}
 
-
+            {/* Timeline Card */}
+            <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                  <Clock className="h-4.5 w-4.5" />
+                </div>
+                <h4 className="text-xs font-black text-zinc-900 uppercase tracking-wider">Purchase Order Journey</h4>
+              </div>
+              <div className="flex items-center gap-2 pt-2 px-2 overflow-x-auto pb-4">
+                {[
+                  { label: "Indent Created", done: !!po.indentId },
+                  { label: "PO Created", done: true },
+                  { label: "Approved", done: ["Approved", "Ordered", "PartiallyReceived", "Received", "Completed", "PendingVerification"].includes(po.status) },
+                  { label: "Completed", done: po.status === "Completed" || po.status === "Received" },
+                ].map((step, i, arr) => (
+                  <div key={i} className="flex items-center shrink-0">
+                    <div className={cn(
+                      "flex flex-col items-center justify-center gap-2",
+                      step.done ? "opacity-100" : "opacity-40"
+                    )}>
+                      <div className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-black shadow-sm z-10",
+                        step.done ? "bg-emerald-500" : "bg-zinc-300"
+                      )}>
+                        {step.done ? <Check className="h-4 w-4" /> : i + 1}
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-black uppercase tracking-wider text-center w-24 leading-tight",
+                        step.done ? "text-emerald-700" : "text-zinc-500"
+                      )}>{step.label}</span>
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={cn(
+                        "h-1 w-16 mx-2 rounded-full mt-[-20px]",
+                        step.done && arr[i+1].done ? "bg-emerald-500" : "bg-zinc-200"
+                      )} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* Governance and Attachments dual panel */}
             <div className="grid grid-cols-1 md:grid-cols-[1.1fr,1.3fr] gap-6">
@@ -481,11 +629,11 @@ export default function PODetailPage() {
                 <div className="space-y-3 pt-1">
                   {[
                     { label: "Requested By", val: po.requesterId ? `${po.requesterId.name}` : "N/A" },
-                    { label: "Approved By", val: po.approvedBy ? `${po.approvedBy.name}` : "N/A" },
-                    { 
+                    ...(po.approvedBy ? [{ label: "Approved By", val: `${po.approvedBy.name}` }] : []),
+                    ...(po.approvedAt ? [{ 
                       label: "Approved At", 
-                      val: po.approvedAt ? `${new Date(po.approvedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })} • ${new Date(po.approvedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` : "N/A" 
-                    },
+                      val: `${new Date(po.approvedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })} • ${new Date(po.approvedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}` 
+                    }] : []),
                   ].map((row, i) => (
                     <div key={i} className="flex justify-between items-center text-[11px] border-b border-zinc-150/40 pb-1.5 last:border-0 last:pb-0">
                       <span className="font-bold text-zinc-400">{row.label}</span>
@@ -506,41 +654,51 @@ export default function PODetailPage() {
                   <h4 className="text-xs font-black text-zinc-900 uppercase tracking-wider">Attachments</h4>
                 </div>
 
-                {po.images && po.images.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3 my-auto pt-1">
-                    {po.images.map((img: string, idx: number) => {
-                      const backendBase = process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || '';
-                      const fullUrl = `${backendBase}${img}`;
-                      const isPdf = img.toLowerCase().endsWith(".pdf");
-                      return (
-                        <a
-                          key={idx}
-                          href={fullUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center justify-center border border-zinc-200 rounded-lg p-3 hover:bg-zinc-50 transition-colors group"
-                        >
-                          {isPdf ? (
-                            <FileText className="h-6 w-6 text-zinc-400 group-hover:text-primary transition-colors" />
-                          ) : (
-                            <img src={fullUrl} alt="PO Attachment" className="h-10 w-10 object-cover rounded-md border border-zinc-100" />
-                          )}
-                          <span className="text-[8px] font-black text-zinc-500 mt-1 truncate w-full text-center">
-                            {img.split("/").pop()}
-                          </span>
-                        </a>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-4 text-center border border-dashed border-zinc-200 rounded-lg my-auto bg-zinc-50/50 gap-1.5">
-                    <FolderOpen className="h-6 w-6 text-zinc-300" />
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-[11px] font-black text-zinc-500">No attachments available</p>
-                      <p className="text-[9px] text-zinc-400 font-bold">Upload documents related to this PO</p>
+                {(() => {
+                  const allAttachments = [...(po.images || [])];
+                  if (po.billInvoice) allAttachments.push(po.billInvoice);
+                  if (po.itemPhoto) allAttachments.push(po.itemPhoto);
+
+                  if (allAttachments.length > 0) {
+                    return (
+                      <div className="grid grid-cols-2 gap-3 my-auto pt-1">
+                        {allAttachments.map((img: string, idx: number) => {
+                          const backendBase = process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || '';
+                          const fullUrl = `${backendBase}${img}`;
+                          const isPdf = img.toLowerCase().endsWith(".pdf");
+                          return (
+                            <a
+                              key={idx}
+                              href={fullUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex flex-col items-center justify-center border border-zinc-200 rounded-lg p-3 hover:bg-zinc-50 transition-colors group"
+                            >
+                              {isPdf ? (
+                                <FileText className="h-6 w-6 text-zinc-400 group-hover:text-primary transition-colors" />
+                              ) : (
+                                <img src={fullUrl} alt="PO Attachment" className="h-10 w-10 object-cover rounded-md border border-zinc-100" />
+                              )}
+                              <span className="text-[8px] font-black text-zinc-500 mt-1 truncate w-full text-center">
+                                {img.split("/").pop()}
+                              </span>
+                            </a>
+                          )
+                        })}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div className="flex flex-col items-center justify-center py-4 text-center border border-dashed border-zinc-200 rounded-lg my-auto bg-zinc-50/50 gap-1.5">
+                      <FolderOpen className="h-6 w-6 text-zinc-300" />
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-[11px] font-black text-zinc-500">No attachments available</p>
+                        <p className="text-[9px] text-zinc-400 font-bold">Upload documents related to this PO</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -634,27 +792,121 @@ export default function PODetailPage() {
             </div>
 
             {/* Quick Actions Sidebar Card */}
-            <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
-              <h4 className="text-xs font-black text-zinc-900 tracking-tight uppercase tracking-[0.12em]">Quick Actions</h4>
-              <div className="flex flex-col gap-2">
-                {isPendingVerification && (
-                  <Button 
-                    className="w-full justify-start gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold" 
-                    onClick={() => setIsVerificationSheetOpen(true)}
-                  >
-                    <ClipboardCheck className="h-4 w-4" /> Verify Receipt
-                  </Button>
-                )}
-                {!isPendingVerification && (
-                  <p className="text-xs text-zinc-500 font-bold">No quick actions available.</p>
-                )}
+            {( (!["Cancelled", "Received", "Rejected", "Completed"].includes(po.status) && !isPendingVerification && hasRemainingToReceive) ||
+               (isPendingVerification) ||
+               (["PartiallyReceived", "Received", "Completed"].includes(po.status) && hasRemainingToIssue) ) && (
+              <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
+                <h4 className="text-xs font-black text-zinc-900 tracking-tight uppercase tracking-[0.12em]">Quick Actions</h4>
+                <div className="flex flex-col gap-2">
+                  {!["Cancelled", "Received", "Rejected", "Completed"].includes(po.status) && !isPendingVerification && hasRemainingToReceive && (
+                    <Button 
+                      className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
+                      onClick={handleOpenReceiveModal}
+                    >
+                      <Check className="h-4 w-4" /> Receive Goods
+                    </Button>
+                  )}
+                  {isPendingVerification && (
+                    <Button 
+                      className="w-full justify-start gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold" 
+                      onClick={() => setIsVerificationSheetOpen(true)}
+                    >
+                      <Check className="h-4 w-4" /> Verify Receipt
+                    </Button>
+                  )}
+                  {["PartiallyReceived", "Received", "Completed"].includes(po.status) && hasRemainingToIssue && (
+                    <Button 
+                      className="w-full justify-start gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold" 
+                      onClick={handleOpenIssueModal}
+                    >
+                      <Box className="h-4 w-4" /> Issue Material
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
            
           </div>
         </div>
       </div>
-      
+      {/* Receive Goods Modal */}
+      <Dialog open={isReceiveModalOpen} onOpenChange={setIsReceiveModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Receive Goods</DialogTitle>
+            <DialogDescription>
+              Enter the quantity received for each remaining item.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            {receiveData.map((item, idx) => (
+              <div key={item.itemId} className="flex flex-col gap-2 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-zinc-800 truncate pr-2">{item.name}</span>
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Remaining: {item.remaining}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs text-zinc-600 font-semibold w-24">Received Qty:</Label>
+                  <Input 
+                    type="number" 
+                    min={0} 
+                    max={item.remaining} 
+                    value={item.suppliedQuantity} 
+                    onChange={(e) => updateReceiveQty(idx, e.target.value)}
+                    className="h-9 font-bold flex-1"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReceiveModalOpen(false)}>Cancel</Button>
+            <Button disabled={isSubmitting} onClick={handleReceiveGoods} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirm Receipt"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Issue Material Modal */}
+      <Dialog open={isIssueModalOpen} onOpenChange={setIsIssueModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Issue Material to Requester</DialogTitle>
+            <DialogDescription>
+              Enter the quantity to issue for each item. You can only issue what has been received in stock.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            {issueData.map((item, idx) => (
+              <div key={item.itemId} className="flex flex-col gap-2 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-zinc-800 truncate pr-2">{item.name}</span>
+                  <span className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">Available: {item.remaining}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs text-zinc-600 font-semibold w-24">Issue Qty:</Label>
+                  <Input 
+                    type="number" 
+                    min={0} 
+                    max={item.remaining} 
+                    value={item.suppliedQuantity} 
+                    onChange={(e) => updateIssueQty(idx, e.target.value)}
+                    className="h-9 font-bold flex-1"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsIssueModalOpen(false)}>Cancel</Button>
+            <Button disabled={isSubmitting} onClick={handleIssueGoods} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirm Issue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Verification Sheet */}
       <VerificationSheet 
         po={po} 
         isOpen={isVerificationSheetOpen} 

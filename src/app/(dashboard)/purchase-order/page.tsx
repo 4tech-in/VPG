@@ -99,21 +99,26 @@ export default function PurchaseOrderPage() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.getValue("status") as string
+        const po = row.original
+        const isPendingVerification = po.verificationStatus === "PendingVerification"
+        const displayStatus = isPendingVerification ? "PendingVerification" : (po.status || "Draft")
+        
         return (
           <Badge
             className={cn(
               "px-3 py-1 rounded-full font-black text-[9px] gap-1.5 border-none shadow-sm uppercase tracking-wider",
-              status === "Approved" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" :
-              status === "Ordered" ? "bg-amber-100 text-amber-700 hover:bg-amber-100" :
-              status === "Received" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
-              status === "PartiallyReceived" ? "bg-teal-100 text-teal-700 hover:bg-teal-100" :
-              status === "Issued" ? "bg-purple-100 text-purple-700 hover:bg-purple-100" :
-              status === "Cancelled" ? "bg-rose-100 text-rose-700 hover:bg-rose-100" :
+              displayStatus === "Approved" ? "bg-blue-100 text-blue-700 hover:bg-blue-100" :
+              displayStatus === "PendingVerification" ? "bg-orange-100 text-orange-700 hover:bg-orange-100" :
+              displayStatus === "Ordered" ? "bg-amber-100 text-amber-700 hover:bg-amber-100" :
+              (displayStatus === "Received" || displayStatus === "Completed") ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
+              displayStatus === "PartiallyReceived" ? "bg-teal-100 text-teal-700 hover:bg-teal-100" :
+              displayStatus === "Issued" ? "bg-purple-100 text-purple-700 hover:bg-purple-100" :
+              displayStatus === "Rejected" ? "bg-red-100 text-red-700 hover:bg-red-100" :
+              displayStatus === "Cancelled" ? "bg-zinc-200 text-zinc-700 hover:bg-zinc-200" :
               "bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
             )}
           >
-            {status || "Draft"}
+            {displayStatus === "PendingVerification" ? "Pending Verification" : displayStatus}
           </Badge>
         )
       },

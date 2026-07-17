@@ -25,6 +25,7 @@ export type PurchaseOrder = {
   id?: string;
   _id?: string;
   poNo: string;
+  purchaseOrderType?: string;
   indentId?: any;
   projectId?: any;
   requesterId?: any;
@@ -39,10 +40,14 @@ export type PurchaseOrder = {
     | "Approved"
     | "Rejected"
     | "Ordered"
+    | "PendingVerification"
     | "PartiallyReceived"
     | "Received"
+    | "Completed"
     | "Issued"
     | "Cancelled";
+  verificationStatus?: string;
+  receipts?: any[];
   createdAt?: string;
 };
 
@@ -145,6 +150,36 @@ export const purchaseOrderService = {
     return response?.data || response;
   },
 
+  async submitGoodsReceipt(id: string, payload: any): Promise<any> {
+    const hasImages = (payload.billPhoto && payload.billPhoto instanceof File) || 
+                      (payload.materialPhoto && payload.materialPhoto instanceof File);
+    
+    let body: any;
+    let isFormData = false;
+
+    if (hasImages) {
+      isFormData = true;
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, val]) => {
+        if (key === "items") {
+          formData.append("items", typeof val === "string" ? val : JSON.stringify(val));
+        } else if (val !== null && val !== undefined) {
+          formData.append(key, val as any);
+        }
+      });
+      body = formData;
+    } else {
+      body = JSON.stringify(payload);
+    }
+
+    const response = await apiRequest<any>(`purchase-orders/receipt/${id}`, {
+      method: "POST",
+      body,
+      isFormData,
+    });
+    return response?.data || response;
+  },
+
   async issueMaterialToRequester(
     id: string,
     payload: { items: { itemId: string; supplyQuantity: number }[] },
@@ -168,5 +203,28 @@ export const purchaseOrderService = {
       method: "POST",
       body: JSON.stringify({ action, ids }),
     });
+  },
+
+  async getPendingVerifications(): Promise<GetPOsResponse> {
+    const response = await apiRequest<any>("purchase-orders/pending-verification");
+    const pos = Array.isArray(response) ? response : response?.data || [];
+    return {
+      success: true,
+      data: pos,
+      total: pos.length,
+      page: 1,
+      totalPages: 1,
+    };
+  },
+
+  async verifyPurchaseOrderReceipt(
+    id: string,
+    payload: { action: "APPROVED" | "REMAINING" | "REJECTED"; remark?: string }
+  ): Promise<any> {
+    const response = await apiRequest<any>(`purchase-orders/verify/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return response?.data || response;
   },
 };

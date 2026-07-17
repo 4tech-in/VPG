@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { purchaseOrderService } from "@/service/purchaseOrderService";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
@@ -15,11 +18,21 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownRight,
-  MoreHorizontal
+  MoreHorizontal,
+  ClipboardCheck
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    purchaseOrderService.getPendingVerifications()
+      .then(res => setPendingCount(res.total || 0))
+      .catch(console.error);
+  }, []);
+
   return (
     <ContentLayout title="Dashboard">
       <div className="flex flex-col gap-6 p-4 md:p-8 pt-2">
@@ -56,6 +69,31 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        {/* Action Alerts */}
+        {pendingCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-orange-500 rounded-2xl p-6 text-white shadow-lg shadow-orange-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer hover:bg-orange-600 transition-colors"
+            onClick={() => router.push("/purchase-order/pending-verification")}
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-xl">
+                <ClipboardCheck className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">Action Required: Pending Verifications</h3>
+                <p className="text-orange-100 font-medium text-sm">
+                  You have {pendingCount} goods receipt{pendingCount !== 1 && "s"} waiting for your approval. Stock cannot be updated until these are verified.
+                </p>
+              </div>
+            </div>
+            <Button className="bg-white text-orange-600 hover:bg-orange-50 font-bold whitespace-nowrap">
+              Review Now <ArrowUpRight className="ml-2 h-4 w-4" />
+            </Button>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

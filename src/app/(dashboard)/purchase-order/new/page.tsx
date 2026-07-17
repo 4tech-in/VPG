@@ -493,63 +493,68 @@ function CreatePOContent() {
                       </Badge>
                     </div>
 
-                    <div className="rounded-2xl border border-zinc-150 overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[760px]">
+                    <div className="rounded-lg border border-zinc-200 overflow-x-auto shadow-sm">
+                      <table className="w-full text-left border-collapse min-w-[850px]">
                         <thead>
-                          <tr className="bg-zinc-50/50 border-b border-zinc-100">
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                          <tr className="bg-zinc-50 border-b border-zinc-200">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                               Item Information
                             </th>
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-left">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-left">
                               Description
                             </th>
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center">
                               Quantity
                             </th>
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center">
                               Unit Price (₹)
                             </th>
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-center">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center">
                               Assign Vendor
                             </th>
-                            <th className="px-4 py-3.5 text-[9px] font-black text-zinc-400 uppercase tracking-widest text-right">
+                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-right">
                               Total Amount
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-50">
+                        <tbody className="divide-y divide-zinc-200 bg-white">
                           {items.map((item, idx) => (
                             <tr
                               key={idx}
                               className="group hover:bg-zinc-50/50 transition-colors"
                             >
-                              <td className="px-4 py-3">
+                              {/* 1. Item Info */}
+                              <td className="px-4 py-3 align-middle">
                                 <div className="flex items-center gap-3">
-                                  <div className="h-9 w-9 rounded-lg bg-[#F0F5FA] flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
-                                    <Box className="h-4.5 w-4.5" />
+                                  <div className="h-8 w-8 rounded-md bg-zinc-100 flex items-center justify-center text-zinc-600 border border-zinc-200 shrink-0">
+                                    <Box className="h-4 w-4" />
                                   </div>
                                   <div className="flex flex-col min-w-0">
-                                    <span className="text-xs font-black text-zinc-900 truncate">
+                                    <span className="text-sm font-semibold text-zinc-900 truncate">
                                       {item.name}
                                     </span>
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                                    <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mt-0.5">
                                       ID: {item.itemId.slice(-6).toUpperCase()}
                                     </span>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 w-36">
+
+                              {/* 2. Description */}
+                              <td className="px-4 py-3 align-middle w-[180px]">
                                 <Input
-                                  placeholder="Details"
+                                  placeholder="Details..."
                                   value={item.description || ""}
                                   onChange={(e) =>
                                     handleDescriptionChange(idx, e.target.value)
                                   }
-                                  className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold focus-visible:ring-primary focus:bg-white"
+                                  className="h-9 rounded-md bg-white border-zinc-300 text-xs font-medium focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
                                 />
                               </td>
-                              <td className="px-4 py-3 text-center w-28">
-                                <div className="flex items-center justify-center gap-1.5">
+
+                              {/* 3. Quantity */}
+                              <td className="px-4 py-3 align-middle text-center w-[140px]">
+                                <div className="relative flex items-center justify-center">
                                   <Input
                                     type="number"
                                     min="0.001"
@@ -564,77 +569,86 @@ function CreatePOContent() {
                                           : Number(e.target.value)
                                       )
                                     }
-                                    className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold text-center focus-visible:ring-primary focus:bg-white w-14"
+                                    className="h-9 rounded-md bg-white border-zinc-300 text-xs font-semibold text-center pr-10 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
                                   />
-                                  <span className="text-[9px] font-bold text-zinc-500">
+                                  <span className="absolute right-3 text-[10px] font-semibold text-zinc-500">
                                     {item.unit}
                                   </span>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-center w-28">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={item.price || ""}
-                                  placeholder="—"
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  onChange={(e) =>
-                                    handlePriceChange(
-                                      idx,
-                                      Number(e.target.value)
-                                    )
-                                  }
-                                  className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-xs font-bold text-center focus-visible:ring-primary focus:bg-white"
-                                />
+
+                              {/* 4. Unit Price */}
+                              <td className="px-4 py-3 align-middle text-center w-[140px]">
+                                <div className="relative flex items-center justify-center">
+                                  <div className="absolute left-3 text-xs font-medium text-zinc-500">
+                                    ₹
+                                  </div>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={item.price || ""}
+                                    placeholder="0.00"
+                                    onWheel={(e) => e.currentTarget.blur()}
+                                    onChange={(e) =>
+                                      handlePriceChange(
+                                        idx,
+                                        Number(e.target.value)
+                                      )
+                                    }
+                                    className="h-9 rounded-md bg-white border-zinc-300 text-xs font-semibold text-center pl-7 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
+                                  />
+                                </div>
                               </td>
-                              <td className="px-4 py-3 text-center w-36">
+
+                              {/* 5. Vendor */}
+                              <td className="px-4 py-3 align-middle text-center w-[180px]">
                                 <Select
                                   value={item.assignedVendorId || ""}
                                   onValueChange={(val) =>
                                     handleVendorAssignmentChange(idx, val)
                                   }
                                 >
-                                  <SelectTrigger className="h-9 rounded-lg bg-zinc-50 border-zinc-200 text-[11px] font-bold focus:ring-primary focus:bg-white shadow-sm">
+                                  <SelectTrigger className="h-9 rounded-md bg-white border-zinc-300 text-xs font-medium focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm">
                                     <SelectValue placeholder="Select Vendor" />
                                   </SelectTrigger>
-                                  <SelectContent className="rounded-xl">
+                                  <SelectContent className="rounded-md shadow-lg border border-zinc-200">
                                     {activeVendors.length > 0 ? (
                                       activeVendors.map((vendor) => (
                                         <SelectItem
                                           key={vendor._id || vendor.id}
                                           value={vendor._id || vendor.id}
+                                          className="text-xs font-medium cursor-pointer"
                                         >
                                           {vendor.name}
                                         </SelectItem>
                                       ))
                                     ) : (
-                                      <div className="p-2 text-xs text-zinc-400 text-center font-bold">
+                                      <div className="p-3 text-xs text-zinc-500 text-center font-medium">
                                         Select vendors first
                                       </div>
                                     )}
                                   </SelectContent>
                                 </Select>
                               </td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-2.5">
-                                  <div className="flex flex-col">
-                                    <span className="text-xs font-black text-zinc-900">
+
+                              {/* 6. Total Amount */}
+                              <td className="px-4 py-3 align-middle text-right">
+                                <div className="flex items-center justify-end gap-3">
+                                  <div className="flex flex-col items-end">
+                                    <span className="text-sm font-semibold text-zinc-900">
                                       ₹
                                       {(
                                         item.qty * (item.price || 0)
                                       ).toLocaleString("en-IN")}
-                                    </span>
-                                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest mt-0.5">
-                                      Incl. Tax
                                     </span>
                                   </div>
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleRemoveItem(idx)}
-                                    className="h-7 w-7 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                                    className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </td>
