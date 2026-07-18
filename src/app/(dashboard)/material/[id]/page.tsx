@@ -958,6 +958,8 @@ export default function MaterialDetailPage() {
                         <th className="px-4 py-3">Date</th>
                         <th className="px-4 py-3">Item</th>
                         <th className="px-4 py-3">Quantity</th>
+                        <th className="px-4 py-3">Photo</th>
+                        <th className="px-4 py-3">Location</th>
                         <th className="px-4 py-3">Task</th>
                         <th className="px-4 py-3">Recorded By</th>
                         <th className="px-4 py-3">Notes</th>
@@ -969,6 +971,28 @@ export default function MaterialDetailPage() {
                           <td className="px-4 py-3 font-medium text-zinc-600">{h.createdAt ? new Date(h.createdAt).toLocaleDateString() : "-"}</td>
                           <td className="px-4 py-3 font-bold text-zinc-900">{h.itemId?.itemName || h.itemId?.name || "Unknown Item"}</td>
                           <td className="px-4 py-3 font-black text-primary">{h.quantityUsed}</td>
+                          <td className="px-4 py-3">
+                            {h.photo ? (
+                              <img 
+                                src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/", "") || "http://localhost:9090"}${h.photo}`} 
+                                alt="Usage" 
+                                className="h-10 w-10 object-cover rounded-lg border border-zinc-200 cursor-pointer hover:scale-105 transition-transform" 
+                                onClick={() => window.open(`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/", "") || "http://localhost:9090"}${h.photo}`, "_blank")} 
+                              />
+                            ) : (
+                              <div className="h-10 w-10 bg-zinc-100 rounded-lg flex items-center justify-center border border-zinc-200">
+                                <span className="text-[8px] font-bold text-zinc-400">N/A</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {h.location ? (
+                              <div className="flex flex-col">
+                                <span className="text-xs text-zinc-600 font-medium whitespace-nowrap">{h.location.address || "Unknown"}</span>
+                                <span className="text-[9px] text-zinc-400 font-mono">{h.location.latitude?.toFixed(4)}, {h.location.longitude?.toFixed(4)}</span>
+                              </div>
+                            ) : "-"}
+                          </td>
                           <td className="px-4 py-3 text-xs font-semibold text-zinc-600">{h.taskId?.title || "-"}</td>
                           <td className="px-4 py-3 text-xs font-bold text-zinc-500">{h.recordedBy?.name || "-"}</td>
                           <td className="px-4 py-3 text-xs text-zinc-500">{h.notes || "-"}</td>
