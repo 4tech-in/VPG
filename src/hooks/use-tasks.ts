@@ -13,15 +13,16 @@ export type Task = {
   createdByName: string
   nodeId: string
   nodeName: string
+  projectId: string
   priority: "low" | "medium" | "high" | "urgent"
-  status: "pending" | "in-progress" | "review" | "completed" | "cancelled"
+  status: "pending" | "in_progress" | "review" | "completed" | "cancelled"
   dueDate: string
   completedAt: string
   isActive: boolean
   createdAt: string
 }
 
-const mapApiTaskToTask = (apiTask: ApiTask): Task => {
+const mapApiTaskToTask = (apiTask: ApiTask & { projectId?: any }): Task => {
   const id = String(apiTask.id || apiTask._id || "")
   return {
     id,
@@ -34,6 +35,7 @@ const mapApiTaskToTask = (apiTask: ApiTask): Task => {
     createdByName: apiTask.createdById?.name || "Unknown",
     nodeId: apiTask.nodeId?._id || apiTask.nodeId || "",
     nodeName: apiTask.nodeId?.name || "Unknown Project",
+    projectId: apiTask.projectId?._id || apiTask.projectId || apiTask.nodeId?._id || apiTask.nodeId || "",
     priority: apiTask.priority || "medium",
     status: apiTask.status || "pending",
     dueDate: apiTask.dueDate ? apiTask.dueDate.split("T")[0] : "",

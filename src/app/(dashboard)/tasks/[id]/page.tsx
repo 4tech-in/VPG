@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { taskService } from "@/service/taskService";
 import { TaskDialog } from "@/components/tasks/task-dialog";
+import { useProjects } from "@/hooks/use-projects";
 
 export default function TaskDetailsPage({
   params,
@@ -44,6 +45,7 @@ export default function TaskDetailsPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const { projects } = useProjects();
 
   const fetchTaskDetails = useCallback(async () => {
     setIsLoading(true);
@@ -130,6 +132,7 @@ export default function TaskDetailsPage({
     createdByName: task.createdById?.name || "Unknown",
     nodeId: task.nodeId?._id || task.nodeId || "",
     nodeName: task.nodeId?.name || "Unknown Project",
+    projectId: task.projectId?._id || task.projectId || task.nodeId?._id || task.nodeId || "",
     priority: task.priority || "medium",
     status: task.status || "pending",
     dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
@@ -137,6 +140,9 @@ export default function TaskDetailsPage({
     isActive: task.isActive ?? true,
     createdAt: task.createdAt ? task.createdAt.split("T")[0] : "",
   };
+
+  const project = projects.find(p => p.id === task?.projectId) || projects.find(p => p.id === task?.nodeId);
+  const projectName = project ? project.name : (task?.nodeId?.name || "Unknown Project");
 
   return (
     <ContentLayout title="Task Details">
@@ -208,12 +214,12 @@ export default function TaskDetailsPage({
                 >
                   {task.priority}
                 </Badge>
-                {task.nodeId && (
+                {(task.projectId || task.nodeId) && (
                   <Badge
                     variant="outline"
                     className="rounded-md border-blue-100 bg-blue-50/50 text-blue-600 font-bold px-2 py-0.5 text-[10px] uppercase"
                   >
-                    {task.nodeId.name}
+                    {projectName}
                   </Badge>
                 )}
               </div>
@@ -299,7 +305,7 @@ export default function TaskDetailsPage({
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white">
                       <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in-progress">In Progress</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
                       <SelectItem value="review">Review</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>

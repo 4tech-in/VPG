@@ -25,6 +25,7 @@ import { TaskDialog } from "@/components/tasks/task-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 import { useTasks, Task } from "@/hooks/use-tasks";
+import { useProjects } from "@/hooks/use-projects";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,7 @@ export default function TasksPage() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const { tasks, isLoading, removeTask, refetch } = useTasks({ filterStatus: activeFilter });
+  const { projects } = useProjects();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
@@ -79,7 +81,11 @@ export default function TasksPage() {
     {
       accessorKey: "project",
       header: "Project Node",
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const project = projects.find((p) => p.id === row.original.projectId) || projects.find((p) => p.id === row.original.nodeId);
+        const projectName = project ? project.name : (row.original.nodeName || "Unknown Project");
+        
+        return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button
@@ -89,7 +95,7 @@ export default function TasksPage() {
               <div className="flex flex-col items-start gap-0.5">
                 <div className="flex items-center gap-1">
                   <span className="font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                    {row.original.nodeName}
+                    {projectName}
                   </span>
                   <ChevronDown className="h-3 w-3 text-zinc-400 group-hover:text-primary transition-colors" />
                 </div>
@@ -108,7 +114,8 @@ export default function TasksPage() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      ),
+        );
+      },
     },
     {
       accessorKey: "status",

@@ -40,6 +40,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet"
+import { materialIssueService } from "@/service/materialIssue.api"
 
 export default function MaterialDetailPage() {
   const params = useParams()
@@ -52,6 +53,22 @@ export default function MaterialDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [receiveData, setReceiveData] = useState<{ itemId: string; suppliedQuantity: number; remaining: number; name: string }[]>([])
   const [issueData, setIssueData] = useState<{ itemId: string; suppliedQuantity: number; remaining: number; name: string }[]>([])
+
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [historyData, setHistoryData] = useState<any[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+
+  const fetchHistory = async () => {
+    try {
+      setIsHistoryLoading(true)
+      const res = await materialIssueService.getMaterialUsageHistory({ projectId: po?.projectId?._id || po?.projectId })
+      setHistoryData(res.data || res || [])
+    } catch (err) {
+      toast.error("Failed to fetch history")
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }
 
   const fetchPO = async () => {
     try {
@@ -333,9 +350,13 @@ export default function MaterialDetailPage() {
               <Download className="h-3.5 w-3.5 text-zinc-500" /> Download PDF
             </Button>
             <Button 
+              onClick={() => {
+                fetchHistory()
+                setIsHistoryModalOpen(true)
+              }}
               className="h-9 rounded-lg font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none"
             >
-              <Share2 className="h-3.5 w-3.5" /> Share <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+              History 
             </Button>
           </div>
         </div>
@@ -915,6 +936,52 @@ export default function MaterialDetailPage() {
           fetchPO()
         }}
       />
+
+      {/* History Modal */}
+      <Dialog open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen}>
+        <DialogContent className="max-w-4xl rounded-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-zinc-900 tracking-tight">Material Usage History</DialogTitle>
+            <DialogDescription className="font-bold text-xs uppercase tracking-widest text-zinc-400">Activity log for materials in this project.</DialogDescription>
+          </DialogHeader>
+          {isHistoryLoading ? (
+            <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-zinc-400" /></div>
+          ) : (
+            <div className="space-y-4 mt-4">
+              {historyData.length === 0 ? (
+                <div className="text-center p-8 text-zinc-500 font-bold text-sm bg-zinc-50 rounded-2xl border border-zinc-100">No usage history found.</div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-zinc-200">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-zinc-50 text-zinc-600 font-black uppercase text-[10px] tracking-widest border-b border-zinc-200">
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Item</th>
+                        <th className="px-4 py-3">Quantity</th>
+                        <th className="px-4 py-3">Task</th>
+                        <th className="px-4 py-3">Recorded By</th>
+                        <th className="px-4 py-3">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {historyData.map((h, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-zinc-600">{h.createdAt ? new Date(h.createdAt).toLocaleDateString() : "-"}</td>
+                          <td className="px-4 py-3 font-bold text-zinc-900">{h.itemId?.itemName || h.itemId?.name || "Unknown Item"}</td>
+                          <td className="px-4 py-3 font-black text-primary">{h.quantityUsed}</td>
+                          <td className="px-4 py-3 text-xs font-semibold text-zinc-600">{h.taskId?.title || "-"}</td>
+                          <td className="px-4 py-3 text-xs font-bold text-zinc-500">{h.recordedBy?.name || "-"}</td>
+                          <td className="px-4 py-3 text-xs text-zinc-500">{h.notes || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ContentLayout>
   )
 }

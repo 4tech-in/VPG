@@ -419,9 +419,9 @@ export default function MaterialMasterPage() {
           {[
             { id: "All", label: "All POs" },
             { id: "PendingOrder", label: "Pending Order (Approved)" },
-            { id: "InTransit", label: "In-Transit (Ordered)" },
-            { id: "PartiallyReceived", label: "Partially Received" },
-            { id: "Received", label: "Received (At Store)" },
+            // { id: "InTransit", label: "In-Transit (Ordered)" },
+            // { id: "PartiallyReceived", label: "Partially Received" },
+            // { id: "Received", label: "Received (At Store)" },
             { id: "Issued", label: "Issued (Completed)" },
           ].map((tab) => (
             <button

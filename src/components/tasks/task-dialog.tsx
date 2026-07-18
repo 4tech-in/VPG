@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge"
 
 import { useUsers } from "@/hooks/use-users"
 import { useTasks, Task } from "@/hooks/use-tasks"
+import { useProjects } from "@/hooks/use-projects"
 import { cn } from "@/lib/utils"
 
 interface TaskDialogProps {
@@ -57,11 +58,13 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [assignedToId, setAssignedToId] = useState("")
+  const [projectId, setProjectId] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [priority, setPriority] = useState("medium")
   const [status, setStatus] = useState("pending")
 
   const { users } = useUsers()
+  const { projects } = useProjects()
   const { addTask, editTask } = useTasks({ skipFetch: true })
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
         setTitle(task.title)
         setDescription(task.description || "")
         setAssignedToId(task.assignedToId)
+        setProjectId(task.projectId || "")
         setDueDate(task.dueDate || "")
         setPriority(task.priority)
         setStatus(task.status)
@@ -77,6 +81,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
         setTitle("")
         setDescription("")
         setAssignedToId("")
+        setProjectId("")
         setDueDate("")
         setPriority("medium")
         setStatus("pending")
@@ -86,7 +91,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title || !assignedToId) {
+    if (!title || !assignedToId || !projectId) {
       toast.error("Please fill in all required fields")
       return
     }
@@ -97,6 +102,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
           title,
           description,
           assignedToId,
+          projectId,
           priority,
           dueDate,
           status,
@@ -106,6 +112,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
           title,
           description,
           assignedToId,
+          projectId,
           priority,
           dueDate,
         })
@@ -116,6 +123,7 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
         setTitle("")
         setDescription("")
         setAssignedToId("")
+        setProjectId("")
         setDueDate("")
         setPriority("medium")
         setStatus("pending")
@@ -158,9 +166,28 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
 
         <form onSubmit={handleSubmit} className="p-8 space-y-8 bg-white relative overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Project Selection */}
+            <div className="space-y-2 md:col-span-2 group">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest group-focus-within:text-primary transition-colors">Project <span className="text-rose-500">*</span></Label>
+              <Select onValueChange={setProjectId} value={projectId} required>
+                <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 focus:ring-primary focus:bg-white font-bold shadow-sm hover:border-primary/20 transition-all px-5">
+                  <SelectValue placeholder="Select Project..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl p-1">
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id} className="rounded-xl cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors">
+                      <div className="flex items-center gap-2 font-semibold">
+                        {p.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Task Name */}
             <div className="space-y-2 md:col-span-2 group">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest group-focus-within:text-primary transition-colors">Task Name</Label>
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest group-focus-within:text-primary transition-colors">Task Name <span className="text-rose-500">*</span></Label>
               <Input
                 required
                 value={title}
@@ -180,6 +207,8 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
                 className="min-h-[120px] rounded-[1.25rem] bg-zinc-50/50 border-zinc-100 focus-visible:ring-primary focus-visible:bg-white font-medium shadow-sm hover:border-primary/20 transition-all p-5 resize-none leading-relaxed"
               />
             </div>
+
+
 
             {/* Assignee Selection */}
             <div className="space-y-2 group">
@@ -262,8 +291,17 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
                     <SelectItem value="pending" className="rounded-xl focus:bg-amber-50 cursor-pointer">
                       <span className="font-bold text-amber-600">Pending</span>
                     </SelectItem>
+                    <SelectItem value="in_progress" className="rounded-xl focus:bg-blue-50 cursor-pointer">
+                      <span className="font-bold text-blue-600">In Progress</span>
+                    </SelectItem>
+                    <SelectItem value="review" className="rounded-xl focus:bg-purple-50 cursor-pointer">
+                      <span className="font-bold text-purple-600">Review</span>
+                    </SelectItem>
                     <SelectItem value="completed" className="rounded-xl focus:bg-primary/5 cursor-pointer">
                       <span className="font-bold text-primary">Completed</span>
+                    </SelectItem>
+                    <SelectItem value="cancelled" className="rounded-xl focus:bg-rose-50 cursor-pointer">
+                      <span className="font-bold text-rose-600">Cancelled</span>
                     </SelectItem>
                   </SelectContent>
                 </Select>

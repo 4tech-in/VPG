@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { assetService } from "@/service/assets.api"
@@ -52,6 +53,15 @@ export default function StoresPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
+  
+  // Transfer requests state
+  const [transferRequests, setTransferRequests] = useState<any[]>([])
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [activeRequestTab, setActiveRequestTab] = useState("all")
+
   // Edit state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingAsset, setEditingAsset] = useState<any | null>(null)
@@ -74,14 +84,20 @@ export default function StoresPage() {
   const [editMaintenanceDate, setEditMaintenanceDate] = useState("")
   const [editExtraNote, setEditExtraNote] = useState("")
 
-  const fetchAssets = async (search = "") => {
+  const fetchAssets = async (searchStr = searchTerm, p = page, l = limit) => {
     try {
       setLoading(true)
-      const res = await assetService.getAssets({ search })
+      const res = await assetService.getAssets({ search: searchStr, page: p, limit: l })
       if (Array.isArray(res)) {
         setData(res)
       } else if (res && res.data) {
         setData(res.data)
+        if (res.pagination) {
+          setPagination({
+            total: res.pagination.total || res.data.length,
+            totalPages: res.pagination.totalPages || 1
+          })
+        }
       } else {
         setData([])
       }
@@ -94,10 +110,57 @@ export default function StoresPage() {
 
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
-      fetchAssets(searchTerm)
+      setPage(1)
+      fetchAssets(searchTerm, 1, limit)
     }, 400)
     return () => clearTimeout(delayDebounce)
   }, [searchTerm])
+
+  useEffect(() => {
+    fetchAssets(searchTerm, page, limit)
+  }, [page, limit])
+
+  const fetchTransferRequests = async () => {
+    try {
+      setTransferLoading(true)
+      const res = await assetService.getAssetTransfers()
+      if (res && res.data) {
+        setTransferRequests(res.data)
+      } else {
+        setTransferRequests([])
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch transfer requests")
+    } finally {
+      setTransferLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTransferRequests()
+  }, [])
+
+  const handleApproveTransfer = async (id: string) => {
+    try {
+      await assetService.approveAssetTransfer(id)
+      toast.success("Transfer request approved")
+      fetchTransferRequests()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve transfer")
+    }
+  }
+
+  const handleRejectTransfer = async (id: string) => {
+    const reason = window.prompt("Enter rejection reason:")
+    if (!reason || !reason.trim()) return
+    try {
+      await assetService.rejectAssetTransfer(id, reason)
+      toast.success("Transfer request rejected")
+      fetchTransferRequests()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reject transfer")
+    }
+  }
 
   useEffect(() => {
     if (editingAsset) {
@@ -262,6 +325,99 @@ export default function StoresPage() {
     },
   ]
 
+  const transferColumns: ColumnDef<any>[] = [
+    {
+      accessorKey: "assetId.name",
+      header: "Asset",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-zinc-900">{row.original.assetId?.name || "Unknown Asset"}</span>
+          <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">SN: {row.original.assetId?.serialNumber || "N/A"}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "sourceProjectId.projectName",
+      header: "From Project",
+      cell: ({ row }) => (
+        <span className="text-zinc-600 font-medium text-xs">{row.original.sourceProjectId?.projectName || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "destinationProjectId.projectName",
+      header: "To Project",
+      cell: ({ row }) => (
+        <span className="text-zinc-600 font-medium text-xs">{row.original.destinationProjectId?.projectName || "—"}</span>
+      ),
+    },
+    {
+      accessorKey: "requestedBy.name",
+      header: "Requested By",
+      cell: ({ row }) => (
+        <span className="text-zinc-600 font-medium text-xs">{row.original.requestedBy?.name || "System"}</span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.original.status as string
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <Badge className={cn(
+              "rounded-lg px-3 py-1 font-black text-[9px] border shadow-sm uppercase tracking-wider",
+              status === "Approved" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+              status === "Rejected" ? "bg-rose-50 text-rose-600 border-rose-100" :
+              "bg-amber-50 text-amber-600 border-amber-100"
+            )}>
+              {status}
+            </Badge>
+            {status === "Rejected" && row.original.rejectionReason && (
+              <span className="text-[9px] text-zinc-500 font-medium max-w-[150px] truncate" title={row.original.rejectionReason}>
+                {row.original.rejectionReason}
+              </span>
+            )}
+          </div>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-center">Actions</div>,
+      cell: ({ row }) => {
+        const status = row.original.status
+        if (status !== "Pending") return <div className="text-center text-zinc-300 font-medium text-xs">—</div>
+        return (
+          <div className="flex justify-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleApproveTransfer(row.original._id)}
+              className="h-8 px-3 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-bold text-[10px] uppercase tracking-wider transition-all border border-emerald-100 bg-emerald-50/50"
+            >
+              Approve
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleRejectTransfer(row.original._id)}
+              className="h-8 px-3 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold text-[10px] uppercase tracking-wider transition-all border border-rose-100 bg-rose-50/50"
+            >
+              Reject
+            </Button>
+          </div>
+        )
+      }
+    }
+  ]
+
+  const filteredRequests = transferRequests.filter(req => {
+    if (activeRequestTab === "all") return true
+    if (activeRequestTab === "pending") return req.status === "Pending"
+    if (activeRequestTab === "approved") return req.status === "Approved"
+    return true
+  })
+
   return (
     <ContentLayout title="Asset Management">
       <div className="flex flex-col gap-10 p-6 sm:p-12 max-w-[1700px] mx-auto min-h-screen">
@@ -275,9 +431,17 @@ export default function StoresPage() {
                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">Network Asset Inventory</p>
               </div>
            </div>
-           
-           <div className="flex items-center gap-4">
-              <div className="relative w-72">
+        </div>
+
+        <Tabs defaultValue="list" className="w-full">
+          <TabsList className="mb-8 h-14 bg-white border border-zinc-100 rounded-2xl p-1.5 shadow-sm inline-flex">
+            <TabsTrigger value="list" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">All Assets List</TabsTrigger>
+            <TabsTrigger value="requests" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">Asset Transfer Request</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="list" className="space-y-8 outline-none">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="relative w-full sm:w-72">
                  <Input 
                    placeholder="Search assets..." 
                    value={searchTerm}
@@ -403,8 +567,89 @@ export default function StoresPage() {
                   </form>
                 </DialogContent>
               </Dialog>
-           </div>
-        </div>
+            </div>
+            
+            {/* Ledger Card */}
+            {loading ? (
+              <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">
+                Loading Assets...
+              </div>
+            ) : (
+              <DataTable 
+                columns={columns} 
+                data={data} 
+                isServerSide={true}
+                pageIndex={page - 1}
+                pageSize={limit}
+                pageCount={pagination.totalPages}
+                totalItems={pagination.total}
+                onPageChange={(idx) => setPage(idx + 1)}
+                onPageSizeChange={(size) => {
+                  setLimit(size)
+                  setPage(1)
+                }}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="requests" className="outline-none space-y-6">
+            <Tabs value={activeRequestTab} onValueChange={setActiveRequestTab} className="w-full">
+              <TabsList className="mb-2 h-12 bg-zinc-100/50 border border-zinc-100 rounded-xl p-1 inline-flex shadow-inner">
+                <TabsTrigger value="all" className="h-10 px-8 rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">All</TabsTrigger>
+                <TabsTrigger value="pending" className="h-10 px-8 rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-amber-600 data-[state=active]:shadow-sm transition-all">Pending</TabsTrigger>
+                <TabsTrigger value="approved" className="h-10 px-8 rounded-lg font-bold text-xs data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm transition-all">Approved</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="all" className="outline-none mt-4">
+                {transferLoading ? (
+                  <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">Loading requests...</div>
+                ) : filteredRequests.length === 0 ? (
+                  <div className="bg-white rounded-3xl p-16 text-center border border-zinc-100 shadow-sm flex flex-col items-center justify-center">
+                    <Package className="h-16 w-16 text-zinc-200 mb-6" />
+                    <h2 className="text-2xl font-black text-zinc-900 tracking-tight mb-2">All Requests</h2>
+                    <p className="text-zinc-500 font-medium max-w-sm text-sm">
+                      No asset requests found.
+                    </p>
+                  </div>
+                ) : (
+                  <DataTable columns={transferColumns} data={filteredRequests} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="pending" className="outline-none mt-4">
+                {transferLoading ? (
+                  <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">Loading requests...</div>
+                ) : filteredRequests.length === 0 ? (
+                  <div className="bg-white rounded-3xl p-16 text-center border border-zinc-100 shadow-sm flex flex-col items-center justify-center">
+                    <Package className="h-16 w-16 text-amber-200/50 mb-6" />
+                    <h2 className="text-2xl font-black text-zinc-900 tracking-tight mb-2">Pending Requests</h2>
+                    <p className="text-zinc-500 font-medium max-w-sm text-sm">
+                      No pending asset requests require your approval at the moment.
+                    </p>
+                  </div>
+                ) : (
+                  <DataTable columns={transferColumns} data={filteredRequests} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="approved" className="outline-none mt-4">
+                {transferLoading ? (
+                  <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">Loading requests...</div>
+                ) : filteredRequests.length === 0 ? (
+                  <div className="bg-white rounded-3xl p-16 text-center border border-zinc-100 shadow-sm flex flex-col items-center justify-center">
+                    <Package className="h-16 w-16 text-emerald-200/50 mb-6" />
+                    <h2 className="text-2xl font-black text-zinc-900 tracking-tight mb-2">Approved Requests</h2>
+                    <p className="text-zinc-500 font-medium max-w-sm text-sm">
+                      No approved asset requests found in the history.
+                    </p>
+                  </div>
+                ) : (
+                  <DataTable columns={transferColumns} data={filteredRequests} />
+                )}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Asset Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -515,17 +760,6 @@ export default function StoresPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Ledger Card */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-zinc-400 font-bold">
-            Loading Assets...
-          </div>
-        ) : (
-          <DataTable 
-            columns={columns} 
-            data={data} 
-          />
-        )}
       </div>
     </ContentLayout>
   )

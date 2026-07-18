@@ -10,7 +10,7 @@ export type ApiTask = {
   assignedToId: any
   createdById: any
   priority: "low" | "medium" | "high" | "urgent"
-  status: "pending" | "in-progress" | "review" | "completed" | "cancelled"
+  status: "pending" | "in_progress" | "review" | "completed" | "cancelled"
   dueDate?: string
   completedAt?: string
   isActive: boolean
@@ -33,6 +33,7 @@ export type CreateTaskPayload = {
   title: string
   description?: string
   assignedToId: string
+  projectId: string
   priority?: string
   dueDate?: string
 }

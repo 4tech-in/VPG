@@ -25,6 +25,41 @@ export const assetService = {
     return apiRequest<any>(`assets${queryString ? `?${queryString}` : ""}`)
   },
 
+  async getAssetMaintenances(params?: { page?: number; limit?: number; status?: string; search?: string }): Promise<any> {
+    const query = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) query.append(key, String(value))
+      })
+    }
+    const queryString = query.toString()
+    return apiRequest<any>(`assets/maintenances${queryString ? `?${queryString}` : ""}`)
+  },
+
+  async getAssetTransfers(params?: { page?: number; limit?: number; status?: string; search?: string }): Promise<any> {
+    const query = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) query.append(key, String(value))
+      })
+    }
+    const queryString = query.toString()
+    return apiRequest<any>(`assets/transfers${queryString ? `?${queryString}` : ""}`)
+  },
+
+  async approveAssetTransfer(id: string): Promise<any> {
+    return apiRequest<any>(`assets/transfers/approve/${id}`, {
+      method: "POST",
+    })
+  },
+
+  async rejectAssetTransfer(id: string, rejectionReason: string): Promise<any> {
+    return apiRequest<any>(`assets/transfers/reject/${id}`, {
+      method: "POST",
+      body: JSON.stringify({ rejectionReason }),
+    })
+  },
+
   async getAssetById(id: string): Promise<ApiAsset> {
     return apiRequest<ApiAsset>(`assets/${id}`)
   },
