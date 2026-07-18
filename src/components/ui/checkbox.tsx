@@ -4,7 +4,7 @@ import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 
-export interface CheckboxProps {
+export interface CheckboxProps extends React.HTMLAttributes<HTMLDivElement> {
   checked?: boolean
   disabled?: boolean
   className?: string

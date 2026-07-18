@@ -210,14 +210,8 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
               href: "/sub-group",
               label: "Sub Group"
             },
-            {
-              href: "/approval-flow",
-              label: "Approval Flow"
-            },
-            // {
-            //   href: "/category",
-            //   label: "Category"
-            // }
+            
+            
           ]
         }
       ]
