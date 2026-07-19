@@ -16,6 +16,7 @@ import {
   X,
   XCircle,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -199,6 +200,44 @@ export default function IndentPage() {
     }, 400);
     return () => clearTimeout(delayDebounce);
   }, [searchTerm, selectedStatus, page, limit]);
+
+  const handleReRequest = async (indent: any) => {
+    try {
+      const remainingItems = indent.items
+        .filter((item: any) => item.remainingQuantity > 0)
+        .map((item: any) => ({
+          itemId: typeof item.itemId === 'object' ? item.itemId._id : item.itemId,
+          quantity: item.remainingQuantity,
+          unitId: typeof item.unitId === 'object' ? item.unitId._id : item.unitId,
+          price: item.price || 0,
+        }));
+
+      if (remainingItems.length === 0) {
+        toast.error("No remaining items to re-request");
+        return;
+      }
+
+      const payload = {
+        projectId: typeof indent.projectId === 'object' ? indent.projectId._id : indent.projectId,
+        priority: indent.priority,
+        indentFor: indent.indentFor,
+        towerId: indent.towerId ? (typeof indent.towerId === 'object' ? indent.towerId._id : indent.towerId) : undefined,
+        floorId: indent.floorId ? (typeof indent.floorId === 'object' ? indent.floorId._id : indent.floorId) : undefined,
+        flatId: indent.flatId ? (typeof indent.flatId === 'object' ? indent.flatId._id : indent.flatId) : undefined,
+        outsideId: indent.outsideId ? (typeof indent.outsideId === 'object' ? indent.outsideId._id : indent.outsideId) : undefined,
+        storageLocation: indent.storageLocation,
+        description: `Re-request for remaining items from ${indent.indentId}`,
+        items: remainingItems,
+        indentType: indent.indentType,
+      };
+
+      await indentService.createIndent(payload);
+      toast.success("Successfully created re-request");
+      fetchIndents(searchTerm, selectedStatus);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create re-request");
+    }
+  };
 
   const handleStatusChange = async (
     id: string,
@@ -475,6 +514,17 @@ export default function IndentPage() {
                 </Button>
               }
             />
+            {row.original.supplyStatus === "PartiallySupplied" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleReRequest(row.original)}
+                className="h-9 px-3 rounded-xl text-purple-600 hover:text-purple-700 hover:bg-purple-50 font-bold text-[11px] gap-2 transition-all border border-purple-100/50 shadow-sm"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Re-Request
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

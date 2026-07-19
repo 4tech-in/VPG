@@ -34,10 +34,13 @@ export type ApiUser = {
   profileImage?: string | null
   geofenceId?: any
   projectId?: any
+  projectIds?: any
   attendancePolicyId?: any
   createdAt?: string
   updatedAt?: string
   password?: string
+  emergencyContactNumber?: string
+  aadhaarNumber?: string
 }
 
 export type GetUsersParams = {
@@ -75,8 +78,11 @@ export type CreateUserPayload = {
   profileImage?: File | string | null
   geofenceId?: string | null
   projectId?: string | null
+  projectIds?: string[] | string | null
   attendancePolicyId?: string | null
   organizationId?: string | null
+  emergencyContactNumber?: string
+  aadhaarNumber?: string
 }
 
 const convertToFormData = (obj: any): FormData => {

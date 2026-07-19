@@ -898,6 +898,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
          formData.append("estimateDeliveryDate", new Date(estimateDeliveryDate).toISOString())
       }
       formData.append("indentType", indentType)
+      formData.append("itemType", indentType.charAt(0).toUpperCase() + indentType.slice(1))
       formData.append("indentFor", indentFor)
       if (towerId && towerId !== "none") formData.append("towerId", towerId)
       if (floorId && floorId !== "none") formData.append("floorId", floorId)
@@ -1022,7 +1023,7 @@ export function CreateIndentDialog({ trigger, onSuccess }: { trigger: React.Reac
                            <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl bg-white shadow-xl border border-zinc-100">
-                           <SelectItem value="material">Item</SelectItem>
+                           <SelectItem value="material">Material</SelectItem>
                            <SelectItem value="asset">Asset</SelectItem>
                         </SelectContent>
                      </Select>

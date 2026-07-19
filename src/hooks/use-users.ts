@@ -17,15 +17,19 @@ export type Staff = {
   nodeIds: string[]
   primaryNodeId: string
   reportsTo: string
+  emergencyContactNumber?: string
+  aadhaarNumber?: string
   isActive: boolean
   geofenceId: string
   projectId: string
+  projectIds: string[]
   attendancePolicyId: string
   geofenceName?: string
   projectName?: string
   attendancePolicyName?: string
   reportsToName?: string
   organizationId?: string
+  projectNames?: Record<string, string>
 }
 
 const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
@@ -61,6 +65,23 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     ? (apiUser.projectId._id || apiUser.projectId.id || String(apiUser.projectId))
     : String(apiUser.projectId || "")
 
+  const projectIds = Array.isArray(apiUser.projectIds)
+    ? apiUser.projectIds.map((p: any) => (typeof p === "object" && p ? (p._id || p.id || String(p)) : String(p)))
+    : (projectId ? [projectId] : [])
+
+  const projectNames: Record<string, string> = {}
+  if (typeof apiUser.projectId === "object" && apiUser.projectId) {
+    projectNames[projectId] = apiUser.projectId.projectName || apiUser.projectId.name
+  }
+  if (Array.isArray(apiUser.projectIds)) {
+    apiUser.projectIds.forEach((p: any) => {
+      if (typeof p === "object" && p) {
+        const pId = p._id || p.id || String(p)
+        projectNames[pId] = p.projectName || p.name
+      }
+    })
+  }
+
   const projectName = typeof apiUser.projectId === "object" && apiUser.projectId
     ? (apiUser.projectId.projectName || apiUser.projectId.name)
     : undefined
@@ -89,13 +110,17 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     avatarUrl: apiUser.profileImage ? `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/api$/, "")}${apiUser.profileImage}` : undefined,
     geofenceId,
     projectId,
+    projectIds,
     attendancePolicyId,
     geofenceName,
     projectName,
+    projectNames,
     attendancePolicyName,
     reportsToName,
     organizationId: apiUser.organizationId,
     password: apiUser.password,
+    emergencyContactNumber: apiUser.emergencyContactNumber,
+    aadhaarNumber: apiUser.aadhaarNumber,
   }
 }
 

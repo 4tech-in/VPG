@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
+import { dashboardService, type DashboardStats } from "@/service/dashboardService";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,11 +31,21 @@ import { motion } from "framer-motion";
 export default function DashboardPage() {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     purchaseOrderService.getPendingVerifications()
       .then(res => setPendingCount(res.total || 0))
       .catch(console.error);
+      
+    setIsLoadingStats(true);
+    dashboardService.getDashboardStats()
+      .then(res => {
+        setStats(res);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoadingStats(false));
   }, []);
 
   return (
@@ -96,9 +107,9 @@ export default function DashboardPage() {
           {[
             { 
               title: "Present", 
-              value: "128", 
+              value: isLoadingStats ? "..." : (stats?.presentEmployees || 0).toString(), 
               icon: UserCheck, 
-              sub: "72% of Total", 
+              sub: isLoadingStats ? "Loading..." : `${stats?.totalEmployees ? Math.round(((stats?.presentEmployees || 0) / stats.totalEmployees) * 100) : 0}% of Total`, 
               color: "text-emerald-500", 
               bg: "bg-emerald-50",
               graphColor: "text-emerald-500",
@@ -106,9 +117,9 @@ export default function DashboardPage() {
             },
             { 
               title: "Absent", 
-              value: "32", 
+              value: isLoadingStats ? "..." : (stats?.absentEmployees || 0).toString(), 
               icon: UserX, 
-              sub: "18% of Total", 
+              sub: isLoadingStats ? "Loading..." : `${stats?.totalEmployees ? Math.round(((stats?.absentEmployees || 0) / stats.totalEmployees) * 100) : 0}% of Total`, 
               color: "text-rose-500", 
               bg: "bg-rose-50",
               graphColor: "text-rose-500",
@@ -116,9 +127,9 @@ export default function DashboardPage() {
             },
             { 
               title: "On Leave", 
-              value: "18", 
+              value: isLoadingStats ? "..." : (stats?.employeesOnLeave || 0).toString(), 
               icon: CalendarDays, 
-              sub: "10% of Total", 
+              sub: isLoadingStats ? "Loading..." : `${stats?.totalEmployees ? Math.round(((stats?.employeesOnLeave || 0) / stats.totalEmployees) * 100) : 0}% of Total`, 
               color: "text-amber-500", 
               bg: "bg-amber-50",
               graphColor: "text-amber-500",
@@ -126,9 +137,9 @@ export default function DashboardPage() {
             },
             { 
               title: "Total Employees", 
-              value: "178", 
+              value: isLoadingStats ? "..." : (stats?.totalEmployees || 0).toString(), 
               icon: Users, 
-              sub: "+6 from last month", 
+              sub: "Active Users", 
               color: "text-blue-500", 
               bg: "bg-blue-50",
               graphColor: "text-blue-500",

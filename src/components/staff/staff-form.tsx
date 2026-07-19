@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Mail, Phone, User, Eye, EyeOff, Briefcase, Network, Building, Camera } from "lucide-react"
+import { ArrowLeft, Mail, Phone, User, Eye, EyeOff, Briefcase, Network, Building, Camera, Check, ChevronsUpDown } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useRoles } from "@/hooks/use-roles"
@@ -182,12 +185,16 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   const [name, setName] = useState(initialValues?.name || "")
   const [email, setEmail] = useState(initialValues?.email || "")
   const [phone, setPhone] = useState(initialValues?.phone || "")
+  const [emergencyContactNumber, setEmergencyContactNumber] = useState(initialValues?.emergencyContactNumber || "")
+  const [aadhaarNumber, setAadhaarNumber] = useState(initialValues?.aadhaarNumber || "")
   const [password, setPassword] = useState("")
   const [roleId, setRoleId] = useState(initialValues?.roleId || "")
   const [reportsTo, setReportsTo] = useState(initialValues?.reportsTo || "none")
   const [primaryNodeId, setPrimaryNodeId] = useState(initialValues?.primaryNodeId || "")
   const [geofenceId, setGeofenceId] = useState(initialValues?.geofenceId || "none")
-  const [projectId, setProjectId] = useState(initialValues?.projectId || "none")
+  const [selectedProjects, setSelectedProjects] = useState<string[]>(
+    initialValues?.projectIds || (initialValues?.projectId && initialValues.projectId !== "none" ? [initialValues.projectId] : [])
+  )
   const [attendancePolicyId, setAttendancePolicyId] = useState(initialValues?.attendancePolicyId || "none")
   const [organizationId, setOrganizationId] = useState(initialValues?.organizationId || "")
   
@@ -204,6 +211,8 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       setName(initialValues.name || "")
       setEmail(initialValues.email || "")
       setPhone(initialValues.phone || "")
+      setEmergencyContactNumber(initialValues.emergencyContactNumber || "")
+      setAadhaarNumber(initialValues.aadhaarNumber || "")
       setRoleId(initialValues.roleId || "")
       setReportsTo(initialValues.reportsTo || "none")
       setPrimaryNodeId(initialValues.primaryNodeId || "")
@@ -211,7 +220,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
       setPreviewUrl(initialValues.avatarUrl || "")
       setProfileImageFile(null)
       setGeofenceId(initialValues.geofenceId || "none")
-      setProjectId(initialValues.projectId || "none")
+      setSelectedProjects(initialValues.projectIds || (initialValues.projectId && initialValues.projectId !== "none" ? [initialValues.projectId] : []))
       setAttendancePolicyId(initialValues.attendancePolicyId || "none")
       setOrganizationId(initialValues.organizationId || "")
     }
@@ -249,12 +258,14 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         name,
         email,
         mobile: phone,
+        emergencyContactNumber,
+        aadhaarNumber,
         roleId,
         nodeIds: selectedNodes,
         primaryNodeId: primaryNodeId || null,
         reportsTo: isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
         geofenceId: geofenceId === "none" || !geofenceId ? null : geofenceId,
-        projectId: projectId === "none" || !projectId ? null : projectId,
+        projectIds: selectedProjects.length > 0 ? selectedProjects : undefined,
         attendancePolicyId: attendancePolicyId === "none" || !attendancePolicyId ? null : attendancePolicyId,
       }
       if (isSuperAdmin && organizationId) {
@@ -283,6 +294,10 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
   }
 
   const activeRoles = roles.filter((r) => r.isActive)
+  const selectedRole = activeRoles.find(r => r.id === roleId) || roles.find(r => r.id === roleId)
+  const isManager = selectedRole 
+    ? (selectedRole.name.toLowerCase().includes("manager") || selectedRole.name.toLowerCase().includes("admin")) 
+    : (initialValues?.roleId === roleId && initialValues?.role ? (initialValues.role.toLowerCase().includes("manager") || initialValues.role.toLowerCase().includes("admin")) : false)
   const activeUnits = units.filter((u) => u.status === "Active")
   
   // Filter out the user itself from reportsTo select dropdown list when editing
@@ -382,6 +397,34 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                       className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
                     />
                     <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Emergency Contact <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <Input
+                      value={emergencyContactNumber}
+                      onChange={(e) => setEmergencyContactNumber(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                      required
+                    />
+                    <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Aadhaar Number <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <Input
+                      value={aadhaarNumber}
+                      onChange={(e) => setAadhaarNumber(e.target.value)}
+                      placeholder="1234 5678 9012"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                      required
+                    />
+                    <User className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-300" />
                   </div>
                 </div>
 
@@ -594,36 +637,106 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
-              <Select
-                value={projectId}
-                onValueChange={setProjectId}
-                onOpenChange={(open) => {
-                  if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
-                    hasFetchedProjects.current = true
-                    fetchProjectsPage(1)
-                  }
-                }}
-              >
-                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
-                  <SelectValue placeholder="Select corporate project" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                  <SelectItem value="none">None / Unassigned</SelectItem>
-                  {initialValues?.projectId && initialValues.projectId !== "none" && !projectsList.some(p => p.id === initialValues.projectId) && (
-                    <SelectItem value={initialValues.projectId}>{initialValues.projectName || "Current Project"}</SelectItem>
-                  )}
-                  {projectsList.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                  {hasMoreProjects && (
-                    <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
-                      {isProjectsLoading ? "Loading..." : "Scroll for more"}
+              {isManager ? (
+                <Popover
+                  onOpenChange={(open) => {
+                    if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
+                      hasFetchedProjects.current = true
+                      fetchProjectsPage(1)
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 justify-between font-medium transition-colors hover:bg-zinc-50"
+                    >
+                      {selectedProjects.length > 0 ? (
+                        <div className="flex gap-1 flex-wrap overflow-hidden h-full items-center">
+                          {selectedProjects.map((id) => {
+                            const proj = projectsList.find(p => p.id === id)
+                            const label = proj ? proj.name : (initialValues?.projectNames?.[id] || (initialValues?.projectId === id ? initialValues.projectName : "Project " + id.substring(0,4)))
+                            return (
+                              <Badge variant="secondary" key={id} className="rounded-sm px-1 font-normal text-[10px]">
+                                {label}
+                              </Badge>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-zinc-500 font-normal">Select projects...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto" align="start">
+                    <div className="flex flex-col p-1">
+                      {projectsList.length === 0 && !hasMoreProjects && (
+                         <div className="p-2 text-center text-xs text-zinc-400">No projects found.</div>
+                      )}
+                      {projectsList.map((p) => {
+                        const isSelected = selectedProjects.includes(p.id)
+                        return (
+                          <div 
+                            key={p.id}
+                            className={cn(
+                              "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
+                            )}
+                            onClick={() => {
+                              setSelectedProjects((prev) =>
+                                isSelected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                              )
+                            }}
+                          >
+                            <Checkbox 
+                              checked={isSelected}
+                              className="mr-2"
+                            />
+                            {p.name}
+                          </div>
+                        )
+                      })}
+                      {hasMoreProjects && (
+                        <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                          {isProjectsLoading ? "Loading..." : "Scroll for more"}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </SelectContent>
-              </Select>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Select
+                  value={selectedProjects[0] || "none"}
+                  onValueChange={(val) => setSelectedProjects(val === "none" ? [] : [val])}
+                  onOpenChange={(open) => {
+                    if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
+                      hasFetchedProjects.current = true
+                      fetchProjectsPage(1)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                    <SelectValue placeholder="Select corporate project" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
+                    <SelectItem value="none">None / Unassigned</SelectItem>
+                    {selectedProjects[0] && selectedProjects[0] !== "none" && !projectsList.some(p => p.id === selectedProjects[0]) && (
+                      <SelectItem value={selectedProjects[0]}>{initialValues?.projectName || "Current Project"}</SelectItem>
+                    )}
+                    {projectsList.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                    {hasMoreProjects && (
+                      <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                        {isProjectsLoading ? "Loading..." : "Scroll for more"}
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-2">
