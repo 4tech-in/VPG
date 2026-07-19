@@ -1099,7 +1099,7 @@ function CreatePOContent() {
                     GRAND TOTAL
                   </span>
                   <span className="text-3xl font-black text-[#0A5C53] tracking-tighter mt-0.5">
-                    {activeVendors.length > 0
+                    {activeIndent
                       ? `₹ ${grandTotal.toLocaleString("en-IN")}`
                       : "₹ 0"}
                   </span>

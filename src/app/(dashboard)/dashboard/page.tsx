@@ -24,7 +24,8 @@ import {
   ShoppingCart,
   Package,
   Wrench,
-  ArrowDownRight
+  ArrowDownRight,
+  Check
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -34,19 +35,36 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
+  const [dateFilter, setDateFilter] = useState("today");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
   useEffect(() => {
     purchaseOrderService.getPendingVerifications()
       .then(res => setPendingCount(res.total || 0))
       .catch(console.error);
-      
+  }, []);
+
+  const fetchStats = () => {
     setIsLoadingStats(true);
-    dashboardService.getDashboardStats()
+    dashboardService.getDashboardStats(
+      undefined,
+      dateFilter,
+      customStart,
+      customEnd
+    )
       .then(res => {
         setStats(res);
       })
       .catch(console.error)
       .finally(() => setIsLoadingStats(false));
-  }, []);
+  };
+
+  useEffect(() => {
+    if (dateFilter !== "custom" || (customStart && customEnd)) {
+      fetchStats();
+    }
+  }, [dateFilter, customStart, customEnd]);
 
   return (
     <ContentLayout title="Dashboard">
@@ -55,7 +73,36 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard</h1>
-           
+            <div className="flex items-center gap-2 mt-2">
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+                <option value="custom">Custom Date</option>
+              </select>
+              {dateFilter === "custom" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                  />
+                  <span className="text-zinc-400 text-xs">to</span>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="text-xs border border-zinc-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
@@ -210,36 +257,42 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-50">
-                    {[
-                      { task: "Design Review", project: "Website Redesign", assignee: "Rohit Sharma", date: "20 Jul 2026", priority: "High", priorityColor: "bg-rose-500", status: "Pending", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" },
-                      { task: "Client Meeting", project: "Mobile App", assignee: "Neha Verma", date: "18 Jul 2026", priority: "Medium", priorityColor: "bg-orange-500", status: "Pending", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
-                      { task: "API Integration", project: "HRMS Module", assignee: "Sanjay Patel", date: "21 Jul 2026", priority: "High", priorityColor: "bg-rose-500", status: "Pending", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" },
-                      { task: "Testing & QA", project: "CRM System", assignee: "Pooja Singh", date: "19 Jul 2026", priority: "Medium", priorityColor: "bg-orange-500", status: "Pending", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" },
-                      { task: "Documentation", project: "Inventory Module", assignee: "Amit Kumar", date: "22 Jul 2026", priority: "Low", priorityColor: "bg-emerald-500", status: "Pending", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.task}</td>
-                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.project}</td>
-                        <td className="py-3 px-6">
-                          <div className="flex items-center gap-2">
-                            <Image src={row.img} alt={row.assignee} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
-                            <span className="text-xs font-semibold text-zinc-700">{row.assignee}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.date}</td>
-                        <td className="py-3 px-6">
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn("w-2 h-2 rounded-full shadow-sm", row.priorityColor)} />
-                            <span className="text-xs font-semibold text-zinc-700">{row.priority}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-6">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50">
-                            {row.status}
-                          </span>
-                        </td>
+                    {stats?.pendingTaskList && stats.pendingTaskList.length > 0 ? (
+                      stats.pendingTaskList.map((row, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.title || "Unnamed Task"}</td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.projectId?.projectName || "N/A"}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-2">
+                              {row.assignedToId?.profilePic ? (
+                                <Image src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api", "") || ""}${row.assignedToId.profilePic}`} alt={row.assignedToId?.name} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
+                              ) : (
+                                <div className="rounded-full bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center font-bold text-[10px]">
+                                  {row.assignedToId?.name?.charAt(0) || "U"}
+                                </div>
+                              )}
+                              <span className="text-xs font-semibold text-zinc-700">{row.assignedToId?.name || "Unassigned"}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.dueDate ? new Date(row.dueDate).toLocaleDateString() : "-"}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn("w-2 h-2 rounded-full shadow-sm", row.priority === "high" ? "bg-rose-500" : row.priority === "medium" ? "bg-orange-500" : "bg-emerald-500")} />
+                              <span className="text-xs font-semibold text-zinc-700 capitalize">{row.priority || "low"}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50 capitalize">
+                              {row.status || "Pending"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-zinc-500 font-bold text-xs">No pending tasks found.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -285,54 +338,55 @@ export default function DashboardPage() {
 
         {/* Bottom Section: Assets & Attendance */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Assets on Maintenance Table */}
+          {/* Absent Employees Table */}
           <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
               <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-blue-500" />
-                <CardTitle className="text-sm font-black text-zinc-800">Assets on Maintenance</CardTitle>
+                <UserX className="h-5 w-5 text-rose-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Absent Employees Today</CardTitle>
               </div>
-              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
+              <Button variant="link" className="text-rose-600 font-bold text-xs p-0 h-auto">View All</Button>
             </CardHeader>
             <CardContent className="p-0 flex-1">
-              <div className="overflow-x-auto h-full">
-                <table className="w-full text-sm h-full">
-                  <thead>
-                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
-                      <th className="text-left py-3 px-6 font-semibold">Asset Name</th>
-                      <th className="text-left py-3 px-6 font-semibold">Asset ID</th>
-                      <th className="text-left py-3 px-6 font-semibold">Requested By</th>
-                      <th className="text-left py-3 px-6 font-semibold">Maintenance Type</th>
-                      <th className="text-left py-3 px-6 font-semibold">Status</th>
-                      <th className="text-left py-3 px-6 font-semibold">Expected Date</th>
+              <div className="overflow-x-auto h-full max-h-[350px]">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 z-10 bg-zinc-50/90 backdrop-blur-sm">
+                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold">
+                      <th className="text-left py-3 px-6 font-semibold">Employee Name</th>
+                      <th className="text-left py-3 px-6 font-semibold">Email Address</th>
+                      <th className="text-left py-3 px-6 font-semibold">Mobile Number</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-50">
-                    {[
-                      { asset: "Dell Laptop", id: "AST-1001", requester: "Rohit Sharma", type: "Hardware Repair", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "20 Jul 2026", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" },
-                      { asset: "HP Printer", id: "AST-1002", requester: "Neha Verma", type: "Hardware Repair", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "19 Jul 2026", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" },
-                      { asset: "Projector", id: "AST-1003", requester: "Sanjay Patel", type: "General Service", status: "Pending", statusColor: "text-orange-600 bg-orange-50 border-orange-100", date: "21 Jul 2026", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" },
-                      { asset: "Office Chair", id: "AST-1004", requester: "Pooja Singh", type: "Part Replacement", status: "In Progress", statusColor: "text-blue-600 bg-blue-50 border-blue-100", date: "22 Jul 2026", img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop" },
-                      { asset: "AC Unit", id: "AST-1005", requester: "Amit Kumar", type: "General Service", status: "Pending", statusColor: "text-orange-600 bg-orange-50 border-orange-100", date: "23 Jul 2026", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop" },
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
-                        <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.asset}</td>
-                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.id}</td>
-                        <td className="py-3 px-6">
-                          <div className="flex items-center gap-2">
-                            <Image src={row.img} alt={row.requester} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
-                            <span className="text-xs font-semibold text-zinc-700">{row.requester}</span>
+                    {stats?.absentList && stats.absentList.length > 0 ? (
+                      stats.absentList.map((emp, i) => (
+                        <tr key={emp._id || i} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs">
+                                {emp.name?.charAt(0).toUpperCase() || "U"}
+                              </div>
+                              <span className="font-bold text-xs text-zinc-800">{emp.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">
+                            {emp.email || "-"}
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">
+                            {emp.mobile || "-"}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="py-8 text-center">
+                          <div className="flex flex-col items-center justify-center text-zinc-400">
+                            <Check className="h-8 w-8 text-emerald-400 mb-2" />
+                            <span className="text-sm font-bold text-zinc-500">Everyone is present today!</span>
                           </div>
                         </td>
-                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.type}</td>
-                        <td className="py-3 px-6">
-                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border", row.statusColor)}>
-                            {row.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.date}</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -356,39 +410,68 @@ export default function DashboardPage() {
                   <svg className="w-40 h-40 transform -rotate-90">
                     <circle cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" className="text-zinc-50" />
                     
-                    {/* Absent (Red) - 18% */}
-                    <circle 
-                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
-                      strokeDasharray="376.99" 
-                      strokeDashoffset={376.99 * (1 - 0.18)}
-                      className="text-rose-500" 
-                    />
-                    
-                    {/* On Leave (Yellow) - 10% (Offset by 18%) */}
-                    <circle 
-                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
-                      strokeDasharray="376.99" 
-                      strokeDashoffset={376.99 * (1 - 0.10)}
-                      className="text-amber-400" 
-                      style={{ transformOrigin: "80px 80px", transform: `rotate(${0.18 * 360}deg)` }}
-                    />
-                    
-                    {/* Present (Green) - 72% (Offset by 28%) */}
-                    <circle 
-                      cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
-                      strokeDasharray="376.99" 
-                      strokeDashoffset={376.99 * (1 - 0.72)}
-                      className="text-emerald-500" 
-                      style={{ transformOrigin: "80px 80px", transform: `rotate(${0.28 * 360}deg)` }}
-                    />
-                    
-                    {/* White gaps between segments to match design */}
-                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset="0" />
-                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-376.99 * 0.18} />
-                    <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-376.99 * 0.28} />
+                    {(() => {
+                      const t = stats?.totalEmployees || 1; // avoid div by 0
+                      const p = stats?.presentEmployees || 0;
+                      const a = stats?.absentEmployees || 0;
+                      const l = stats?.employeesOnLeave || 0;
+
+                      // Calculate percentages (0 to 1)
+                      const pPct = p / t;
+                      const aPct = a / t;
+                      const lPct = l / t;
+
+                      // Stroke dash array circumference for r=60 is ~376.99
+                      const circ = 376.99;
+                      
+                      return (
+                        <>
+                          {/* Absent (Red) */}
+                          {aPct > 0 && (
+                            <circle 
+                              cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                              strokeDasharray={circ} 
+                              strokeDashoffset={circ * (1 - aPct)}
+                              className="text-rose-500" 
+                            />
+                          )}
+                          
+                          {/* On Leave (Yellow) */}
+                          {lPct > 0 && (
+                            <circle 
+                              cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                              strokeDasharray={circ} 
+                              strokeDashoffset={circ * (1 - lPct)}
+                              className="text-amber-400" 
+                              style={{ transformOrigin: "80px 80px", transform: `rotate(${aPct * 360}deg)` }}
+                            />
+                          )}
+                          
+                          {/* Present (Green) */}
+                          {pPct > 0 && (
+                            <circle 
+                              cx="80" cy="80" r="60" fill="transparent" stroke="currentColor" strokeWidth="20" 
+                              strokeDasharray={circ} 
+                              strokeDashoffset={circ * (1 - pPct)}
+                              className="text-emerald-500" 
+                              style={{ transformOrigin: "80px 80px", transform: `rotate(${(aPct + lPct) * 360}deg)` }}
+                            />
+                          )}
+
+                          {/* Gaps (only render if there's data to separate) */}
+                          <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset="0" />
+                          {lPct > 0 && (
+                            <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-circ * aPct} />
+                          )}
+                          {pPct > 0 && (
+                            <circle cx="80" cy="80" r="60" fill="transparent" stroke="white" strokeWidth="22" strokeDasharray="3 373.99" strokeDashoffset={-circ * (aPct + lPct)} />
+                          )}
+                        </>
+                      )
+                    })()}
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-3xl font-black text-zinc-900 leading-none">178</span>
+                    <span className="text-3xl font-black text-zinc-900 leading-none">{stats?.totalEmployees || 0}</span>
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Total</span>
                   </div>
                 </div>
@@ -396,9 +479,9 @@ export default function DashboardPage() {
                 {/* Legend */}
                 <div className="flex flex-col gap-4 flex-1">
                   {[
-                    { label: "Present", value: "128", pct: "(72%)", color: "bg-emerald-500" },
-                    { label: "Absent", value: "32", pct: "(18%)", color: "bg-rose-500" },
-                    { label: "On Leave", value: "18", pct: "(10%)", color: "bg-amber-400" },
+                    { label: "Present", value: stats?.presentEmployees || 0, pct: stats?.totalEmployees ? `(${Math.round(((stats.presentEmployees || 0) / stats.totalEmployees) * 100)}%)` : "(0%)", color: "bg-emerald-500" },
+                    { label: "Absent", value: stats?.absentEmployees || 0, pct: stats?.totalEmployees ? `(${Math.round(((stats.absentEmployees || 0) / stats.totalEmployees) * 100)}%)` : "(0%)", color: "bg-rose-500" },
+                    { label: "On Leave", value: stats?.employeesOnLeave || 0, pct: stats?.totalEmployees ? `(${Math.round(((stats.employeesOnLeave || 0) / stats.totalEmployees) * 100)}%)` : "(0%)", color: "bg-amber-400" },
                   ].map(leg => (
                     <div key={leg.label} className="flex flex-col gap-1 w-full">
                       <div className="flex items-center justify-between w-full">
