@@ -156,13 +156,7 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
               >
                 <CheckCircle className="h-5 w-5" /> APPROVE & CLOSE PO
               </Button>
-              <Button 
-                variant="outline"
-                className="w-full h-12 border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-black text-sm tracking-wide gap-2"
-                onClick={() => setActiveDialog("remaining")}
-              >
-                <Clock className="h-5 w-5" /> APPROVE PARTIAL (WAIT FOR REMAINING)
-              </Button>
+
               <Button 
                 variant="outline"
                 className="w-full h-12 border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-sm tracking-wide gap-2 mt-4"
@@ -181,17 +175,15 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
           <DialogHeader>
             <DialogTitle>
               {activeDialog === "approve" && "Approve & Close"}
-              {activeDialog === "remaining" && "Approve Partial"}
               {activeDialog === "reject" && "Reject Receipt"}
             </DialogTitle>
             <DialogDescription>
               {activeDialog === "approve" && "Are you sure you want to approve this delivery and mark the Purchase Order as Completed?"}
-              {activeDialog === "remaining" && "Are you sure you want to approve this delivery but keep the Purchase Order open for remaining items?"}
               {activeDialog === "reject" && "Please provide a reason for rejecting this receipt. Stock will remain unchanged."}
             </DialogDescription>
           </DialogHeader>
 
-          {(activeDialog === "reject" || activeDialog === "remaining") && (
+          {activeDialog === "reject" && (
             <div className="py-4 space-y-2">
               <Label className="text-xs font-bold text-zinc-600">
                 {activeDialog === "reject" ? "Rejection Reason (Required)" : "Additional Remarks (Optional)"}
@@ -199,7 +191,7 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
               <Input 
                 value={remark} 
                 onChange={(e) => setRemark(e.target.value)} 
-                placeholder={activeDialog === "reject" ? "e.g., Wrong bill number, damaged goods..." : "e.g., 50 delivered, remaining expected later."}
+                placeholder="e.g., Wrong bill number, damaged goods..."
                 className="h-10"
               />
             </div>
@@ -211,9 +203,8 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
               disabled={isSubmitting} 
               onClick={() => {
                 if (activeDialog === "approve") handleAction("APPROVED")
-                if (activeDialog === "remaining") handleAction("REMAINING")
                 if (activeDialog === "reject") handleAction("REJECTED")
-              }} 
+              }}
               className={cn(
                 "text-white font-bold",
                 activeDialog === "reject" ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700"

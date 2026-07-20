@@ -514,7 +514,7 @@ export default function IndentPage() {
                 </Button>
               }
             />
-            {row.original.supplyStatus === "PartiallySupplied" && (
+            {/* {row.original.supplyStatus === "PartiallySupplied" && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -524,7 +524,7 @@ export default function IndentPage() {
                 <RotateCcw className="h-3.5 w-3.5" />
                 Re-Request
               </Button>
-            )}
+            )} */}
             <Button
               variant="ghost"
               size="sm"

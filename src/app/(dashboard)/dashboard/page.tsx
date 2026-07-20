@@ -232,111 +232,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Middle Section: Pending Tasks & Request Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Pending Tasks Table */}
-          <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-blue-500" />
-                <CardTitle className="text-sm font-black text-zinc-800">Pending Tasks</CardTitle>
-              </div>
-              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
-            </CardHeader>
-            <CardContent className="p-0 flex-1">
-              <div className="overflow-x-auto h-full">
-                <table className="w-full text-sm h-full">
-                  <thead>
-                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
-                      <th className="text-left py-3 px-6 font-semibold">Task</th>
-                      <th className="text-left py-3 px-6 font-semibold">Project</th>
-                      <th className="text-left py-3 px-6 font-semibold">Assigned To</th>
-                      <th className="text-left py-3 px-6 font-semibold">Due Date</th>
-                      <th className="text-left py-3 px-6 font-semibold">Priority</th>
-                      <th className="text-left py-3 px-6 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-50">
-                    {stats?.pendingTaskList && stats.pendingTaskList.length > 0 ? (
-                      stats.pendingTaskList.map((row, i) => (
-                        <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
-                          <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.title || "Unnamed Task"}</td>
-                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.projectId?.projectName || "N/A"}</td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center gap-2">
-                              {row.assignedToId?.profilePic ? (
-                                <Image src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api", "") || ""}${row.assignedToId.profilePic}`} alt={row.assignedToId?.name} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
-                              ) : (
-                                <div className="rounded-full bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center font-bold text-[10px]">
-                                  {row.assignedToId?.name?.charAt(0) || "U"}
-                                </div>
-                              )}
-                              <span className="text-xs font-semibold text-zinc-700">{row.assignedToId?.name || "Unassigned"}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.dueDate ? new Date(row.dueDate).toLocaleDateString() : "-"}</td>
-                          <td className="py-3 px-6">
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn("w-2 h-2 rounded-full shadow-sm", row.priority === "high" ? "bg-rose-500" : row.priority === "medium" ? "bg-orange-500" : "bg-emerald-500")} />
-                              <span className="text-xs font-semibold text-zinc-700 capitalize">{row.priority || "low"}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-6">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50 capitalize">
-                              {row.status || "Pending"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center text-zinc-500 font-bold text-xs">No pending tasks found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Request Summary */}
-          <Card className="border border-zinc-100 shadow-sm rounded-2xl bg-white flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between py-4 pb-2">
-              <div className="flex items-center gap-2">
-                <div className="bg-purple-100 p-1 rounded relative">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 absolute m-[3px] shadow top-0 left-0" />
-                  <div className="border-[1.5px] border-purple-500 border-dashed w-4 h-4 rounded" />
-                </div>
-                <CardTitle className="text-sm font-black text-zinc-800">Request Summary</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-2 flex flex-col gap-4 flex-1 justify-center">
-              {[
-                { label: "Indent Requests", value: "12", pending: "03 Pending", icon: FileText, bg: "bg-indigo-50", color: "text-indigo-600" },
-                { label: "PO Requests", value: "08", pending: "02 Pending", icon: ShoppingCart, bg: "bg-blue-50", color: "text-blue-500" },
-                { label: "Asset Requests", value: "06", pending: "01 Pending", icon: Package, bg: "bg-emerald-50", color: "text-emerald-500" },
-              ].map((req, i) => (
-                <div key={i} className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center gap-4">
-                    <div className={cn("p-2.5 rounded-xl", req.bg, req.color)}>
-                      <req.icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-zinc-900">{req.label}</span>
-                      <span className={cn("text-xl font-black leading-tight", req.color)}>{req.value}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end justify-between self-stretch gap-2">
-                    <Button variant="link" className="text-blue-600 font-bold text-[10px] h-auto p-0 hover:underline">View All</Button>
-                    <span className="text-[10px] font-bold text-orange-500">{req.pending}</span>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Bottom Section: Assets & Attendance */}
+ {/* Bottom Section: Assets & Attendance */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Absent Employees Table */}
           <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
@@ -502,6 +398,111 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+        {/* Middle Section: Pending Tasks & Request Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Pending Tasks Table */}
+          <Card className="lg:col-span-2 border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-blue-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Pending Tasks</CardTitle>
+              </div>
+              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
+            </CardHeader>
+            <CardContent className="p-0 flex-1">
+              <div className="overflow-x-auto h-full">
+                <table className="w-full text-sm h-full">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
+                      <th className="text-left py-3 px-6 font-semibold">Task</th>
+                      <th className="text-left py-3 px-6 font-semibold">Project</th>
+                      <th className="text-left py-3 px-6 font-semibold">Assigned To</th>
+                      <th className="text-left py-3 px-6 font-semibold">Due Date</th>
+                      <th className="text-left py-3 px-6 font-semibold">Priority</th>
+                      <th className="text-left py-3 px-6 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-50">
+                    {stats?.pendingTaskList && stats.pendingTaskList.length > 0 ? (
+                      stats.pendingTaskList.map((row, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-3 px-6 font-bold text-xs text-zinc-800">{row.title || "Unnamed Task"}</td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.projectId?.projectName || "N/A"}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-2">
+                              {row.assignedToId?.profilePic ? (
+                                <Image src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api", "") || ""}${row.assignedToId.profilePic}`} alt={row.assignedToId?.name} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
+                              ) : (
+                                <div className="rounded-full bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center font-bold text-[10px]">
+                                  {row.assignedToId?.name?.charAt(0) || "U"}
+                                </div>
+                              )}
+                              <span className="text-xs font-semibold text-zinc-700">{row.assignedToId?.name || "Unassigned"}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.dueDate ? new Date(row.dueDate).toLocaleDateString() : "-"}</td>
+                          <td className="py-3 px-6">
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn("w-2 h-2 rounded-full shadow-sm", row.priority === "high" ? "bg-rose-500" : row.priority === "medium" ? "bg-orange-500" : "bg-emerald-500")} />
+                              <span className="text-xs font-semibold text-zinc-700 capitalize">{row.priority || "low"}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-6">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-50 text-orange-600 border border-orange-100/50 capitalize">
+                              {row.status || "Pending"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-zinc-500 font-bold text-xs">No pending tasks found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Request Summary */}
+          <Card className="border border-zinc-100 shadow-sm rounded-2xl bg-white flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="bg-purple-100 p-1 rounded relative">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 absolute m-[3px] shadow top-0 left-0" />
+                  <div className="border-[1.5px] border-purple-500 border-dashed w-4 h-4 rounded" />
+                </div>
+                <CardTitle className="text-sm font-black text-zinc-800">Request Summary</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-5 pt-2 flex flex-col gap-4 flex-1 justify-center">
+              {[
+                { label: "Indent Requests", value: "12", pending: "03 Pending", icon: FileText, bg: "bg-indigo-50", color: "text-indigo-600" },
+                { label: "PO Requests", value: "08", pending: "02 Pending", icon: ShoppingCart, bg: "bg-blue-50", color: "text-blue-500" },
+                { label: "Asset Requests", value: "06", pending: "01 Pending", icon: Package, bg: "bg-emerald-50", color: "text-emerald-500" },
+              ].map((req, i) => (
+                <div key={i} className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4">
+                    <div className={cn("p-2.5 rounded-xl", req.bg, req.color)}>
+                      <req.icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-zinc-900">{req.label}</span>
+                      <span className={cn("text-xl font-black leading-tight", req.color)}>{req.value}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end justify-between self-stretch gap-2">
+                    <Button variant="link" className="text-blue-600 font-bold text-[10px] h-auto p-0 hover:underline">View All</Button>
+                    <span className="text-[10px] font-bold text-orange-500">{req.pending}</span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+
+       
       </div>
     </ContentLayout>
   );
