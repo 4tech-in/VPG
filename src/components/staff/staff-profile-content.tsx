@@ -14,19 +14,14 @@ import { StaffForm } from "./staff-form"
 import { NewRequestDialog } from "./new-request-dialog"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useUsers, Staff } from "@/hooks/use-users"
+import { indentService } from "@/service/indents.api"
 
 type IndentRequest = {
   id: string
   items: string
-  status: "PENDING MANAGER" | "APPROVED" | "REJECTED"
+  status: string
   date: string
 }
-
-const mockRequests: IndentRequest[] = [
-  { id: "IND-001", items: "Cement Bag", status: "PENDING MANAGER", date: "2024-05-01" },
-  { id: "IND-004", items: "Safety Helmets", status: "APPROVED", date: "2024-04-20" },
-  { id: "IND-009", items: "Tiles (Blue)", status: "REJECTED", date: "2024-04-15" },
-]
 
 export function StaffProfileContent({ id }: { id: string }) {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
@@ -34,6 +29,9 @@ export function StaffProfileContent({ id }: { id: string }) {
   const { getUserById } = useUsers({ skipFetch: true })
   const [user, setUser] = useState<Staff | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  const [indents, setIndents] = useState<IndentRequest[]>([])
+  const [isLoadingIndents, setIsLoadingIndents] = useState(true)
 
   const fetchUser = useCallback(async () => {
     try {
@@ -47,9 +45,38 @@ export function StaffProfileContent({ id }: { id: string }) {
     }
   }, [id, getUserById])
 
+  const fetchIndents = useCallback(async () => {
+    try {
+      setIsLoadingIndents(true)
+      const res = await indentService.getIndents({ userId: id })
+      console.log("FETCHED INDENTS FOR USER", id, res)
+      const rawIndents = res.data || []
+      
+      const mapped = rawIndents.map((ind: any) => {
+        const itemNames = ind.items?.map((i: any) => 
+          i.itemModel === "Asset" ? i.itemId?.assetName || "Asset" : i.itemId?.itemName || "Item"
+        ).join(", ") || "N/A"
+
+        return {
+          id: ind.indentId,
+          items: itemNames,
+          status: ind.status?.toUpperCase() || "PENDING",
+          date: new Date(ind.createdAt).toLocaleDateString(),
+          _raw: ind
+        }
+      })
+      setIndents(mapped)
+    } catch (err) {
+      console.error("Failed to load indents:", err)
+    } finally {
+      setIsLoadingIndents(false)
+    }
+  }, [id])
+
   useEffect(() => {
     fetchUser()
-  }, [fetchUser])
+    fetchIndents()
+  }, [fetchUser, fetchIndents])
 
   const columns: ColumnDef<IndentRequest>[] = [
     { accessorKey: "id", header: "ID" },
@@ -58,14 +85,17 @@ export function StaffProfileContent({ id }: { id: string }) {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
-        const status = row.getValue("status") as string
+        const status = (row.getValue("status") as string) || "PENDING"
         const variants: Record<string, string> = {
-          "PENDING MANAGER": "bg-amber-100 text-amber-600 border-none",
+          "PENDING": "bg-amber-100 text-amber-600 border-none",
+          "MANAGERAPPROVED": "bg-amber-100 text-amber-600 border-none",
           "APPROVED": "bg-emerald-100 text-emerald-600 border-none",
+          "CONVERTEDTOPO": "bg-blue-100 text-blue-600 border-none",
           "REJECTED": "bg-rose-100 text-rose-600 border-none",
         }
+        const badgeColor = variants[status] || "bg-zinc-100 text-zinc-600 border-none"
         return (
-          <Badge variant="outline" className={`rounded-full font-bold text-[10px] uppercase px-3 ${variants[status]}`}>
+          <Badge variant="outline" className={`rounded-full font-bold text-[10px] uppercase px-3 ${badgeColor}`}>
             {status}
           </Badge>
         )
@@ -111,12 +141,7 @@ export function StaffProfileContent({ id }: { id: string }) {
           <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Staff Profile</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            onClick={() => setIsRequestDialogOpen(true)}
-            className="h-11 rounded-xl px-6 bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20"
-          >
-            New Request
-          </Button>
+          
           <Button
             variant="outline"
             onClick={() => setIsEditDialogOpen(true)}
@@ -171,7 +196,7 @@ export function StaffProfileContent({ id }: { id: string }) {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Requests</p>
-                  <p className="text-xl font-black text-zinc-900">{mockRequests.length}</p>
+                  <p className="text-xl font-black text-zinc-900">{indents.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -265,7 +290,7 @@ export function StaffProfileContent({ id }: { id: string }) {
             </TabsContent>
 
             <TabsContent value="requests">
-              <DataTable columns={columns} data={mockRequests} />
+              <DataTable columns={columns} data={indents} />
             </TabsContent>
           </Tabs>
         </div>
