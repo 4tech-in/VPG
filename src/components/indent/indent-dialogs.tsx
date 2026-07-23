@@ -112,7 +112,9 @@ export function ViewIndentDialog({
    const currentLabel = indent.status === "Pending" ? "PENDING MANAGER" :
                         indent.status === "ManagerApproved" ? "PENDING ADMIN" :
                         indent.status === "Approved" ? "APPROVED" :
-                        indent.status === "ConvertedToPO" ? "PO CREATED" : "REJECTED"
+                        ["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(indent.status) ? "PO CREATED" :
+                        indent.status === "Rejected" ? "REJECTED" : 
+                        indent.status ? indent.status.toUpperCase() : "UNKNOWN"
 
    const isAdmin = user?.roleId?.name?.toLowerCase() === "admin"
    const canTakeAction = isAdmin ? (indent.status === "ManagerApproved") : (indent.status === "Pending")
@@ -169,9 +171,9 @@ export function ViewIndentDialog({
                   </div>
                   <Badge className={cn(
                      "px-5 py-1.5 rounded-full font-black text-[10px] gap-2 border-none shadow-sm",
-                     indent.status === "Pending" || indent.status === "ManagerApproved" ? "bg-amber-100 text-amber-700" :
-                     indent.status === "Approved" ? "bg-blue-100 text-blue-700" :
-                     indent.status === "ConvertedToPO" ? "bg-emerald-100 text-emerald-700" :
+                     ["PENDING MANAGER", "PENDING ADMIN"].includes(currentLabel) ? "bg-amber-100 text-amber-700" :
+                     currentLabel === "APPROVED" ? "bg-blue-100 text-blue-700" :
+                     currentLabel === "PO CREATED" ? "bg-emerald-100 text-emerald-700" :
                      "bg-rose-100 text-rose-700"
                   )}>
                      <Clock className="h-3.5 w-3.5" /> {currentLabel}
@@ -244,9 +246,9 @@ export function ViewIndentDialog({
                      <div className="flex items-center gap-2 pt-2 px-2 overflow-x-auto pb-4">
                         {[
                            { label: "Request Created", done: true },
-                           { label: "Manager Approved", done: ["ManagerApproved", "Approved", "ConvertedToPO"].includes(indent.status) },
-                           { label: "Final Approved", done: ["Approved", "ConvertedToPO"].includes(indent.status) },
-                           { label: "PO Created", done: indent.status === "ConvertedToPO" },
+                           { label: "Manager Approved", done: ["ManagerApproved", "Approved", "ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(indent.status) },
+                           { label: "Final Approved", done: ["Approved", "ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(indent.status) },
+                           { label: "PO Created", done: ["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(indent.status) },
                         ].map((step, i, arr) => (
                            <div key={i} className="flex items-center shrink-0">
                               <div className={cn(

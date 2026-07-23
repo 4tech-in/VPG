@@ -76,6 +76,9 @@ const mapBackendStatusToUI = (status: string) => {
     case "Approved":
       return "APPROVED";
     case "ConvertedToPO":
+    case "PartiallyReceived":
+    case "Completed":
+    case "Closed":
       return "PO CREATED";
     case "Rejected":
       return "REJECTED";
@@ -415,7 +418,7 @@ export default function IndentPage() {
                   "h-9 px-4 rounded-xl flex items-center justify-center font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm w-[160px]",
                   status === "Approved"
                     ? "bg-blue-50 text-blue-600"
-                    : status === "ConvertedToPO"
+                    : ["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(status)
                       ? "bg-emerald-50 text-emerald-600"
                       : status === "Rejected"
                         ? "bg-rose-50 text-rose-500"
@@ -426,7 +429,7 @@ export default function IndentPage() {
                   {(status === "Approved" ||
                     status === "ManagerApproved" ||
                     status === "Pending") && <Clock className="h-3 w-3" />}
-                  {status === "ConvertedToPO" && (
+                  {["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(status) && (
                     <CheckCircle2 className="h-3 w-3" />
                   )}
                   {status === "Rejected" && <X className="h-3 w-3" />}
