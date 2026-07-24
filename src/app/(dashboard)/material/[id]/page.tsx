@@ -760,16 +760,7 @@ export default function MaterialDetailPage() {
               </div>
 
               {/* Vendor stats micro-cards */}
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100">
-                <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200 flex flex-col justify-between gap-1">
-                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest leading-none">Total Orders</span>
-                  <span className="text-xs font-black text-zinc-800">58</span>
-                </div>
-                <div className="bg-zinc-50 p-3 rounded-lg border border-zinc-200 flex flex-col justify-between gap-1">
-                  <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest leading-none">Outstanding</span>
-                  <span className="text-xs font-black text-zinc-800">₹12,000</span>
-                </div>
-              </div>
+              
             </div>
 
             {/* Cost Summary Sidebar Card */}

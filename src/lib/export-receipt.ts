@@ -318,6 +318,15 @@ export function exportPurchaseOrderReceipt(po: any) {
     )
     .join("");
 
+  const itemsSubtotal = (po.items || []).reduce((acc: number, item: any) => {
+    return acc + Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0)))
+  }, 0);
+
+  const gstAmount = Number(po.gst || 0);
+  const freightCharges = Number(po.freightCharges || 0);
+  const packagingCharges = Number(po.packagingCharges || 0);
+  const otherCharges = Number(po.otherCharges || 0);
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -540,6 +549,27 @@ export function exportPurchaseOrderReceipt(po: any) {
 
         <div class="total-container">
           <div class="total-box">
+            <div class="info-row">
+              <span class="info-label">Items Subtotal</span>
+              <span class="info-val">₹${itemsSubtotal.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">GST / Taxes</span>
+              <span class="info-val">₹${gstAmount.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Freight Charges</span>
+              <span class="info-val">₹${freightCharges.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Packaging Charges</span>
+              <span class="info-val">₹${packagingCharges.toLocaleString("en-IN")}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Other Charges</span>
+              <span class="info-val">₹${otherCharges.toLocaleString("en-IN")}</span>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #e4e4e7; margin: 12px 0;" />
             <div class="info-row" style="margin-bottom: 0; font-size: 15px; font-weight: 800;">
               <span>Grand Total:</span>
               <span style="color: #059669;">₹${Number(po.totalAmount || 0).toLocaleString("en-IN")}</span>
