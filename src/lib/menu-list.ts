@@ -112,10 +112,23 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: []
         },
         {
-          href: "/stores",
+          href: "",
           label: "Asset",
           icon: Store,
-          submenus: []
+          submenus: [
+            {
+              href: "/stores",
+              label: "Asset Master"
+            },
+            {
+              href: "/asset-site-transfers",
+              label: "Site Transfers"
+            },
+            {
+              href: "/asset-maintenances",
+              label: "Maintenance"
+            }
+          ]
         },
         // {
         //   href: "/calendar",
@@ -134,9 +147,23 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           icon:DollarSign
         },
         {
-          href:"/material",
-          label:"Material",
-          icon:Box
+          href: "",
+          label: "Material",
+          icon: Box,
+          submenus: [
+            {
+              href: "/material",
+              label: "Material Master"
+            },
+            {
+              href: "/material-site-transfers",
+              label: "Site Transfers"
+            },
+            {
+              href: "/material-returns",
+              label: "Returns"
+            }
+          ]
         }
       ]
     },
