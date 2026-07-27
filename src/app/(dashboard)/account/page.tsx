@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { userService } from "@/service/userService";
 import {
   Loader2,
   User,
@@ -20,7 +24,10 @@ import {
   Shield,
   Building2,
   Server,
-  CheckCircle2
+  CheckCircle2,
+  Edit2,
+  X,
+  Save
 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import {
@@ -38,16 +45,70 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    mobile: "",
+    emergencyContactNumber: "",
+    aadhaarNumber: ""
+  });
+
+  useEffect(() => {
+    if (user && !isEditing) {
+      setFormData({
+        name: user.name || "",
+        mobile: user.mobile || "",
+        emergencyContactNumber: (user as any).emergencyContactNumber || "",
+        aadhaarNumber: (user as any).aadhaarNumber || ""
+      });
+    }
+  }, [user, isEditing]);
+
+  const handleSave = async () => {
+    const userId = user?._id || (user as any)?.id;
+    if (!userId) {
+      toast.error("User ID is missing, cannot update.");
+      return;
+    }
+    try {
+      setIsSaving(true);
+      
+      const u = user as any;
+      const updateData: any = {
+        name: formData.name,
+        mobile: formData.mobile,
+        emergencyContactNumber: formData.emergencyContactNumber,
+        aadhaarNumber: formData.aadhaarNumber,
+      };
+      
+      await userService.updateUser(userId, updateData);
+      toast.success("Profile updated successfully!");
+      setIsEditing(false);
+      // Re-fetch user to update store
+      const meRes = await authService.me();
+      if (meRes && (meRes._id || meRes.id) && token) {
+        setAuth(token, meRes);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update profile");
+      alert("API Error: " + (err.message || "Unknown error"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     const fetchMe = async () => {
       try {
         setLoading(true);
         const res = await authService.me();
-        if (res?.success && res?.data && token) {
+        // apiClient extracts data.data, so res is the user object itself
+        if (res && (res._id || res.id) && token) {
           // Update the store with the fresh user data
-          setAuth(token, res.data);
-        } else {
-          setError(res?.message || "Failed to fetch user data");
+          setAuth(token, res);
+        } else if (!res) {
+          setError("Failed to fetch user data");
         }
       } catch (err: any) {
         setError(
@@ -102,12 +163,12 @@ export default function AccountPage() {
           <div className="h-32 bg-gradient-to-r from-primary/80 to-primary/40 relative">
             <div className="absolute -bottom-12 left-8">
               <Avatar className="h-24 w-24 border-4 border-background shadow-sm bg-background">
-                {user?.profileImage && (
+                {(user as any)?.profileImage && (
                   <AvatarImage
                     src={
-                      user.profileImage.startsWith("http")
-                        ? user.profileImage
-                        : `${process.env.NEXT_PUBLIC_BASE_URL || ""}${user.profileImage}`
+                      (user as any).profileImage.startsWith("http")
+                        ? (user as any).profileImage
+                        : `${process.env.NEXT_PUBLIC_BASE_URL || ""}${(user as any).profileImage}`
                     }
                     alt="Profile"
                     className="object-cover"
@@ -122,11 +183,37 @@ export default function AccountPage() {
 
           <CardHeader className="pt-16 pb-4 px-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="text-2xl font-bold">
-                  {user?.name}
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-1">
+              <div className="flex-1">
+                <div className="flex items-center gap-4">
+                  {isEditing ? (
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="max-w-[250px] font-bold text-xl"
+                      placeholder="Your Name"
+                    />
+                  ) : (
+                    <CardTitle className="text-2xl font-bold">
+                      {user?.name}
+                    </CardTitle>
+                  )}
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                        <X className="h-4 w-4 mr-2" /> Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+                      <Edit2 className="h-4 w-4 mr-2" /> Edit Profile
+                    </Button>
+                  )}
+                </div>
+                <CardDescription className="flex items-center gap-2 mt-2">
                   <Mail className="h-4 w-4" /> {user?.email}
                 </CardDescription>
               </div>
@@ -189,23 +276,47 @@ export default function AccountPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Mobile
                 </p>
-                <p className="font-medium text-sm">{user?.mobile || "N/A"}</p>
+                {isEditing ? (
+                  <Input
+                    value={formData.mobile}
+                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                    placeholder="Enter mobile number"
+                  />
+                ) : (
+                  <p className="font-medium text-sm">{user?.mobile || "N/A"}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">
                   Emergency Contact
                 </p>
-                <p className="font-medium text-sm">
-                  {(user as any)?.emergencyContactNumber || "N/A"}
-                </p>
+                {isEditing ? (
+                  <Input
+                    value={formData.emergencyContactNumber}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactNumber: e.target.value })}
+                    placeholder="Enter emergency contact"
+                  />
+                ) : (
+                  <p className="font-medium text-sm">
+                    {(user as any)?.emergencyContactNumber || "N/A"}
+                  </p>
+                )}
               </div>
               <div className="space-y-1 col-span-2">
                 <p className="text-sm font-medium text-muted-foreground">
                   Aadhaar Number
                 </p>
-                <p className="font-medium text-sm">
-                  {(user as any)?.aadhaarNumber || "N/A"}
-                </p>
+                {isEditing ? (
+                  <Input
+                    value={formData.aadhaarNumber}
+                    onChange={(e) => setFormData({ ...formData, aadhaarNumber: e.target.value })}
+                    placeholder="Enter Aadhaar number"
+                  />
+                ) : (
+                  <p className="font-medium text-sm">
+                    {(user as any)?.aadhaarNumber || "N/A"}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

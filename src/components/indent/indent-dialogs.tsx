@@ -79,7 +79,8 @@ export function ViewIndentDialog({
   trigger,
   indent,
   onStatusChange,
-  user
+  user,
+  onEditSuccess
 }: {
   trigger: React.ReactNode;
   indent: any;
@@ -116,7 +117,7 @@ export function ViewIndentDialog({
       
       // Fetch availableItems and units for adding new items
       itemService.getItems({ limit: 500 }).then(res => setAvailableItems(res.items || []));
-      unitService.getUnits({ limit: 500 }).then(res => setUnits(res.units || res.data || []));
+      unitService.getUnits({ limit: 500 }).then(res => setUnits((res as any).units || (res as any).data || []));
     }
   }, [open, indent]);
 
@@ -957,10 +958,12 @@ export function ViewIndentDialog({
 
 export function CreateIndentDialog({
   trigger,
-  onSuccess
+  onSuccess,
+  initialData
 }: {
   trigger: React.ReactNode;
   onSuccess?: () => void;
+  initialData?: any;
 }) {
   const [open, setOpen] = useState(false);
 

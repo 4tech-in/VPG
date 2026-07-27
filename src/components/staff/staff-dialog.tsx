@@ -40,8 +40,8 @@ export function StaffDialog({
                 ? "Modify account permissions and professional details for this user."
                 : "Modify account permissions and professional details for this member.")
               : (isSuperAdmin
-                ? "Onboard a new user to the VPG Estate team."
-                : "Onboard a new member to the VPG Estate team.")}
+                ? "Onboard a new user to the VPG  team."
+                : "Onboard a new member to the VPG  team.")}
           </DialogDescription>
         </DialogHeader>
         <div className="py-2">
