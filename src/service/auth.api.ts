@@ -27,7 +27,7 @@ export const authService = {
   },
 
   async me(): Promise<any> {
-    return apiRequest<any>("/auth/me", {
+    return apiRequest<any>("auth/me", {
       method: "GET",
     })
   },

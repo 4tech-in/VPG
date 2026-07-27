@@ -50,17 +50,24 @@ export function UserNav() {
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Profile</TooltipContent>
+          <TooltipContent side="bottom">{user?.roleId?.name || "Profile"}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.name || "Four Tech"}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user?.email || "fourtech@gmail.com"}
-            </p>
+          <div className="flex flex-col space-y-2">
+            <p className="text-sm font-semibold">{user?.name }</p>
+            <div className="flex flex-col space-y-1">
+              <div className="flex items-center">
+                <div className="bg-primary/10 text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  {user?.roleId?.name}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground/80">
+                {user?.email || "fourtech@gmail.com"}
+              </p>
+            </div>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
