@@ -678,27 +678,26 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                       {projectsList.map((p) => {
                         const isSelected = selectedProjects.includes(p.id)
                         return (
-                          <label 
+                          <div 
                             key={p.id}
                             className={cn(
                               "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
                             )}
-                            onPointerDown={(e) => {
-                              // Prevent Radix focus management from closing the popover in production builds
+                            onClick={(e) => {
+                              // Ensure checkbox click is completely handled by this div
                               e.preventDefault()
+                              e.stopPropagation()
+                              setSelectedProjects((prev) =>
+                                isSelected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                              )
                             }}
                           >
                             <Checkbox 
                               checked={isSelected}
-                              onCheckedChange={(checked) => {
-                                setSelectedProjects((prev) =>
-                                  checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
-                                )
-                              }}
-                              className="mr-2"
+                              className="mr-2 pointer-events-none"
                             />
                             {p.name}
-                          </label>
+                          </div>
                         )
                       })}
                       {hasMoreProjects && (
