@@ -25,6 +25,7 @@ type Submenu = {
   href: string;
   label: string;
   active?: boolean;
+  permission?: string;
 };
 
 type Menu = {
@@ -33,6 +34,7 @@ type Menu = {
   active?: boolean;
   icon: LucideIcon;
   submenus?: Submenu[];
+  permission?: string;
 };
 
 type Group = {
@@ -40,10 +42,13 @@ type Group = {
   menus: Menu[];
 };
 
-export function getMenuList(pathname: string, userRole?: string): Group[] {
-  const isSuperAdmin = userRole?.toLowerCase() === "superadmin";
+export function getMenuList(
+  pathname: string, 
+  userRole?: string,
+  hasPermission?: (permission: string) => boolean
+): Group[] {
 
-  return [
+  const rawList: Group[] = [
     {
       groupLabel: "MAIN MENU",
       menus: [
@@ -51,19 +56,22 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           href: "/dashboard",
           label: "Dashboard",
           icon: LayoutGrid,
-          submenus: []
+          submenus: [],
+          permission: "dashboard:view"
         },
         {
           href: "/users",
           label: "Staff",
           icon: User,
-          submenus: []
+          submenus: [],
+          permission: "user:view"
         },
         {
           href: "/livetracking",
           label: "Live Tracking",
           icon: LucideView,
-          submenus: []
+          submenus: [],
+          permission: "livetracking:view"
         },
         {
           href: "",
@@ -72,15 +80,13 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: [
             {
               href: "/indent",
-              label: "Indent List"
+              label: "Indent List",
+              permission: "indent:view"
             },
-            // {
-            //   href: "/quotation",
-            //   label: "Quotation Requests"
-            // },
             {
               href: "/purchase-order",
-              label: "Purchase Orders"
+              label: "Purchase Orders",
+              permission: "purchase-order:view"
             }
           ]
         },
@@ -91,11 +97,13 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: [
             {
               href: "/item",
-              label: "Item"
+              label: "Item",
+              permission: "item:view"
             },
             {
               href: "/project",
-              label: "Project"
+              label: "Project",
+              permission: "project:view"
             }
           ]
         },
@@ -103,13 +111,15 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           href: "/vendor",
           label: "Vendor",
           icon: Scale,
-          submenus: []
+          submenus: [],
+          permission: "vendor:view"
         },
         {
           href: "/geofence",
           label: "Geofence",
           icon: LocateIcon,
-          submenus: []
+          submenus: [],
+          permission: "geofence:view"
         },
         {
           href: "",
@@ -118,33 +128,26 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: [
             {
               href: "/stores",
-              label: "Asset Master"
+              label: "Asset Master",
+              permission: "asset:view"
             },
             {
               href: "/asset-site-transfers",
-              label: "Site Transfers"
+              label: "Site Transfers",
+              permission: "asset-site-transfer:view"
             },
             {
               href: "/asset-maintenances",
-              label: "Maintenance"
+              label: "Maintenance",
+              permission: "asset-maintenance:view"
             }
           ]
         },
-        // {
-        //   href: "/calendar",
-        //   label: "Calendar",
-        //   icon: Calendar,
-        //   submenus: []
-        // },
-        // {
-        //   href:"/leave",
-        //   label:"Leave",
-        //   icon:Calendar
-        // },
         {
           href:"/advance",
           label:"Advance",
-          icon:DollarSign
+          icon:DollarSign,
+          permission: "advance:view"
         },
         {
           href: "",
@@ -153,15 +156,18 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: [
             {
               href: "/material",
-              label: "Material Master"
+              label: "Material Master",
+              permission: "material:view"
             },
             {
               href: "/material-site-transfers",
-              label: "Site Transfers"
+              label: "Site Transfers",
+              permission: "material-site-transfer:view"
             },
             {
               href: "/material-returns",
-              label: "Returns"
+              label: "Returns",
+              permission: "material-return:view"
             }
           ]
         }
@@ -174,13 +180,15 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           href: "/attendance",
           label: "Attendance",
           icon: User2,
-          submenus: []
+          submenus: [],
+          permission: "attendance:view"
         },
         {
           href: "/Attendance-policy",
           label: "Attendance Policy",
           icon: ShieldCheck,
-          submenus: []
+          submenus: [],
+          permission: "attendance-policy:view"
         }
       ]
     },
@@ -191,29 +199,16 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           href: "/roles",
           label: "Role Master",
           icon: User,
-          submenus: []
+          submenus: [],
+          permission: "role:view"
         },
-        ...(isSuperAdmin
-          ? [
-              {
-                href: "/orgnization",
-                label: "Organization Master",
-                icon: Workflow,
-                submenus: []
-              },
-              {
-                href: "/business-nodes",
-                label: "Business Node",
-                icon: Briefcase,
-                submenus: []
-              }
-            ]
-          : []),
+        
         {
           href: "/tasks",
           label: "Task Master",
           icon: Workflow,
-          submenus: []
+          submenus: [],
+          permission: "task:view"
         }
       ]
     },
@@ -227,21 +222,58 @@ export function getMenuList(pathname: string, userRole?: string): Group[] {
           submenus: [
             {
               href: "/unit",
-              label: "Unit"
+              label: "Unit",
+              permission: "unit:view"
             },
             {
               href: "/group",
-              label: "Group"
+              label: "Group",
+              permission: "group:view"
             },
             {
               href: "/sub-group",
-              label: "Sub Group"
+              label: "Sub Group",
+              permission: "sub-group:view"
             },
-            
-            
           ]
         }
       ]
     }
   ];
+
+  const isSuperAdmin = userRole?.toLowerCase() === "superadmin" || userRole?.toLowerCase() === "admin";
+
+  if (!hasPermission || isSuperAdmin) return rawList;
+
+  // Filter the list based on hasPermission
+  return rawList
+    .map(group => {
+      const filteredMenus = group.menus
+        .map(menu => {
+          if (menu.submenus && menu.submenus.length > 0) {
+            return {
+              ...menu,
+              submenus: menu.submenus.filter(
+                sub => !sub.permission || hasPermission(sub.permission)
+              )
+            };
+          }
+          return menu;
+        })
+        .filter(menu => {
+          // If menu has a direct permission, check it
+          if (menu.permission && !hasPermission(menu.permission)) return false;
+          // If it was meant to have submenus but all were filtered out, hide the parent menu entirely
+          if (menu.submenus && menu.submenus.length === 0 && (rawList.find(g => g.groupLabel === group.groupLabel)?.menus.find(m => m.label === menu.label)?.submenus?.length || 0) > 0) {
+            return false; 
+          }
+          return true;
+        });
+
+      return {
+        ...group,
+        menus: filteredMenus
+      };
+    })
+    .filter(group => group.menus.length > 0);
 }

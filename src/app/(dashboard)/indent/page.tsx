@@ -16,7 +16,7 @@ import {
   X,
   XCircle,
   Trash2,
-  RotateCcw,
+  RotateCcw
 } from "lucide-react";
 
 import { ContentLayout } from "@/components/admin-panel/content-layout";
@@ -30,11 +30,11 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from "@/components/ui/select";
 import {
   ViewIndentDialog,
-  CreateIndentDialog,
+  CreateIndentDialog
 } from "@/components/indent/indent-dialogs";
 
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -148,8 +148,8 @@ export default function IndentPage() {
           quantity: item.quantity,
           description: item.description || "",
           status: "Approved",
-          images: item.images || [],
-        })),
+          images: item.images || []
+        }))
       );
     } else {
       setApprovalItems([]);
@@ -160,7 +160,12 @@ export default function IndentPage() {
     }
   }, [approvingIndent]);
 
-  const fetchIndents = async (search = "", statusFilter = selectedStatus, pageNum = page, limitNum = limit) => {
+  const fetchIndents = async (
+    search = "",
+    statusFilter = selectedStatus,
+    pageNum = page,
+    limitNum = limit
+  ) => {
     try {
       setLoading(true);
       const params: any = { search, page: pageNum, limit: limitNum };
@@ -209,10 +214,12 @@ export default function IndentPage() {
       const remainingItems = indent.items
         .filter((item: any) => item.remainingQuantity > 0)
         .map((item: any) => ({
-          itemId: typeof item.itemId === 'object' ? item.itemId._id : item.itemId,
+          itemId:
+            typeof item.itemId === "object" ? item.itemId._id : item.itemId,
           quantity: item.remainingQuantity,
-          unitId: typeof item.unitId === 'object' ? item.unitId._id : item.unitId,
-          price: item.price || 0,
+          unitId:
+            typeof item.unitId === "object" ? item.unitId._id : item.unitId,
+          price: item.price || 0
         }));
 
       if (remainingItems.length === 0) {
@@ -221,17 +228,36 @@ export default function IndentPage() {
       }
 
       const payload = {
-        projectId: typeof indent.projectId === 'object' ? indent.projectId._id : indent.projectId,
+        projectId:
+          typeof indent.projectId === "object"
+            ? indent.projectId._id
+            : indent.projectId,
         priority: indent.priority,
         indentFor: indent.indentFor,
-        towerId: indent.towerId ? (typeof indent.towerId === 'object' ? indent.towerId._id : indent.towerId) : undefined,
-        floorId: indent.floorId ? (typeof indent.floorId === 'object' ? indent.floorId._id : indent.floorId) : undefined,
-        flatId: indent.flatId ? (typeof indent.flatId === 'object' ? indent.flatId._id : indent.flatId) : undefined,
-        outsideId: indent.outsideId ? (typeof indent.outsideId === 'object' ? indent.outsideId._id : indent.outsideId) : undefined,
+        towerId: indent.towerId
+          ? typeof indent.towerId === "object"
+            ? indent.towerId._id
+            : indent.towerId
+          : undefined,
+        floorId: indent.floorId
+          ? typeof indent.floorId === "object"
+            ? indent.floorId._id
+            : indent.floorId
+          : undefined,
+        flatId: indent.flatId
+          ? typeof indent.flatId === "object"
+            ? indent.flatId._id
+            : indent.flatId
+          : undefined,
+        outsideId: indent.outsideId
+          ? typeof indent.outsideId === "object"
+            ? indent.outsideId._id
+            : indent.outsideId
+          : undefined,
         storageLocation: indent.storageLocation,
         description: `Re-request for remaining items from ${indent.indentId}`,
         items: remainingItems,
-        indentType: indent.indentType,
+        indentType: indent.indentType
       };
 
       await indentService.createIndent(payload);
@@ -247,7 +273,7 @@ export default function IndentPage() {
     newStatus: string,
     reason?: string,
     items?: any[],
-    storageLocationVal?: string,
+    storageLocationVal?: string
   ) => {
     try {
       const payload: any = { status: newStatus };
@@ -307,7 +333,7 @@ export default function IndentPage() {
       unitId: i.unitId,
       quantity: Number(i.quantity),
       description: i.description || "",
-      images: i.images || [],
+      images: i.images || []
     }));
 
     handleStatusChange(
@@ -315,7 +341,7 @@ export default function IndentPage() {
       "Approved",
       approveRemark,
       formattedItems,
-      storageLocation,
+      storageLocation
     );
     setApprovingIndent(null);
     setApproveRemark("");
@@ -335,7 +361,7 @@ export default function IndentPage() {
         <div className="font-bold text-emerald-500">
           {row.getValue("indentId")}
         </div>
-      ),
+      )
     },
     {
       accessorKey: "requester",
@@ -352,7 +378,7 @@ export default function IndentPage() {
             </span>
           </div>
         );
-      },
+      }
     },
     {
       accessorKey: "project",
@@ -375,7 +401,7 @@ export default function IndentPage() {
             </span>
           </div>
         );
-      },
+      }
     },
     {
       accessorKey: "items",
@@ -397,7 +423,7 @@ export default function IndentPage() {
             </span>
           </div>
         );
-      },
+      }
     },
 
     {
@@ -418,20 +444,28 @@ export default function IndentPage() {
                   "h-9 px-4 rounded-xl flex items-center justify-center font-black text-[9px] tracking-[0.15em] uppercase transition-all shadow-sm w-[160px]",
                   status === "Approved"
                     ? "bg-blue-50 text-blue-600"
-                    : ["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(status)
+                    : [
+                          "ConvertedToPO",
+                          "PartiallyReceived",
+                          "Completed",
+                          "Closed"
+                        ].includes(status)
                       ? "bg-emerald-50 text-emerald-600"
                       : status === "Rejected"
                         ? "bg-rose-50 text-rose-500"
-                        : "bg-amber-50 text-amber-600",
+                        : "bg-amber-50 text-amber-600"
                 )}
               >
                 <div className="flex items-center gap-2">
                   {(status === "Approved" ||
                     status === "ManagerApproved" ||
                     status === "Pending") && <Clock className="h-3 w-3" />}
-                  {["ConvertedToPO", "PartiallyReceived", "Completed", "Closed"].includes(status) && (
-                    <CheckCircle2 className="h-3 w-3" />
-                  )}
+                  {[
+                    "ConvertedToPO",
+                    "PartiallyReceived",
+                    "Completed",
+                    "Closed"
+                  ].includes(status) && <CheckCircle2 className="h-3 w-3" />}
                   {status === "Rejected" && <X className="h-3 w-3" />}
                   <span>{uiStatus}</span>
                 </div>
@@ -479,7 +513,7 @@ export default function IndentPage() {
             </div>
           </div>
         );
-      },
+      }
     },
     {
       accessorKey: "createdAt",
@@ -494,7 +528,7 @@ export default function IndentPage() {
             {created}
           </div>
         );
-      },
+      }
     },
     {
       id: "actions",
@@ -506,6 +540,7 @@ export default function IndentPage() {
               indent={row.original}
               onStatusChange={handleStatusChange}
               user={user}
+              onEditSuccess={() => fetchIndents(searchTerm)}
               trigger={
                 <Button
                   variant="ghost"
@@ -539,8 +574,8 @@ export default function IndentPage() {
             </Button>
           </div>
         );
-      },
-    },
+      }
+    }
   ];
 
   return (
@@ -580,7 +615,7 @@ export default function IndentPage() {
             { label: "All", value: "all" },
             { label: "Pending", value: "Pending" },
             { label: "Approved", value: "Approved" },
-            { label: "Rejected", value: "Rejected" },
+            { label: "Rejected", value: "Rejected" }
           ].map((tab) => (
             <button
               key={tab.value}
@@ -589,7 +624,7 @@ export default function IndentPage() {
                 "pb-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all shrink-0",
                 selectedStatus === tab.value
                   ? "border-zinc-900 text-zinc-900"
-                  : "border-transparent text-zinc-400 hover:text-zinc-900",
+                  : "border-transparent text-zinc-400 hover:text-zinc-900"
               )}
             >
               {tab.label}
@@ -733,7 +768,7 @@ export default function IndentPage() {
                       "p-5 rounded-2xl border transition-all space-y-3",
                       item.status === "Rejected"
                         ? "bg-rose-50/20 border-rose-100/50 opacity-70"
-                        : "bg-white border-zinc-100 shadow-sm",
+                        : "bg-white border-zinc-100 shadow-sm"
                     )}
                   >
                     {/* First row: Item Name and Status Buttons */}
@@ -743,7 +778,7 @@ export default function IndentPage() {
                           "font-black text-sm tracking-tight truncate",
                           item.status === "Rejected"
                             ? "text-rose-900/60 line-through"
-                            : "text-zinc-950",
+                            : "text-zinc-950"
                         )}
                       >
                         {item.itemName}
@@ -757,15 +792,15 @@ export default function IndentPage() {
                           onClick={() => {
                             setApprovalItems((prev) =>
                               prev.map((it, i) =>
-                                i === idx ? { ...it, status: "Approved" } : it,
-                              ),
+                                i === idx ? { ...it, status: "Approved" } : it
+                              )
                             );
                           }}
                           className={cn(
                             "h-8 w-8 rounded-lg transition-all",
                             item.status === "Approved"
                               ? "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
-                              : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100",
+                              : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
                           )}
                           title="Approve Item"
                         >
@@ -778,15 +813,15 @@ export default function IndentPage() {
                           onClick={() => {
                             setApprovalItems((prev) =>
                               prev.map((it, i) =>
-                                i === idx ? { ...it, status: "Rejected" } : it,
-                              ),
+                                i === idx ? { ...it, status: "Rejected" } : it
+                              )
                             );
                           }}
                           className={cn(
                             "h-8 w-8 rounded-lg transition-all",
                             item.status === "Rejected"
                               ? "bg-rose-500 text-white shadow-sm hover:bg-rose-600"
-                              : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100",
+                              : "text-zinc-400 hover:text-rose-600 hover:bg-rose-100"
                           )}
                           title="Reject Item"
                         >
@@ -814,8 +849,8 @@ export default function IndentPage() {
                               prev.map((it, i) =>
                                 i === idx
                                   ? { ...it, quantity: Math.max(0, val) }
-                                  : it,
-                              ),
+                                  : it
+                              )
                             );
                           }}
                           className="h-10 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold focus:bg-white text-xs disabled:opacity-50 px-3"
@@ -830,7 +865,7 @@ export default function IndentPage() {
                           value={item.unitId}
                           onValueChange={(val) => {
                             const selectedUnit = units.find(
-                              (u) => (u._id || u.id) === val,
+                              (u) => (u._id || u.id) === val
                             );
                             setApprovalItems((prev) =>
                               prev.map((it, i) =>
@@ -841,10 +876,10 @@ export default function IndentPage() {
                                       unitName:
                                         selectedUnit?.label ||
                                         selectedUnit?.value ||
-                                        "Units",
+                                        "Units"
                                     }
-                                  : it,
-                              ),
+                                  : it
+                              )
                             );
                           }}
                           onOpenChange={(open) => {
@@ -897,8 +932,8 @@ export default function IndentPage() {
                           const val = e.target.value;
                           setApprovalItems((prev) =>
                             prev.map((it, i) =>
-                              i === idx ? { ...it, description: val } : it,
-                            ),
+                              i === idx ? { ...it, description: val } : it
+                            )
                           );
                         }}
                         className="h-10 w-full rounded-xl bg-zinc-50 border-zinc-100 font-medium text-xs disabled:opacity-50 px-3"

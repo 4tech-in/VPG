@@ -28,8 +28,8 @@ interface MenuProps {
 
 export function Menu({ isOpen }: MenuProps) {
   const pathname = usePathname();
-  const { user } = useAuthStore();
-  const menuList = getMenuList(pathname, user?.roleId?.name);
+  const { user, hasPermission } = useAuthStore();
+  const menuList = getMenuList(pathname, user?.roleId?.name, hasPermission);
   const sidebar = useStore(useSidebar, (x) => x);
 
   if (!sidebar) return null;

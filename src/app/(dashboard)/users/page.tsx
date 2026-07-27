@@ -132,7 +132,8 @@ const MemberCell = ({ staff }: { staff: Staff }) => {
 export default function UserPage() {
   const router = useRouter()
   const { user: loggedInUser, hasPermission } = useAuthStore()
-  const isSuperAdmin = loggedInUser?.roleId?.name === "superAdmin"
+  const roleName = loggedInUser?.roleId?.name?.toLowerCase();
+  const isSuperAdmin = roleName === "superadmin" || roleName === "admin";
 
   const {
     users,
