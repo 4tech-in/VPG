@@ -683,7 +683,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                             className={cn(
                               "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
                             )}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
                               setSelectedProjects((prev) =>
                                 isSelected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
                               )
@@ -691,7 +693,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                           >
                             <Checkbox 
                               checked={isSelected}
-                              className="mr-2"
+                              className="mr-2 pointer-events-none"
                             />
                             {p.name}
                           </div>
