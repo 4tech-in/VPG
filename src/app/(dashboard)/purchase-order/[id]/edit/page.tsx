@@ -308,7 +308,7 @@ export default function EditPOPage() {
                         <h4 className="text-sm font-black text-zinc-900 tracking-tight">Drop Location</h4>
                      </div>
                      <Textarea
-                        defaultValue="Site A - Main Store"
+                        defaultValue=""
                         className="min-h-[100px] rounded-2xl bg-zinc-50/50 border-zinc-100 p-6 font-bold text-xs focus:ring-teal-500 transition-all shadow-inner"
                      />
                   </div>

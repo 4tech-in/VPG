@@ -76,7 +76,7 @@ function CreatePOContent() {
   const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Form inputs state
-  const [dropLocation, setDropLocation] = useState("Site A - Main Store");
+  const [dropLocation, setDropLocation] = useState("");
   const [remark, setRemark] = useState("");
   const [notes, setNotes] = useState("");
   const [validFrom, setValidFrom] = useState("2026-05-12");
@@ -493,15 +493,12 @@ function CreatePOContent() {
                       </Badge>
                     </div>
 
-                    <div className="rounded-lg border border-zinc-200 overflow-x-auto shadow-sm">
-                      <table className="w-full text-left border-collapse min-w-[850px]">
+                    <div className="rounded-lg border border-zinc-200 shadow-sm">
+                      <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-zinc-50 border-b border-zinc-200">
                             <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
                               Item Information
-                            </th>
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-left">
-                              Description
                             </th>
                             <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center">
                               Quantity
@@ -517,11 +514,10 @@ function CreatePOContent() {
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-200 bg-white">
-                          {items.map((item, idx) => (
+                        {items.map((item, idx) => (
+                          <tbody key={idx} className="bg-white border-b border-zinc-200 last:border-b-0 group">
                             <tr
-                              key={idx}
-                              className="group hover:bg-zinc-50/50 transition-colors"
+                              className="hover:bg-zinc-50/50 transition-colors"
                             >
                               {/* 1. Item Info */}
                               <td className="px-4 py-3 align-middle">
@@ -540,20 +536,8 @@ function CreatePOContent() {
                                 </div>
                               </td>
 
-                              {/* 2. Description */}
-                              <td className="px-4 py-3 align-middle w-[180px]">
-                                <Input
-                                  placeholder="Details..."
-                                  value={item.description || ""}
-                                  onChange={(e) =>
-                                    handleDescriptionChange(idx, e.target.value)
-                                  }
-                                  className="h-9 rounded-md bg-white border-zinc-300 text-xs font-medium focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
-                                />
-                              </td>
-
                               {/* 3. Quantity */}
-                              <td className="px-4 py-3 align-middle text-center w-[140px]">
+                              <td className="px-4 py-3 align-middle text-center">
                                 <div className="relative flex items-center justify-center">
                                   <Input
                                     type="number"
@@ -569,18 +553,18 @@ function CreatePOContent() {
                                           : Number(e.target.value)
                                       )
                                     }
-                                    className="h-9 rounded-md bg-white border-zinc-300 text-xs font-semibold text-center pr-10 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
+                                    className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-bold text-center pr-10 focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
                                   />
-                                  <span className="absolute right-3 text-[10px] font-semibold text-zinc-500">
+                                  <span className="absolute right-3 text-[10px] font-bold text-zinc-500">
                                     {item.unit}
                                   </span>
                                 </div>
                               </td>
 
                               {/* 4. Unit Price */}
-                              <td className="px-4 py-3 align-middle text-center w-[140px]">
+                              <td className="px-4 py-3 align-middle text-center">
                                 <div className="relative flex items-center justify-center">
-                                  <div className="absolute left-3 text-xs font-medium text-zinc-500">
+                                  <div className="absolute left-3 text-xs font-bold text-zinc-500">
                                     ₹
                                   </div>
                                   <Input
@@ -595,35 +579,35 @@ function CreatePOContent() {
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="h-9 rounded-md bg-white border-zinc-300 text-xs font-semibold text-center pl-7 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-all shadow-sm"
+                                    className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-bold text-center pl-7 focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
                                   />
                                 </div>
                               </td>
 
                               {/* 5. Vendor */}
-                              <td className="px-4 py-3 align-middle text-center w-[180px]">
+                              <td className="px-4 py-3 align-middle text-center">
                                 <Select
                                   value={item.assignedVendorId || ""}
                                   onValueChange={(val) =>
                                     handleVendorAssignmentChange(idx, val)
                                   }
                                 >
-                                  <SelectTrigger className="h-9 rounded-md bg-white border-zinc-300 text-xs font-medium focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-sm">
+                                  <SelectTrigger className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-semibold focus:ring-2 focus:ring-[#0A5C53]/20 focus:border-[#0A5C53] transition-all shadow-sm">
                                     <SelectValue placeholder="Select Vendor" />
                                   </SelectTrigger>
-                                  <SelectContent className="rounded-md shadow-lg border border-zinc-200">
+                                  <SelectContent className="rounded-xl shadow-lg border border-zinc-200">
                                     {activeVendors.length > 0 ? (
                                       activeVendors.map((vendor) => (
                                         <SelectItem
                                           key={vendor._id || vendor.id}
                                           value={vendor._id || vendor.id}
-                                          className="text-xs font-medium cursor-pointer"
+                                          className="text-xs font-semibold cursor-pointer py-2"
                                         >
                                           {vendor.name}
                                         </SelectItem>
                                       ))
                                     ) : (
-                                      <div className="p-3 text-xs text-zinc-500 text-center font-medium">
+                                      <div className="p-3 text-xs text-zinc-500 text-center font-semibold">
                                         Select vendors first
                                       </div>
                                     )}
@@ -635,26 +619,30 @@ function CreatePOContent() {
                               <td className="px-4 py-3 align-middle text-right">
                                 <div className="flex items-center justify-end gap-3">
                                   <div className="flex flex-col items-end">
-                                    <span className="text-sm font-semibold text-zinc-900">
+                                    <span className="text-sm font-black text-zinc-900">
                                       ₹
                                       {(
                                         item.qty * (item.price || 0)
                                       ).toLocaleString("en-IN")}
                                     </span>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveItem(idx)}
-                                    className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
+                            <tr className="hover:bg-zinc-50/50 transition-colors">
+                              <td colSpan={5} className="px-4 pb-4 pt-1">
+                                <Input
+                                  placeholder="Add details, specifications, or notes for this item..."
+                                  value={item.description || ""}
+                                  onChange={(e) =>
+                                    handleDescriptionChange(idx, e.target.value)
+                                  }
+                                  className="h-10 rounded-xl bg-zinc-50/50 border-zinc-200 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
+                                />
+                              </td>
+                            </tr>
+                          </tbody>
+                        ))}
                       </table>
                     </div>
                   </div>

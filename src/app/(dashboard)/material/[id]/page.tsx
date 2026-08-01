@@ -775,7 +775,7 @@ export default function MaterialDetailPage() {
               <div className="space-y-3">
                 {[
                   { label: "Items Subtotal", val: `₹${Number(calculatedSubtotal).toLocaleString("en-IN")}` },
-                  { label: "GST / Taxes", val: `₹${Number(po.gst || 0).toLocaleString("en-IN")}` },
+                  { label: "GST / Taxes", val: `${Number(po.gst || 0).toLocaleString("en-IN")}%` },
                   { label: "Freight Charges", val: `₹${Number(po.freightCharges || 0).toLocaleString("en-IN")}` },
                   { label: "Packaging Charges", val: `₹${Number(po.packagingCharges || 0).toLocaleString("en-IN")}` },
                   { label: "Other Charges", val: `₹${Number(po.otherCharges || 0).toLocaleString("en-IN")}` },

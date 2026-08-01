@@ -817,7 +817,7 @@ export default function PODetailPage() {
                   },
                   {
                     label: "GST / Taxes",
-                    val: `₹${Number(po.gst || 0).toLocaleString("en-IN")}`
+                    val: `${Number(po.gst || 0).toLocaleString("en-IN")}%`
                   },
                   {
                     label: "Freight Charges",
