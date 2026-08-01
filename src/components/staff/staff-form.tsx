@@ -639,6 +639,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
               <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
               {isManager ? (
                 <Popover
+                  modal={true}
                   onOpenChange={(open) => {
                     if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
                       hasFetchedProjects.current = true
