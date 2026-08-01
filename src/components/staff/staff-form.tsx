@@ -683,10 +683,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                             className={cn(
                               "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
                             )}
-                            onClick={(e) => {
-                              // Ensure checkbox click is completely handled by this div
-                              e.preventDefault()
-                              e.stopPropagation()
+                            onClick={() => {
                               setSelectedProjects((prev) =>
                                 isSelected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
                               )
