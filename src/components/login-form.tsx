@@ -21,6 +21,7 @@ export function LoginForm({
   const [isLoading, setIsLoading] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   useEffect(() => {
     if (hasActiveSession()) {
@@ -53,6 +54,13 @@ export function LoginForm({
       })
 
       if (response && response.token) {
+        if (typeof window !== "undefined") {
+          if (rememberMe) {
+            localStorage.setItem('vpg-remember-me', 'true')
+          } else {
+            localStorage.setItem('vpg-remember-me', 'false')
+          }
+        }
         useAuthStore.getState().setAuth(response.token, response.data)
 
         toast.success("Login successful! Redirecting...")
@@ -137,7 +145,12 @@ export function LoginForm({
 
         <div className="flex items-center justify-between mt-2 mb-4">
           <div className="flex items-center space-x-2">
-            <Checkbox id="remember" className="data-[state=checked]:bg-[#c19b6c] data-[state=checked]:border-[#c19b6c] border-zinc-300 rounded" />
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={setRememberMe}
+              className="data-[state=checked]:bg-[#c19b6c] data-[state=checked]:border-[#c19b6c] border-zinc-300 rounded"
+            />
             <label
               htmlFor="remember"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-zinc-600"

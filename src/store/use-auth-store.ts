@@ -46,6 +46,7 @@ export const useAuthStore = create<AuthState>()(
         set({ token: null, user: null, isAuthenticated: false })
         if (typeof window !== "undefined") {
           localStorage.clear()
+          sessionStorage.clear()
         }
       },
       hasPermission: (permission: string) => {
@@ -57,7 +58,24 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "vpg-auth-store",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name: string): string | null => {
+          return localStorage.getItem(name) || sessionStorage.getItem(name)
+        },
+        setItem: (name: string, value: string): void => {
+          if (localStorage.getItem('vpg-remember-me') === 'true') {
+            localStorage.setItem(name, value)
+            sessionStorage.removeItem(name)
+          } else {
+            sessionStorage.setItem(name, value)
+            localStorage.removeItem(name)
+          }
+        },
+        removeItem: (name: string): void => {
+          localStorage.removeItem(name)
+          sessionStorage.removeItem(name)
+        }
+      })),
     }
   )
 )
