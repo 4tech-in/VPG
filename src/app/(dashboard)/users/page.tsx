@@ -396,6 +396,7 @@ export default function UserPage() {
           isSuperAdmin={isSuperAdmin}
           onSuccess={() => {
             setIsDialogOpen(false)
+             refetch()
           }}
         />
       </div>
