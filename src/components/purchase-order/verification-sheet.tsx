@@ -178,8 +178,8 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
               {activeDialog === "reject" && "Reject Receipt"}
             </DialogTitle>
             <DialogDescription>
-              {activeDialog === "approve" && "Are you sure you want to approve this delivery and mark the Purchase Order as Completed?"}
-              {activeDialog === "reject" && "Please provide a reason for rejecting this receipt. Stock will remain unchanged."}
+              {activeDialog === "approve" && "Are you sure you want Approve?"}
+              {activeDialog === "reject" && "Please provide a reason for rejecting this receipt."}
             </DialogDescription>
           </DialogHeader>
 
