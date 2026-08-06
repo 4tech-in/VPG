@@ -69,7 +69,8 @@ export function LoginForm({
         toast.error("Login failed. Unexpected response from server.")
       }
     } catch (error: any) {
-      // Errors handled by interceptor
+      const errorMessage = error?.response?.data?.message || error?.message || "Invalid credentials. Please try again."
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }

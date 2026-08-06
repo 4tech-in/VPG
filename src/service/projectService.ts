@@ -10,6 +10,7 @@ export type ApiProject = {
   status: "active" | "inactive"
   createdAt?: string
   file?: string
+  salary?: number
 }
 
 export type GetProjectsResponse = {
@@ -28,6 +29,7 @@ export type CreateProjectPayload = {
   startDate: string | Date
   notes?: string
   status: "active" | "inactive"
+  salary?: number
 }
 
 export const projectService = {
@@ -77,6 +79,7 @@ export const projectService = {
     formData.append("startDate", payload.startDate instanceof Date ? payload.startDate.toISOString() : String(payload.startDate))
     if (payload.notes) formData.append("notes", payload.notes)
     if (payload.status) formData.append("status", payload.status)
+    if (payload.salary !== undefined) formData.append("salary", String(payload.salary))
     if (payload.file) formData.append("file", payload.file)
 
     return apiRequest<ApiProject>("projects", {
@@ -91,6 +94,7 @@ export const projectService = {
       projectName: payload.projectName,
       notes: payload.notes,
       status: payload.status,
+      salary: payload.salary,
     }
 
     if (payload.address) {

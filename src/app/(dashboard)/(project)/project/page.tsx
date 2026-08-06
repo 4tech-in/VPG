@@ -291,6 +291,7 @@ export default function ProjectPage() {
                   projectNotes: editingProject.notes,
                   startDate: editingProject.startDate,
                   file: editingProject.file,
+                  salary: editingProject.salary,
                 } : undefined}
               />
             )}

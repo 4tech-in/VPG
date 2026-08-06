@@ -1,38 +1,38 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Country, State, City } from "country-state-city"
+import { useState, useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Country, State, City } from "country-state-city";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+  FormMessage
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  PopoverTrigger
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+  SelectValue
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -43,20 +43,29 @@ const formSchema = z.object({
   postalCode: z.string().min(1, "Postal code is required"),
   startDate: z.date({ message: "Start date is required" }),
   status: z.string().min(1, "Status is required"),
-  projectNotes: z.string().optional(),
-})
+  salary: z.any().optional(),
+  projectNotes: z.string().optional()
+});
 
 interface ProjectFormProps {
-  onSuccess?: () => void
-  initialValues?: any
-  onSubmit?: (values: any) => Promise<void>
+  onSuccess?: () => void;
+  initialValues?: any;
+  onSubmit?: (values: any) => Promise<void>;
 }
 
-export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: ProjectFormProps) {
-  const [selectedCountry, setSelectedCountry] = useState<string>(initialValues?.country || "")
-  const [selectedState, setSelectedState] = useState<string>(initialValues?.state || "")
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+export function ProjectForm({
+  onSuccess,
+  initialValues,
+  onSubmit: onSubmitProp
+}: ProjectFormProps) {
+  const [selectedCountry, setSelectedCountry] = useState<string>(
+    initialValues?.country || ""
+  );
+  const [selectedState, setSelectedState] = useState<string>(
+    initialValues?.state || ""
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,23 +77,24 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
       city: initialValues?.city || "",
       postalCode: initialValues?.postalCode || "",
       status: initialValues?.status || "Active",
+      salary: initialValues?.salary || 0,
       projectNotes: initialValues?.projectNotes || "",
-      startDate: initialValues?.startDate || undefined,
-    },
-  })
+      startDate: initialValues?.startDate || undefined
+    }
+  });
 
   // Synchronize internal state and form when initialValues change
   useEffect(() => {
     if (initialValues) {
-      setSelectedCountry(initialValues.country || "")
-      setSelectedState(initialValues.state || "")
+      setSelectedCountry(initialValues.country || "");
+      setSelectedState(initialValues.state || "");
       form.reset({
         ...form.getValues(),
-        ...initialValues,
-      })
+        ...initialValues
+      });
     } else {
-      setSelectedCountry("")
-      setSelectedState("")
+      setSelectedCountry("");
+      setSelectedState("");
       form.reset({
         projectName: "",
         streetAddress: "",
@@ -93,46 +103,51 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
         city: "",
         postalCode: "",
         status: "Active",
-        projectNotes: "",
-      })
+        salary: 0,
+        projectNotes: ""
+      });
     }
-  }, [initialValues, form])
+  }, [initialValues, form]);
 
-  const allCountries = Country.getAllCountries()
-  const allStates = selectedCountry ? State.getStatesOfCountry(selectedCountry) : []
-  const allCities = selectedState ? City.getCitiesOfState(selectedCountry, selectedState) : []
+  const allCountries = Country.getAllCountries();
+  const allStates = selectedCountry
+    ? State.getStatesOfCountry(selectedCountry)
+    : [];
+  const allCities = selectedState
+    ? City.getCitiesOfState(selectedCountry, selectedState)
+    : [];
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const addressPayload = JSON.stringify({
         streetAddress: values.streetAddress,
         city: values.city,
         state: values.state,
         country: values.country,
-        postalCode: values.postalCode,
-      })
+        postalCode: values.postalCode
+      });
       const payload = {
         projectName: values.projectName,
         address: addressPayload,
         startDate: values.startDate,
+        salary: values.salary,
         notes: values.projectNotes || "",
-        status: values.status === "Active" ? "active" : "inactive" as any,
-        file: selectedFile || undefined,
-      }
-      await onSubmitProp?.(payload)
-      onSuccess?.()
+        status: values.status === "Active" ? "active" : ("inactive" as any),
+        file: selectedFile || undefined
+      };
+      await onSubmitProp?.(payload);
+      onSuccess?.();
     } catch (error) {
       // Handled in hooks
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-        
         {/* Row 1: Project Name + Street Address */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
@@ -140,7 +155,9 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="projectName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Project Name <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  Project Name <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter project name" {...field} />
                 </FormControl>
@@ -153,7 +170,9 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="streetAddress"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Street Address <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  Street Address <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter street address" {...field} />
                 </FormControl>
@@ -170,17 +189,19 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="country"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Country <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  Country <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     onChange={(e) => {
-                      const val = e.target.value
-                      field.onChange(val)
-                      setSelectedCountry(val)
-                      setSelectedState("")
-                      form.setValue("state", "")
-                      form.setValue("city", "")
+                      const val = e.target.value;
+                      field.onChange(val);
+                      setSelectedCountry(val);
+                      setSelectedState("");
+                      form.setValue("state", "");
+                      form.setValue("city", "");
                     }}
                     value={field.value || ""}
                   >
@@ -202,15 +223,17 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="state"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>State / Province <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  State / Province <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     onChange={(e) => {
-                      const val = e.target.value
-                      field.onChange(val)
-                      setSelectedState(val)
-                      form.setValue("city", "")
+                      const val = e.target.value;
+                      field.onChange(val);
+                      setSelectedState(val);
+                      form.setValue("city", "");
                     }}
                     value={field.value || ""}
                     disabled={!selectedCountry}
@@ -233,7 +256,9 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="city"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>City <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  City <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -243,7 +268,10 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
                   >
                     <option value="">Select city</option>
                     {allCities.map((city) => (
-                      <option key={`${city.name}-${city.latitude}`} value={city.name}>
+                      <option
+                        key={`${city.name}-${city.latitude}`}
+                        value={city.name}
+                      >
                         {city.name}
                       </option>
                     ))}
@@ -262,7 +290,9 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="postalCode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Postal Code <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  Postal Code <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter postal code" {...field} />
                 </FormControl>
@@ -275,14 +305,16 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
             name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Start Date <span className="text-destructive">*</span></FormLabel>
+                <FormLabel>
+                  Start Date <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <input
                     type="date"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     onChange={(e) => {
-                      const dateStr = e.target.value
-                      field.onChange(dateStr ? new Date(dateStr) : undefined)
+                      const dateStr = e.target.value;
+                      field.onChange(dateStr ? new Date(dateStr) : undefined);
                     }}
                     value={field.value ? format(field.value, "yyyy-MM-dd") : ""}
                   />
@@ -299,7 +331,9 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
           name="status"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>
+                Status <span className="text-destructive">*</span>
+              </FormLabel>
               <FormControl>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -309,6 +343,26 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Salary */}
+        <FormField
+          control={form.control}
+          name="salary"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Salary</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter salary"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -336,22 +390,24 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
 
         {/* File Upload */}
         <div className="space-y-2">
-          <label className="text-sm font-bold text-zinc-600">Project File / Document (optional)</label>
-          <Input 
-            type="file" 
+          <label className="text-sm font-bold text-zinc-600">
+            Project File / Document (optional)
+          </label>
+          <Input
+            type="file"
             onChange={(e) => {
-              const selectedFile = e.target.files?.[0] || null
-              setSelectedFile(selectedFile)
+              const selectedFile = e.target.files?.[0] || null;
+              setSelectedFile(selectedFile);
             }}
             className="h-10 cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           {initialValues?.file && (
             <div className="text-xs text-zinc-500 mt-1">
               Current File:{" "}
-              <a 
-                href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${initialValues.file}`} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={`${process.env.NEXT_PUBLIC_BASE_URL?.split("/api")[0] || ""}${initialValues.file}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-primary font-bold hover:underline"
               >
                 {initialValues.file.split("/").pop()}
@@ -360,9 +416,13 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
           )}
         </div>
 
-
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" type="button" onClick={onSuccess} disabled={isSubmitting}>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={onSuccess}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
@@ -371,6 +431,5 @@ export function ProjectForm({ onSuccess, initialValues, onSubmit: onSubmitProp }
         </div>
       </form>
     </Form>
-  )
+  );
 }
-

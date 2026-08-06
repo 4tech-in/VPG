@@ -108,23 +108,7 @@ const MemberCell = ({ staff }: { staff: Staff }) => {
         </div>
       </div>
 
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 rounded-lg text-zinc-400 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
-              onClick={handleLoginAs}
-            >
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent className="rounded-xl border border-zinc-100 bg-white/95 px-3 py-2 text-xs font-bold text-zinc-900 shadow-xl backdrop-blur-md">
-            <span>Login as user {staff.name}</span>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+ 
     </div>
   )
 }

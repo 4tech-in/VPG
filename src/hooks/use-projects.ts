@@ -16,6 +16,7 @@ export type Project = {
   status: "Active" | "Inactive"
   createdAt: string
   file?: string
+  salary?: number
 }
 
 const mapApiProjectToProject = (apiProject: ApiProject): Project => {
@@ -53,6 +54,7 @@ const mapApiProjectToProject = (apiProject: ApiProject): Project => {
     status: apiProject.status === "active" ? "Active" : "Inactive",
     createdAt: apiProject.createdAt ? apiProject.createdAt.split("T")[0] : "",
     file: apiProject.file,
+    salary: apiProject.salary || 0,
   }
 }
 

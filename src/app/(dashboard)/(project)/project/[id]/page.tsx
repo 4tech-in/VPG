@@ -19,7 +19,8 @@ import {
   MoreVertical,
   Eye,
   Trash,
-  LayoutGrid
+  LayoutGrid,
+  Banknote
 } from "lucide-react"
 import { ProjectStructure } from "@/components/project-structure"
 import { Button } from "@/components/ui/button"
@@ -699,7 +700,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                 </div>
 
                 {/* Primary Info Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-primary/60">
                       <Calendar className="h-4 w-4" />
@@ -722,6 +723,14 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                       <span className="text-xs font-bold uppercase tracking-wider">Address</span>
                     </div>
                     <p className="text-lg font-black text-zinc-900">{completeAddress}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-primary/60">
+                      <Banknote className="h-4 w-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Salary</span>
+                    </div>
+                    <p className="text-lg font-black text-zinc-900">{project.salary !== undefined && project.salary !== null ? `₹${project.salary.toLocaleString('en-IN')}` : "N/A"}</p>
                   </div>
                 </div>
 
