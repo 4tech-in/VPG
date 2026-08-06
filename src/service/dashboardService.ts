@@ -9,7 +9,14 @@ export interface DashboardStats {
   pendingTaskList?: any[];
   pendingLeaveRequests: number;
   absentList: any[];
+  assetMaintenanceList?: any[];
   dateRange?: { startDate: string; endDate: string };
+  requestSummary?: {
+    indents: { total: number; pending: number };
+    pos: { total: number; pending: number };
+    assetTransfers: { total: number; pending: number };
+    assetMaintenances: { total: number; pending: number };
+  };
 }
 
 export const dashboardService = {

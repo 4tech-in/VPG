@@ -7,6 +7,7 @@ import { dashboardService, type DashboardStats } from "@/service/dashboardServic
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import Image from "next/image";
 import { 
   Users, 
@@ -25,7 +26,8 @@ import {
   Package,
   Wrench,
   ArrowDownRight,
-  Check
+  Check,
+  Eye
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -38,6 +40,7 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState("today");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [selectedMaintenance, setSelectedMaintenance] = useState<any>(null);
 
   useEffect(() => {
     purchaseOrderService.getPendingVerifications()
@@ -160,7 +163,8 @@ export default function DashboardPage() {
               color: "text-emerald-500", 
               bg: "bg-emerald-50",
               graphColor: "text-emerald-500",
-              points: "0,15 10,25 20,10 30,15 40,5 50,15 60,0"
+              points: "0,15 10,25 20,10 30,15 40,5 50,15 60,0",
+              link: "/attendance"
             },
             { 
               title: "Absent", 
@@ -170,7 +174,8 @@ export default function DashboardPage() {
               color: "text-rose-500", 
               bg: "bg-rose-50",
               graphColor: "text-rose-500",
-              points: "0,25 10,20 20,30 30,15 40,25 50,10 60,20"
+              points: "0,25 10,20 20,30 30,15 40,25 50,10 60,20",
+              link: "/attendance"
             },
             { 
               title: "On Leave", 
@@ -180,7 +185,8 @@ export default function DashboardPage() {
               color: "text-amber-500", 
               bg: "bg-amber-50",
               graphColor: "text-amber-500",
-              points: "0,20 10,15 20,25 30,10 40,20 50,5 60,15"
+              points: "0,20 10,15 20,25 30,10 40,20 50,5 60,15",
+              link: "/leave"
             },
             { 
               title: "Total Employees", 
@@ -190,7 +196,8 @@ export default function DashboardPage() {
               color: "text-blue-500", 
               bg: "bg-blue-50",
               graphColor: "text-blue-500",
-              points: "0,25 10,20 20,22 30,15 40,18 50,5 60,10"
+              points: "0,25 10,20 20,22 30,15 40,18 50,5 60,10",
+              link: "/users"
             },
           ].map((stat, i) => (
             <motion.div
@@ -199,7 +206,10 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <Card className="border border-zinc-100 shadow-sm rounded-2xl overflow-hidden bg-white">
+              <Card 
+                className="border border-zinc-100 shadow-sm rounded-2xl overflow-hidden bg-white cursor-pointer hover:shadow-md transition-all hover:-translate-y-1"
+                onClick={() => router.push(stat.link)}
+              >
                 <CardContent className="p-5 flex flex-col justify-between h-full">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -241,7 +251,7 @@ export default function DashboardPage() {
                 <UserX className="h-5 w-5 text-rose-500" />
                 <CardTitle className="text-sm font-black text-zinc-800">Absent Employees Today</CardTitle>
               </div>
-              <Button variant="link" className="text-rose-600 font-bold text-xs p-0 h-auto">View All</Button>
+              <Button variant="link" className="text-rose-600 font-bold text-xs p-0 h-auto" onClick={() => router.push("/attendance")}>View All</Button>
             </CardHeader>
             <CardContent className="p-0 flex-1">
               <div className="overflow-x-auto h-full max-h-[350px]">
@@ -407,7 +417,7 @@ export default function DashboardPage() {
                 <ClipboardList className="h-5 w-5 text-blue-500" />
                 <CardTitle className="text-sm font-black text-zinc-800">Pending Tasks</CardTitle>
               </div>
-              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto">View All</Button>
+              <Button variant="link" className="text-blue-600 font-bold text-xs p-0 h-auto" onClick={() => router.push("/tasks")}>View All</Button>
             </CardHeader>
             <CardContent className="p-0 flex-1">
               <div className="overflow-x-auto h-full">
@@ -476,13 +486,38 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-black text-zinc-800">Request Summary</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="p-5 pt-2 flex flex-col gap-4 flex-1 justify-center">
+            <CardContent className="p-5 pt-2 flex flex-col gap-3 flex-1 justify-center overflow-y-auto">
               {[
-                { label: "Indent Requests", value: "12", pending: "03 Pending", icon: FileText, bg: "bg-indigo-50", color: "text-indigo-600" },
-                { label: "PO Requests", value: "08", pending: "02 Pending", icon: ShoppingCart, bg: "bg-blue-50", color: "text-blue-500" },
-                { label: "Asset Requests", value: "06", pending: "01 Pending", icon: Package, bg: "bg-emerald-50", color: "text-emerald-500" },
+                { 
+                  label: "Indent Requests", 
+                  value: (stats?.requestSummary?.indents?.total || 0).toString().padStart(2, "0"), 
+                  pending: `${(stats?.requestSummary?.indents?.pending || 0).toString().padStart(2, "0")} Pending`, 
+                  icon: FileText, bg: "bg-indigo-50", color: "text-indigo-600", link: "/indent" 
+                },
+                { 
+                  label: "PO Requests", 
+                  value: (stats?.requestSummary?.pos?.total || 0).toString().padStart(2, "0"), 
+                  pending: `${(stats?.requestSummary?.pos?.pending || 0).toString().padStart(2, "0")} Pending`, 
+                  icon: ShoppingCart, bg: "bg-blue-50", color: "text-blue-500", link: "/purchase-order" 
+                },
+                { 
+                  label: "Asset Transfers", 
+                  value: (stats?.requestSummary?.assetTransfers?.total || 0).toString().padStart(2, "0"), 
+                  pending: `${(stats?.requestSummary?.assetTransfers?.pending || 0).toString().padStart(2, "0")} Pending`, 
+                  icon: Package, bg: "bg-emerald-50", color: "text-emerald-500", link: "/asset-site-transfers" 
+                },
+                { 
+                  label: "Asset Maintenance", 
+                  value: (stats?.requestSummary?.assetMaintenances?.total || 0).toString().padStart(2, "0"), 
+                  pending: `${(stats?.requestSummary?.assetMaintenances?.pending || 0).toString().padStart(2, "0")} Pending`, 
+                  icon: Wrench, bg: "bg-orange-50", color: "text-orange-500", link: "/asset-maintenances" 
+                },
               ].map((req, i) => (
-                <div key={i} className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={i} 
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-zinc-100 bg-white shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-0.5"
+                  onClick={() => router.push(req.link)}
+                >
                   <div className="flex items-center gap-4">
                     <div className={cn("p-2.5 rounded-xl", req.bg, req.color)}>
                       <req.icon className="h-5 w-5" />
@@ -502,8 +537,120 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Lower Section: Recent Asset Maintenance */}
+        <div className="grid grid-cols-1 mt-6">
+          <Card className="border border-zinc-100 shadow-sm rounded-2xl bg-white overflow-hidden flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between py-4 border-b border-zinc-50/50">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-orange-500" />
+                <CardTitle className="text-sm font-black text-zinc-800">Recent Asset Maintenance</CardTitle>
+              </div>
+              <Button variant="link" className="text-orange-600 font-bold text-xs p-0 h-auto" onClick={() => router.push("/asset-maintenances")}>View All</Button>
+            </CardHeader>
+            <CardContent className="p-0 flex-1">
+              <div className="overflow-x-auto h-full">
+                <table className="w-full text-sm h-full">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-[11px] uppercase tracking-wider text-zinc-500 font-bold bg-zinc-50/50">
+                      <th className="text-left py-3 px-6 font-semibold">Asset</th>
+                      <th className="text-left py-3 px-6 font-semibold">Vendor</th>
+                      <th className="text-left py-3 px-6 font-semibold">From Date</th>
+                      <th className="text-left py-3 px-6 font-semibold">To Date</th>
+                      <th className="text-right py-3 px-6 font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-50">
+                    {stats?.assetMaintenanceList && stats.assetMaintenanceList.length > 0 ? (
+                      stats.assetMaintenanceList.map((row, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-3 px-6 font-bold text-xs text-zinc-800">
+                            {row.assetId?.assetName || row.assetId?.name || "Unknown"}
+                            {(row.assetId?.type || row.assetId?.serialNumber) && (
+                              <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-normal mt-0.5">
+                                {row.assetId?.type || "Asset"} {row.assetId?.serialNumber ? `(${row.assetId.serialNumber})` : ''}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">
+                            {row.vendorId?.vendorName || row.vendorId?.name || "N/A"}
+                          </td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.fromDate ? new Date(row.fromDate).toLocaleDateString() : "-"}</td>
+                          <td className="py-3 px-6 text-xs text-zinc-600 font-medium">{row.toDate ? new Date(row.toDate).toLocaleDateString() : "-"}</td>
+                          <td className="py-3 px-6 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSelectedMaintenance(row)}
+                              className="h-7 text-[10px] font-bold px-2"
+                            >
+                              <Eye className="h-3 w-3 mr-1" /> View
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-zinc-500 font-bold text-xs">No recent maintenance records found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
        
       </div>
+
+      {/* Details Dialog */}
+      <Dialog open={!!selectedMaintenance} onOpenChange={(open) => !open && setSelectedMaintenance(null)}>
+        <DialogContent className="max-w-2xl bg-white border-zinc-200 p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="p-6 border-b border-zinc-100 bg-zinc-50/50">
+            <DialogTitle className="text-xl font-black text-zinc-900">Asset Maintenance Details</DialogTitle>
+            <DialogDescription className="font-semibold text-zinc-500 text-sm">
+              Complete details of the maintenance record
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMaintenance && (
+            <div className="p-6 grid grid-cols-2 gap-x-8 gap-y-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Name</p>
+                <p className="font-bold text-sm text-zinc-900">{selectedMaintenance.assetId?.assetName || selectedMaintenance.assetId?.name || "Unknown"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Type / Serial No</p>
+                <p className="font-bold text-sm text-zinc-700">
+                  {selectedMaintenance.assetId?.type || "N/A"} {selectedMaintenance.assetId?.serialNumber ? `(${selectedMaintenance.assetId.serialNumber})` : ''}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vendor</p>
+                <p className="font-bold text-sm text-zinc-900">{selectedMaintenance.vendorId?.vendorName || selectedMaintenance.vendorId?.name || "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Company Name</p>
+                <p className="font-bold text-sm text-zinc-700">{selectedMaintenance.vendorId?.companyName || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Maintenance Period</p>
+                <p className="font-bold text-sm text-zinc-700">
+                  {selectedMaintenance.fromDate ? new Date(selectedMaintenance.fromDate).toLocaleDateString() : "-"} 
+                  {" to "} 
+                  {selectedMaintenance.toDate ? new Date(selectedMaintenance.toDate).toLocaleDateString() : "-"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Created By</p>
+                <p className="font-bold text-sm text-zinc-700">{selectedMaintenance.createdBy?.name || "-"} <span className="text-zinc-400 font-normal">({selectedMaintenance.createdBy?.email || "-"})</span></p>
+              </div>
+              <div className="col-span-2 space-y-1 bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Notes</p>
+                <p className="font-medium text-sm text-zinc-800 whitespace-pre-wrap">{selectedMaintenance.notes || "No additional notes provided."}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ContentLayout>
   );
 }
