@@ -158,6 +158,23 @@ export default function MaterialMasterPage() {
     });
   }, [purchaseOrders, searchQuery, statusFilter]);
 
+  // Compute summary stats for the filtered POs
+  const summaryStats = useMemo(() => {
+    let totalItems = 0;
+    let totalPrice = 0;
+    
+    filteredPOs.forEach((po) => {
+      totalPrice += Number(po.totalAmount) || 0;
+      if (po.items && Array.isArray(po.items)) {
+        po.items.forEach((item: any) => {
+          totalItems += Number(item.orderQty) || 1;
+        });
+      }
+    });
+
+    return { totalItems, totalPrice };
+  }, [filteredPOs]);
+
   // Count helper for Approved POs
   const approvedPOCount = useMemo(() => {
     return purchaseOrders.filter((po) => po.status === "Approved").length;
@@ -684,6 +701,24 @@ export default function MaterialMasterPage() {
               {tab.label}
             </button>
           ))}
+        </div>
+
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
+            <p className="text-2xl font-black text-zinc-800">{filteredPOs.length}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Items (Qty)</p>
+            <p className="text-2xl font-black text-indigo-600">{summaryStats.totalItems}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Value</p>
+            <p className="text-2xl font-black text-emerald-600">
+              ₹{summaryStats.totalPrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            </p>
+          </div>
         </div>
 
         {/* Table Board */}
