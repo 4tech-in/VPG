@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,18 @@ import {
   ClipboardList,
   RefreshCw,
   Eye,
-  Layers
+  Layers,
+  Filter
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
+import { useProjects } from "@/hooks/use-projects";
+import { useVendors } from "@/hooks/use-vendors";
+import { useItems } from "@/hooks/use-items";
+import { useGroups } from "@/hooks/use-groups";
+import { useSubGroups } from "@/hooks/use-sub-groups";
+import { assetService } from "@/service/assets.api";
 
 export default function MaterialMasterPage() {
   const router = useRouter();
@@ -41,6 +48,32 @@ export default function MaterialMasterPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [showPOFilters, setShowPOFilters] = useState(false);
+  const [poFilters, setPoFilters] = useState({
+    projectId: "",
+    vendorId: "",
+    itemId: "",
+    groupId: "",
+    subGroupId: "",
+    dateFrom: "",
+    dateTo: "",
+    status: "",
+    purchaseOrderType: "material"
+  });
+
+  const { projects } = useProjects();
+  const { vendors } = useVendors();
+  const { items } = useItems();
+  const { groups } = useGroups();
+  const { subGroups } = useSubGroups();
+
+  const [assets, setAssets] = useState<any[]>([]);
+
+  useEffect(() => {
+    assetService.getAssets({ limit: 1000 }).then(res => {
+      setAssets(res.data || []);
+    }).catch(console.error);
+  }, []);
 
   // Receive Dialog State
   const [isReceiveOpen, setIsReceiveOpen] = useState(false);
@@ -57,29 +90,38 @@ export default function MaterialMasterPage() {
   >({});
   const [isIssuingSubmit, setIsIssuingSubmit] = useState(false);
 
-  const fetchPurchaseOrders = async () => {
+  const fetchPurchaseOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await purchaseOrderService.getPurchaseOrders({
         limit: 200,
-        purchaseOrderType: "material"
+        purchaseOrderType: poFilters.purchaseOrderType || undefined,
+        projectId: poFilters.projectId || undefined,
+        vendorId: poFilters.vendorId || undefined,
+        itemId: poFilters.itemId || undefined,
+        groupId: poFilters.groupId || undefined,
+        subGroupId: poFilters.subGroupId || undefined,
+        dateFrom: poFilters.dateFrom || undefined,
+        dateTo: poFilters.dateTo || undefined,
+        status: poFilters.status || undefined
       });
       const pos = response.data || [];
 
-      // Filter out POs that are Draft, PendingApproval, Rejected, or Cancelled
-      // Only keep POs that are Approved, Ordered, PartiallyReceived, Received, or Issued
-      const activePOs = pos.filter(
-        (po: any) =>
-          [
-            "Approved",
-            "Ordered",
-            "PartiallyReceived",
-            "Received",
-            "Issued",
-            "Completed",
-            "PendingVerification"
-          ].includes(po.status) && po.purchaseOrderType === "material"
-      );
+      // Filter out POs that are Draft, PendingApproval, Rejected, or Cancelled if no status is chosen
+      const activePOs = poFilters.status 
+        ? pos 
+        : pos.filter(
+            (po: any) =>
+              [
+                "Approved",
+                "Ordered",
+                "PartiallyReceived",
+                "Received",
+                "Issued",
+                "Completed",
+                "PendingVerification"
+              ].includes(po.status)
+          );
       setPurchaseOrders(activePOs);
     } catch (err: any) {
       console.error(err);
@@ -87,11 +129,11 @@ export default function MaterialMasterPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [poFilters]);
 
   useEffect(() => {
     fetchPurchaseOrders();
-  }, []);
+  }, [fetchPurchaseOrders]);
 
   // Filtered POs list based on search and status tabs
   const filteredPOs = useMemo(() => {
@@ -459,6 +501,14 @@ export default function MaterialMasterPage() {
             )}
 
             <Button
+              variant={showPOFilters ? "default" : "outline"}
+              onClick={() => setShowPOFilters(!showPOFilters)}
+              className="h-11 rounded-xl px-4 border-zinc-200 gap-2 font-bold text-sm shadow-sm transition-all text-zinc-600 hover:text-zinc-900"
+            >
+              <Filter className="h-4 w-4" />
+              Filters {Object.values(poFilters).filter(Boolean).length > 0 && `(${Object.values(poFilters).filter(Boolean).length})`}
+            </Button>
+            <Button
               variant="outline"
               onClick={fetchPurchaseOrders}
               className="h-11 w-11 rounded-xl p-0 border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800"
@@ -468,6 +518,148 @@ export default function MaterialMasterPage() {
             </Button>
           </div>
         </div>
+
+        {/* PO Filters Panel */}
+        {showPOFilters && (
+          <div className="bg-white rounded-[2rem] border border-zinc-200/60 shadow-sm p-6 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-4 -mt-4">
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Type</Label>
+              <select 
+                value={poFilters.purchaseOrderType}
+                onChange={e => setPoFilters(prev => ({ ...prev, purchaseOrderType: e.target.value }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+              >
+                <option value="material">Material</option>
+                <option value="assets">Asset</option>
+                <option value="">All</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Status</Label>
+              <select 
+                value={poFilters.status}
+                onChange={e => setPoFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+              >
+                <option value="">All Statuses</option>
+                <option value="Approved">Approved</option>
+                <option value="Ordered">Ordered</option>
+                <option value="PartiallyReceived">Partially Received</option>
+                <option value="Received">Received</option>
+                <option value="Issued">Issued (Completed)</option>
+                <option value="PendingVerification">Pending Verification</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Project</Label>
+              <select 
+                value={poFilters.projectId}
+                onChange={e => setPoFilters(prev => ({ ...prev, projectId: e.target.value }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+              >
+                <option value="">All Projects</option>
+                {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vendor</Label>
+              <select 
+                value={poFilters.vendorId}
+                onChange={e => setPoFilters(prev => ({ ...prev, vendorId: e.target.value }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+              >
+                <option value="">All Vendors</option>
+                {vendors.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Group</Label>
+              <select 
+                value={poFilters.groupId}
+                onChange={e => setPoFilters(prev => ({ ...prev, groupId: e.target.value, subGroupId: "", itemId: "" }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+                disabled={poFilters.purchaseOrderType === "assets"}
+              >
+                <option value="">All Groups</option>
+                {groups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Sub Group</Label>
+              <select 
+                value={poFilters.subGroupId}
+                onChange={e => setPoFilters(prev => ({ ...prev, subGroupId: e.target.value, itemId: "" }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+                disabled={poFilters.purchaseOrderType === "assets"}
+              >
+                <option value="">All Sub Groups</option>
+                {subGroups.filter((s: any) => !poFilters.groupId || s.groupId === poFilters.groupId).map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.subGroup}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                {poFilters.purchaseOrderType === "assets" ? "Asset" : "Item"}
+              </Label>
+              <select 
+                value={poFilters.itemId}
+                onChange={e => setPoFilters(prev => ({ ...prev, itemId: e.target.value }))}
+                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
+              >
+                <option value="">{poFilters.purchaseOrderType === "assets" ? "All Assets" : "All Items"}</option>
+                {poFilters.purchaseOrderType === "assets" 
+                  ? assets.map((a: any) => (
+                      <option key={a._id} value={a._id}>{a.name}</option>
+                    ))
+                  : items.filter((i: any) => 
+                      (!poFilters.groupId || i.groupId === poFilters.groupId) &&
+                      (!poFilters.subGroupId || i.subGroupId === poFilters.subGroupId)
+                    ).map((i: any) => (
+                      <option key={i.id} value={i.id}>{i.name}</option>
+                    ))
+                }
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Date From</Label>
+              <Input 
+                type="date"
+                value={poFilters.dateFrom}
+                onChange={e => setPoFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="h-11 rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Date To</Label>
+              <Input 
+                type="date"
+                value={poFilters.dateTo}
+                onChange={e => setPoFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="h-11 rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm"
+              />
+            </div>
+
+            <div className="space-y-2 flex items-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setPoFilters({ projectId: "", vendorId: "", itemId: "", groupId: "", subGroupId: "", dateFrom: "", dateTo: "", status: "", purchaseOrderType: "material" })}
+                className="h-11 w-full rounded-xl font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-100"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Tab-like Filters */}
         <div className="flex items-center gap-2 border-b border-zinc-200 pb-px overflow-x-auto">
