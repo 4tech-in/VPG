@@ -35,6 +35,8 @@ type Menu = {
   icon: LucideIcon;
   submenus?: Submenu[];
   permission?: string;
+  iconBg?: string;
+  iconColor?: string;
 };
 
 type Group = {
@@ -57,26 +59,40 @@ export function getMenuList(
           label: "Dashboard",
           icon: LayoutGrid,
           submenus: [],
-          permission: "dashboard:view"
+          permission: "dashboard:view",
+          iconBg: "bg-blue-50",
+          iconColor: "text-blue-500"
         },
         {
-          href: "/users",
-          label: "Staff",
+          href: "",
           icon: User,
-          submenus: [],
-          permission: "user:view"
-        },
-        {
-          href: "/livetracking",
-          label: "Live Tracking",
-          icon: LucideView,
-          submenus: [],
-          permission: "livetracking:view"
+          label: "User Management",
+          iconBg: "bg-teal-50",
+          iconColor: "text-teal-600",
+          submenus: [
+            {
+              href: "/users",
+              label: "Staff",
+              permission: "user:view"
+            },
+            {
+              href: "/livetracking",
+              label: "Live Tracking",
+              permission: "livetracking:view"
+            },
+            {
+              href: "/advance",
+              label: "Advance",
+              permission: "advance:view"
+            }
+          ]
         },
         {
           href: "",
           icon: ShoppingCart,
           label: "Purchase",
+          iconBg: "bg-emerald-50",
+          iconColor: "text-emerald-500",
           submenus: [
             {
               href: "/indent",
@@ -87,6 +103,11 @@ export function getMenuList(
               href: "/purchase-order",
               label: "Purchase Orders",
               permission: "purchase-order:view"
+            },
+            {
+              href: "/item",
+              label: "Item",
+              permission: "item:view"
             }
           ]
         },
@@ -94,12 +115,9 @@ export function getMenuList(
           href: "",
           icon: Workflow,
           label: "Project",
+          iconBg: "bg-blue-50",
+          iconColor: "text-blue-500",
           submenus: [
-            {
-              href: "/item",
-              label: "Item",
-              permission: "item:view"
-            },
             {
               href: "/project",
               label: "Project",
@@ -112,19 +130,25 @@ export function getMenuList(
           label: "Vendor",
           icon: Scale,
           submenus: [],
-          permission: "vendor:view"
+          permission: "vendor:view",
+          iconBg: "bg-orange-50",
+          iconColor: "text-orange-500"
         },
         {
           href: "/geofence",
           label: "Geofence",
           icon: LocateIcon,
           submenus: [],
-          permission: "geofence:view"
+          permission: "geofence:view",
+          iconBg: "bg-purple-50",
+          iconColor: "text-purple-500"
         },
         {
           href: "",
           label: "Asset",
           icon: Store,
+          iconBg: "bg-emerald-50",
+          iconColor: "text-emerald-500",
           submenus: [
             {
               href: "/stores",
@@ -143,16 +167,13 @@ export function getMenuList(
             }
           ]
         },
-        {
-          href:"/advance",
-          label:"Advance",
-          icon:DollarSign,
-          permission: "advance:view"
-        },
+
         {
           href: "",
           label: "Material",
           icon: Box,
+          iconBg: "bg-rose-50",
+          iconColor: "text-rose-500",
           submenus: [
             {
               href: "/material",
@@ -181,14 +202,18 @@ export function getMenuList(
           label: "Attendance",
           icon: User2,
           submenus: [],
-          permission: "attendance:view"
+          permission: "attendance:view",
+          iconBg: "bg-blue-50",
+          iconColor: "text-blue-500"
         },
         {
           href: "/Attendance-policy",
           label: "Attendance Policy",
           icon: ShieldCheck,
           submenus: [],
-          permission: "attendance-policy:view"
+          permission: "attendance-policy:view",
+          iconBg: "bg-emerald-50",
+          iconColor: "text-emerald-500"
         }
       ]
     },
@@ -200,7 +225,9 @@ export function getMenuList(
           label: "Role Master",
           icon: User,
           submenus: [],
-          permission: "role:view"
+          permission: "role:view",
+          iconBg: "bg-purple-50",
+          iconColor: "text-purple-500"
         },
         
         {
@@ -208,7 +235,9 @@ export function getMenuList(
           label: "Task Master",
           icon: Workflow,
           submenus: [],
-          permission: "task:view"
+          permission: "task:view",
+          iconBg: "bg-blue-50",
+          iconColor: "text-blue-500"
         }
       ]
     },
@@ -219,6 +248,8 @@ export function getMenuList(
           href: "",
           icon: Settings,
           label: "Settings",
+          iconBg: "bg-slate-100",
+          iconColor: "text-slate-600",
           submenus: [
             {
               href: "/unit",

@@ -38,7 +38,7 @@ export function Menu({ isOpen }: MenuProps) {
 
   return (
     <ScrollArea className="[&>div>div[style]]:!block">
-      <nav className="mt-8 h-full w-full">
+      <nav className="mt-0 h-full w-full">
         <ul className="flex flex-col min-h-[calc(100vh-48px-36px-16px-32px)] lg:min-h-[calc(100vh-32px-40px-32px)] items-start space-y-1 px-2">
           {menuList.map(({ groupLabel, menus }, index) => (
             <li className={cn("w-full", groupLabel ? "pt-5" : "")} key={index}>
@@ -63,7 +63,7 @@ export function Menu({ isOpen }: MenuProps) {
                 <p className="pb-2"></p>
               )}
               {menus.map(
-                ({ href, label, icon: Icon, active, submenus }, index) =>
+                ({ href, label, icon: Icon, active, submenus, iconBg, iconColor }, index) =>
                   !submenus || submenus.length === 0 ? (
                     <div className="w-full" key={index}>
                       <TooltipProvider disableHoverableContent>
@@ -72,20 +72,26 @@ export function Menu({ isOpen }: MenuProps) {
                             <Button
                               variant="ghost"
                               className={cn(
-                                "w-full justify-start h-11 mb-1 rounded-xl transition-all duration-200",
+                                "w-full justify-start h-11 mb-2 rounded-xl transition-all duration-200",
                                 ((active === undefined &&
                                   pathname.startsWith(href)) ||
                                   active)
-                                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 hover:text-white"
-                                  : "text-sidebar-foreground"
+                                  ? "bg-[#006d64] text-white shadow-md hover:bg-[#005a52] hover:text-white"
+                                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                               )}
                               asChild
                             >
                               <Link href={href}>
                                 <span
-                                  className={cn(isOpen === false ? "" : "mr-4")}
+                                  className={cn(
+                                    "flex items-center justify-center p-1.5 rounded-lg",
+                                    isOpen === false ? "" : "mr-4",
+                                    ((active === undefined && pathname.startsWith(href)) || active)
+                                      ? "text-white bg-transparent"
+                                      : cn(iconBg, iconColor)
+                                  )}
                                 >
-                                  <Icon size={20} />
+                                  <Icon size={18} />
                                 </span>
                                 <p
                                   className={cn(
@@ -109,7 +115,7 @@ export function Menu({ isOpen }: MenuProps) {
                       </TooltipProvider>
                     </div>
                   ) : (
-                    <div className="w-full" key={index}>
+                    <div className="w-full mb-2" key={index}>
                       <CollapseMenuButton
                         icon={Icon}
                         label={label}
@@ -120,6 +126,8 @@ export function Menu({ isOpen }: MenuProps) {
                         }
                         submenus={submenus}
                         isOpen={isOpen}
+                        iconBg={iconBg}
+                        iconColor={iconColor}
                       />
                     </div>
                   )

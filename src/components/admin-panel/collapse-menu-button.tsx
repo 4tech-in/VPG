@@ -40,6 +40,8 @@ interface CollapseMenuButtonProps {
   active: boolean;
   submenus: Submenu[];
   isOpen: boolean | undefined;
+  iconBg?: string;
+  iconColor?: string;
 }
 
 export function CollapseMenuButton({
@@ -47,7 +49,9 @@ export function CollapseMenuButton({
   label,
   active,
   submenus,
-  isOpen
+  isOpen,
+  iconBg,
+  iconColor
 }: CollapseMenuButtonProps) {
   const pathname = usePathname();
   const isSubmenuActive = submenus.some((submenu) =>
@@ -70,13 +74,16 @@ export function CollapseMenuButton({
           className={cn(
             "w-full justify-start h-11 mb-1 rounded-xl transition-all duration-200",
             isSubmenuActive
-              ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+              ? "bg-[#006d64] text-white shadow-md hover:bg-[#005a52]"
               : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )}
         >
           <div className="w-full items-center flex justify-between">
             <div className="flex items-center">
-              <span className="mr-4">
+              <span className={cn(
+                "flex items-center justify-center p-1.5 rounded-lg mr-4",
+                isSubmenuActive ? "text-white bg-transparent" : cn(iconBg, iconColor)
+              )}>
                 <Icon size={18} />
               </span>
               <p
@@ -107,22 +114,24 @@ export function CollapseMenuButton({
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-        <div className="ml-5 mt-1 border-l border-muted-foreground/20 pl-2">
+        <div className="ml-5 mt-2 border-l-[3px] border-[#006d64] pl-2 bg-slate-50/50 rounded-r-xl py-1">
           {submenus.map(({ href, label, active }, index) => (
             <Button
               key={index}
               variant="ghost"
               className={cn(
-                "w-full justify-start h-10 mb-1 rounded-xl transition-all duration-200",
+                "w-full justify-start h-9 mb-1 rounded-xl transition-all duration-200",
                 ((active === undefined && pathname === href) || active)
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  ? "bg-transparent text-[#006d64] font-semibold"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
               asChild
             >
               <Link href={href}>
-                <span className="mr-4 ml-2">
-                  <Dot size={18} />
+                <span className="mr-3 ml-1">
+                  <Dot size={24} className={cn(
+                     ((active === undefined && pathname === href) || active) ? "text-[#006d64]" : "text-muted-foreground/50"
+                  )} />
                 </span>
                 <p
                   className={cn(
@@ -151,13 +160,17 @@ export function CollapseMenuButton({
                 className={cn(
                   "w-full justify-start h-11 mb-1 rounded-xl transition-all duration-200",
                   isSubmenuActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+                    ? "bg-[#006d64] text-white shadow-md hover:bg-[#005a52]"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
                 <div className="w-full items-center flex justify-between">
                   <div className="flex items-center">
-                    <span className={cn(isOpen === false ? "" : "mr-4")}>
+                    <span className={cn(
+                      "flex items-center justify-center p-1.5 rounded-lg",
+                      isOpen === false ? "" : "mr-4",
+                      isSubmenuActive ? "text-white bg-transparent" : cn(iconBg, iconColor)
+                    )}>
                       <Icon size={18} />
                     </span>
                     <p
