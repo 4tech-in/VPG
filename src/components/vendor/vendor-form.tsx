@@ -16,7 +16,8 @@ import {
   X,
   ChevronDown,
   Search,
-  Loader2
+  Loader2,
+  Check
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -338,7 +339,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                 <div className="flex flex-wrap gap-1 flex-1">
                                   {selectedItems.length > 0 ? (
                                     selectedItems.map((si) => (
-                                      <span key={si.id} className="bg-zinc-200 px-2 py-1 rounded-md text-xs flex items-center gap-1">
+                                      <span key={si.id} className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
                                         {si.name}
                                         <button
                                           type="button"
@@ -348,37 +349,37 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                             setSelectedItems(newSelected);
                                             form.setValue("itemIds", newSelected.map(i => i.id), { shouldValidate: true });
                                           }}
-                                          className="text-zinc-500 hover:text-rose-500"
+                                          className="h-4 w-4 rounded-full flex items-center justify-center bg-primary/20 text-primary hover:bg-rose-500 hover:text-white transition-colors"
                                         >
-                                          ×
+                                          <X className="h-2.5 w-2.5" />
                                         </button>
                                       </span>
                                     ))
                                   ) : (
-                                    <span className="text-zinc-400">Select Supplied Items</span>
+                                    <span className="text-zinc-400 font-medium pl-1">Select Supplied Items</span>
                                   )}
                                 </div>
-                                <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
+                                <ChevronDown className={cn("h-4 w-4 text-zinc-400 shrink-0 transition-transform duration-200", isOpenDropdown && "rotate-180")} />
                               </button>
 
                               {/* Dropdown Options */}
                               {isOpenDropdown && (
-                                <div className="absolute top-12 left-0 w-full bg-white border border-zinc-100 shadow-2xl rounded-2xl p-3 z-50 flex flex-col gap-3 animate-in fade-in duration-200">
+                                <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-white border border-zinc-100 shadow-2xl rounded-2xl p-2 z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-200 origin-top">
                                   {/* Local Search Input */}
-                                  <div className="relative shrink-0">
+                                  <div className="relative shrink-0 p-1">
                                     <Input
                                       placeholder="Search catalog item..."
                                       value={itemSearch}
                                       onChange={(e) => setItemSearch(e.target.value)}
-                                      className="h-9 rounded-xl pl-9 bg-zinc-50 border-none font-bold text-xs"
+                                      className="h-9 rounded-xl pl-9 bg-zinc-50/50 border border-zinc-100 font-bold text-xs focus-visible:ring-1 focus-visible:ring-primary/20"
                                     />
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-300" />
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                                   </div>
 
                                   {/* Scrollable Item Options */}
                                   <div
                                     onScroll={handleScroll}
-                                    className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1"
+                                    className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col gap-0.5 px-1 pb-1"
                                   >
                                     {items.length === 0 && !isFetchingItems ? (
                                       <div className="text-[10px] text-zinc-400 font-bold uppercase text-center py-4">No Items Found</div>
@@ -406,16 +407,26 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                             field.onChange(newIds);
                                           }}
                                           className={cn(
-                                            "w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex justify-between items-center",
+                                            "w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex justify-between items-center group",
                                             field.value?.includes(item._id || item.id)
-                                              ? "bg-zinc-900 text-white" 
+                                              ? "bg-primary/5 text-primary hover:bg-primary/10" 
                                               : "text-zinc-700 hover:bg-zinc-50"
                                           )}
                                         >
-                                          <span>{item.itemName}</span>
+                                          <div className="flex items-center gap-2.5">
+                                            <div className={cn(
+                                              "flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                                              field.value?.includes(item._id || item.id)
+                                                ? "border-primary bg-primary text-primary-foreground"
+                                                : "border-zinc-300 bg-transparent group-hover:border-zinc-400"
+                                            )}>
+                                              {field.value?.includes(item._id || item.id) && <Check className="h-2.5 w-2.5" />}
+                                            </div>
+                                            <span className="truncate max-w-[200px] sm:max-w-[300px]">{item.itemName}</span>
+                                          </div>
                                           <span className={cn(
-                                            "text-[10px] uppercase font-medium tracking-tight",
-                                            field.value?.includes(item._id || item.id) ? "text-zinc-300" : "text-zinc-400"
+                                            "text-[10px] uppercase font-bold tracking-tight shrink-0",
+                                            field.value?.includes(item._id || item.id) ? "text-primary/70" : "text-zinc-400 group-hover:text-zinc-500"
                                           )}>{(item.itemCode || "").split("-").pop()}</span>
                                         </button>
                                       ))
