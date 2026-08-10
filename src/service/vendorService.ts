@@ -20,8 +20,8 @@ export type ApiVendor = {
   accountNumber?: string
   ifscCode?: string
   status: "active" | "inactive"
-  itemId: string
-  itemName?: string
+  itemIds?: string[]
+  items?: { _id: string; name: string }[]
   createdAt?: string
 }
 
@@ -53,7 +53,7 @@ export type CreateVendorPayload = {
   accountNumber?: string
   ifscCode?: string
   status: "active" | "inactive"
-  itemId: string
+  itemIds: string[]
 }
 
 export const vendorService = {

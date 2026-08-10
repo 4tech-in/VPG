@@ -21,8 +21,8 @@ export type Vendor = {
   accountNumber: string
   ifscCode: string
   status: "Active" | "Inactive"
-  itemId: string
-  itemName: string
+  itemIds: string[]
+  items: { id: string; name: string }[]
   createdAt: string
 }
 
@@ -46,8 +46,8 @@ const mapApiVendorToVendor = (apiVendor: ApiVendor): Vendor => {
     accountNumber: apiVendor.accountNumber || "",
     ifscCode: apiVendor.ifscCode || "",
     status: apiVendor.status === "active" ? "Active" : "Inactive",
-    itemId: apiVendor.itemId || "",
-    itemName: apiVendor.itemName || "",
+    itemIds: apiVendor.itemIds || [],
+    items: (apiVendor.items || []).map(i => ({ id: i._id, name: i.name })),
     createdAt: apiVendor.createdAt ? apiVendor.createdAt.split("T")[0] : "",
   }
 }

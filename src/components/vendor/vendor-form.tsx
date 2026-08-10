@@ -43,7 +43,7 @@ const formSchema = z.object({
   vendorCode: z.string().optional(),
   name: z.string().min(1, "Vendor Name is required"),
   companyName: z.string().optional(),
-  itemId: z.string().min(1, "Associated Item is required"),
+  itemIds: z.array(z.string()).min(1, "At least one Associated Item is required"),
   contactPerson: z.string().optional(),
   contactNumber: z.string().min(1, "Mobile Number is required"),
   alternateNumber: z.string().optional(),
@@ -78,7 +78,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [isFetchingItems, setIsFetchingItems] = useState(false)
   const [isOpenDropdown, setIsOpenDropdown] = useState(false)
-  const [selectedItemName, setSelectedItemName] = useState("")
+  const [selectedItems, setSelectedItems] = useState<{ id: string; name: string }[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -87,7 +87,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
       vendorCode: "",
       name: "",
       companyName: "",
-      itemId: "",
+      itemIds: [],
       contactPerson: "",
       contactNumber: "",
       alternateNumber: "",
@@ -173,18 +173,23 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
 
   useEffect(() => {
     if (initialValues) {
-      setSelectedItemName(initialValues.itemName || "")
+      setSelectedItems(
+        (initialValues.items || []).map((i: any) => ({
+          id: i.id || i._id,
+          name: i.name || i.itemName,
+        }))
+      )
       form.reset({
         ...form.getValues(),
         ...initialValues,
       })
     } else {
-      setSelectedItemName("")
+      setSelectedItems([])
       form.reset({
         vendorCode: "",
         name: "",
         companyName: "",
-        itemId: "",
+        itemIds: [],
         contactPerson: "",
         contactNumber: "",
         alternateNumber: "",
@@ -316,11 +321,11 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                   <div className="md:col-span-2 space-y-2">
                     <FormField
                       control={form.control}
-                      name="itemId"
+                      name="itemIds"
                       render={({ field }) => (
                         <FormItem className="relative">
                           <FormLabel className="text-[10px] font-black text-zinc-500 uppercase tracking-wider">
-                            Supplied Catalog Item <span className="text-rose-500">*</span>
+                            Supplied Catalog Items <span className="text-rose-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <div ref={dropdownRef} className="relative">
@@ -328,10 +333,32 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                               <button
                                 type="button"
                                 onClick={() => setIsOpenDropdown(!isOpenDropdown)}
-                                className="flex h-11 w-full rounded-xl border border-zinc-100 bg-zinc-50/55 px-3 py-2 text-sm justify-between items-center font-bold text-zinc-900 transition-all hover:bg-zinc-50"
+                                className="flex h-min w-full min-h-[44px] rounded-xl border border-zinc-100 bg-zinc-50/55 px-3 py-2 text-sm justify-between items-center font-bold text-zinc-900 transition-all hover:bg-zinc-50 flex-wrap gap-2"
                               >
-                                <span>{selectedItemName || "Select Supplied Item"}</span>
-                                <ChevronDown className="h-4 w-4 text-zinc-400" />
+                                <div className="flex flex-wrap gap-1 flex-1">
+                                  {selectedItems.length > 0 ? (
+                                    selectedItems.map((si) => (
+                                      <span key={si.id} className="bg-zinc-200 px-2 py-1 rounded-md text-xs flex items-center gap-1">
+                                        {si.name}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const newSelected = selectedItems.filter((i) => i.id !== si.id);
+                                            setSelectedItems(newSelected);
+                                            form.setValue("itemIds", newSelected.map(i => i.id), { shouldValidate: true });
+                                          }}
+                                          className="text-zinc-500 hover:text-rose-500"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-zinc-400">Select Supplied Items</span>
+                                  )}
+                                </div>
+                                <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
                               </button>
 
                               {/* Dropdown Options */}
@@ -361,13 +388,26 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                           key={item._id || item.id}
                                           type="button"
                                           onClick={() => {
-                                            field.onChange(item._id || item.id)
-                                            setSelectedItemName(item.itemName)
-                                            setIsOpenDropdown(false)
+                                            const id = item._id || item.id;
+                                            const isSelected = field.value?.includes(id);
+                                            
+                                            let newSelectedItems;
+                                            let newIds;
+                                            
+                                            if (isSelected) {
+                                              newSelectedItems = selectedItems.filter(i => i.id !== id);
+                                              newIds = newSelectedItems.map(i => i.id);
+                                            } else {
+                                              newSelectedItems = [...selectedItems, { id, name: item.itemName }];
+                                              newIds = newSelectedItems.map(i => i.id);
+                                            }
+                                            
+                                            setSelectedItems(newSelectedItems);
+                                            field.onChange(newIds);
                                           }}
                                           className={cn(
                                             "w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all flex justify-between items-center",
-                                            field.value === (item._id || item.id)
+                                            field.value?.includes(item._id || item.id)
                                               ? "bg-zinc-900 text-white" 
                                               : "text-zinc-700 hover:bg-zinc-50"
                                           )}
@@ -375,7 +415,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
                                           <span>{item.itemName}</span>
                                           <span className={cn(
                                             "text-[10px] uppercase font-medium tracking-tight",
-                                            field.value === (item._id || item.id) ? "text-zinc-300" : "text-zinc-400"
+                                            field.value?.includes(item._id || item.id) ? "text-zinc-300" : "text-zinc-400"
                                           )}>{(item.itemCode || "").split("-").pop()}</span>
                                         </button>
                                       ))

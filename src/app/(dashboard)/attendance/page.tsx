@@ -70,7 +70,8 @@ export default function AttendancePage() {
   const [data, setData] = useState<AttendanceRecord[]>([])
   const [users, setUsers] = useState<ApiUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [fromDate, setFromDate] = useState<Date | undefined>(new Date())
+  const [toDate, setToDate] = useState<Date | undefined>(new Date())
   const [search, setSearch] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
 
@@ -149,10 +150,11 @@ export default function AttendancePage() {
         limit: 10,
       }
 
-      if (date) {
-        const formattedDate = format(date, "yyyy-MM-dd")
-        params.startDate = formattedDate
-        params.endDate = formattedDate
+      if (fromDate) {
+        params.startDate = format(fromDate, "yyyy-MM-dd")
+      }
+      if (toDate) {
+        params.endDate = format(toDate, "yyyy-MM-dd")
       }
 
       if (selectedStatus) {
@@ -167,15 +169,15 @@ export default function AttendancePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [date, selectedStatus])
+  }, [fromDate, toDate, selectedStatus])
 
   useEffect(() => {
-    const paramsKey = `${date?.getTime() || ""}-${selectedStatus || ""}`
+    const paramsKey = `${fromDate?.getTime() || ""}-${toDate?.getTime() || ""}-${selectedStatus || ""}`
     if (lastFetchedParams.current !== paramsKey) {
       lastFetchedParams.current = paramsKey
       fetchAttendances()
     }
-  }, [date, selectedStatus, fetchAttendances])
+  }, [fromDate, toDate, selectedStatus, fetchAttendances])
 
   // Client side search mapping
   const filteredData = useMemo(() => {
@@ -575,19 +577,49 @@ export default function AttendancePage() {
                     <Button
                       variant="outline"
                       className={cn(
-                        "h-11 px-5 rounded-xl border-zinc-100 font-bold gap-2 text-zinc-500 hover:bg-zinc-50",
-                        !date && "text-muted-foreground"
+                        "h-11 px-4 rounded-xl border-zinc-100 font-bold gap-2 hover:bg-zinc-50",
+                        !fromDate ? "text-zinc-400" : "text-zinc-700"
                       )}
                     >
-                      <Calendar className="h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                      <Calendar className="h-4 w-4 text-zinc-400" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-400 font-medium">From:</span>
+                        <span>{fromDate ? format(fromDate, "MMM dd, yyyy") : "Select"}</span>
+                      </div>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-2xl border-zinc-100 shadow-2xl" align="end">
                     <CalendarComponent
                       mode="single"
-                      selected={date}
-                      onSelect={setDate}
+                      selected={fromDate}
+                      onSelect={setFromDate}
+                      initialFocus
+                      className="rounded-2xl"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "h-11 px-4 rounded-xl border-zinc-100 font-bold gap-2 hover:bg-zinc-50",
+                        !toDate ? "text-zinc-400" : "text-zinc-700"
+                      )}
+                    >
+                      <Calendar className="h-4 w-4 text-zinc-400" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-400 font-medium">End:</span>
+                        <span>{toDate ? format(toDate, "MMM dd, yyyy") : "Select"}</span>
+                      </div>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-2xl border-zinc-100 shadow-2xl" align="end">
+                    <CalendarComponent
+                      mode="single"
+                      selected={toDate}
+                      onSelect={setToDate}
                       initialFocus
                       className="rounded-2xl"
                     />

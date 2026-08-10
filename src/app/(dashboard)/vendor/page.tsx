@@ -252,12 +252,22 @@ export default function VendorPage() {
       },
     },
     {
-      accessorKey: "itemName",
-      header: "SUPPLIED ITEM",
+      accessorKey: "items",
+      header: "SUPPLIED ITEMS",
       cell: ({ row }) => (
-        <Badge variant="outline" className="rounded-lg font-bold text-zinc-500 border-zinc-100 uppercase tracking-tighter text-[10px]">
-          {row.getValue("itemName") || "General"}
-        </Badge>
+        <div className="flex flex-wrap gap-1">
+          {row.original.items && row.original.items.length > 0 ? (
+            row.original.items.map((item: any, idx: number) => (
+              <Badge key={idx} variant="outline" className="rounded-lg font-bold text-zinc-500 border-zinc-100 uppercase tracking-tighter text-[10px]">
+                {item.name}
+              </Badge>
+            ))
+          ) : (
+            <Badge variant="outline" className="rounded-lg font-bold text-zinc-500 border-zinc-100 uppercase tracking-tighter text-[10px]">
+              General
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -366,8 +376,8 @@ export default function VendorPage() {
           vendorCode: editingVendor.vendorCode,
           name: editingVendor.name,
           companyName: editingVendor.companyName,
-          itemId: editingVendor.itemId,
-          itemName: editingVendor.itemName,
+          itemIds: editingVendor.itemIds,
+          items: editingVendor.items,
           contactPerson: editingVendor.contactPerson,
           contactNumber: editingVendor.contactNumber,
           alternateNumber: editingVendor.alternateNumber,
