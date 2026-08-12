@@ -487,6 +487,22 @@ export function exportPurchaseOrderReceipt(po: any) {
             clip-path: inset(0 0 35% 0);
           }
 
+          .watermark-cancelled {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            opacity: 0.15;
+            z-index: 10;
+            pointer-events: none;
+            font-size: 140px;
+            font-weight: bold;
+            color: #dc2626;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+          }
+
           .items-table {
             width: 100%;
             border-collapse: collapse;
@@ -640,6 +656,7 @@ export function exportPurchaseOrderReceipt(po: any) {
         <div class="items-table-container">
           <!-- Watermark Logo -->
           <img src="/vpg.jpeg" class="watermark" alt="watermark" />
+          ${po.status === "Cancelled" ? `<div class="watermark-cancelled">CANCELLED</div>` : ""}
           
           <table class="items-table">
             <thead>
