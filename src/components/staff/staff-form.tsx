@@ -1,257 +1,354 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Mail, Phone, User, Eye, EyeOff, Briefcase, Network, Building, Camera, Check, ChevronsUpDown } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { cn } from "@/lib/utils"
-import { useRoles } from "@/hooks/use-roles"
-import { useUnits } from "@/hooks/use-units"
-import { useUsers, Staff } from "@/hooks/use-users"
-import { useAuthStore } from "@/store/use-auth-store"
-import { useOrganizations } from "@/hooks/use-organizations"
-import { geofenceService } from "@/service/geofenceService"
-import { projectService } from "@/service/projectService"
-import { attendancePolicyService } from "@/service/attendancePolicyService"
-import { toast } from "sonner"
+import { useState, useEffect, useRef } from "react";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  User,
+  Eye,
+  EyeOff,
+  Briefcase,
+  Network,
+  Building,
+  Camera,
+  Check,
+  ChevronsUpDown,
+  IndianRupee,
+  Calendar,
+} from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { useRoles } from "@/hooks/use-roles";
+import { useUnits } from "@/hooks/use-units";
+import { useUsers, Staff } from "@/hooks/use-users";
+import { useAuthStore } from "@/store/use-auth-store";
+import { useOrganizations } from "@/hooks/use-organizations";
+import { geofenceService } from "@/service/geofenceService";
+import { projectService } from "@/service/projectService";
+import { attendancePolicyService } from "@/service/attendancePolicyService";
+import { toast } from "sonner";
 
 type StaffFormProps = {
-  initialValues?: Partial<Staff>
-  isDialog?: boolean
-  onSuccess?: () => void
-}
+  initialValues?: Partial<Staff>;
+  isDialog?: boolean;
+  onSuccess?: () => void;
+};
 
-export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps) {
-  const { roles, isLoading: rolesLoading, refetch: refetchRoles } = useRoles({ skipFetch: true })
-  const { units, isLoading: unitsLoading, refetch: refetchUnits } = useUnits(false)
-  const { allUsers, addUser, editUser, isLoading: userActionLoading, refetch: refetchUsers } = useUsers({ skipFetch: true })
+export function StaffForm({
+  initialValues,
+  isDialog,
+  onSuccess,
+}: StaffFormProps) {
+  const {
+    roles,
+    isLoading: rolesLoading,
+    refetch: refetchRoles,
+  } = useRoles({ skipFetch: true });
+  const {
+    units,
+    isLoading: unitsLoading,
+    refetch: refetchUnits,
+  } = useUnits(false);
+  const {
+    allUsers,
+    addUser,
+    editUser,
+    isLoading: userActionLoading,
+    refetch: refetchUsers,
+  } = useUsers({ skipFetch: true });
   // Geofence Infinite Scroll State
-  const [geofencesList, setGeofencesList] = useState<any[]>([])
-  const [hasMoreGeofences, setHasMoreGeofences] = useState(true)
-  const [isGeofencesLoading, setIsGeofencesLoading] = useState(false)
-  const geofenceObserverRef = useRef<HTMLDivElement | null>(null)
+  const [geofencesList, setGeofencesList] = useState<any[]>([]);
+  const [hasMoreGeofences, setHasMoreGeofences] = useState(true);
+  const [isGeofencesLoading, setIsGeofencesLoading] = useState(false);
+  const geofenceObserverRef = useRef<HTMLDivElement | null>(null);
 
   // Projects Infinite Scroll State
-  const [projectsList, setProjectsList] = useState<any[]>([])
-  const [hasMoreProjects, setHasMoreProjects] = useState(true)
-  const [isProjectsLoading, setIsProjectsLoading] = useState(false)
-  const projectObserverRef = useRef<HTMLDivElement | null>(null)
+  const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [hasMoreProjects, setHasMoreProjects] = useState(true);
+  const [isProjectsLoading, setIsProjectsLoading] = useState(false);
+  const projectObserverRef = useRef<HTMLDivElement | null>(null);
 
   // Attendance Policies Infinite Scroll State
-  const [policiesList, setPoliciesList] = useState<any[]>([])
-  const [hasMorePolicies, setHasMorePolicies] = useState(true)
-  const [isPoliciesLoading, setIsPoliciesLoading] = useState(false)
-  const policyObserverRef = useRef<HTMLDivElement | null>(null)
+  const [policiesList, setPoliciesList] = useState<any[]>([]);
+  const [hasMorePolicies, setHasMorePolicies] = useState(true);
+  const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
+  const policyObserverRef = useRef<HTMLDivElement | null>(null);
 
   // Refs to track current page for scroll-based pagination
-  const geofencePageRef = useRef(1)
-  const projectPageRef = useRef(1)
-  const policyPageRef = useRef(1)
-  const isGeofenceFetchingRef = useRef(false)
-  const isProjectFetchingRef = useRef(false)
-  const isPolicyFetchingRef = useRef(false)
-  const hasFetchedGeofences = useRef(false)
-  const hasFetchedProjects = useRef(false)
-  const hasFetchedPolicies = useRef(false)
+  const geofencePageRef = useRef(1);
+  const projectPageRef = useRef(1);
+  const policyPageRef = useRef(1);
+  const isGeofenceFetchingRef = useRef(false);
+  const isProjectFetchingRef = useRef(false);
+  const isPolicyFetchingRef = useRef(false);
+  const hasFetchedGeofences = useRef(false);
+  const hasFetchedProjects = useRef(false);
+  const hasFetchedPolicies = useRef(false);
 
   // Fetch functions
   const fetchGeofencesPage = async (page: number) => {
-    if (isGeofenceFetchingRef.current) return
-    isGeofenceFetchingRef.current = true
-    setIsGeofencesLoading(true)
+    if (isGeofenceFetchingRef.current) return;
+    isGeofenceFetchingRef.current = true;
+    setIsGeofencesLoading(true);
     try {
-      const response = await geofenceService.getGeofences({ page, limit: 10 })
+      const response = await geofenceService.getGeofences({ page, limit: 10 });
       const mapped = response.geofences.map((g: any) => ({
         id: String(g._id || g.id || ""),
         name: g.name,
-      }))
-      setGeofencesList(prev => page === 1 ? mapped : [...prev, ...mapped])
-      setHasMoreGeofences(page < response.pagination.totalPages)
-      geofencePageRef.current = page
+      }));
+      setGeofencesList((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
+      setHasMoreGeofences(page < response.pagination.totalPages);
+      geofencePageRef.current = page;
     } catch (e) {
-      console.error(e)
-      setHasMoreGeofences(false)
+      console.error(e);
+      setHasMoreGeofences(false);
     } finally {
-      isGeofenceFetchingRef.current = false
-      setIsGeofencesLoading(false)
+      isGeofenceFetchingRef.current = false;
+      setIsGeofencesLoading(false);
     }
-  }
+  };
 
   const fetchProjectsPage = async (page: number) => {
-    if (isProjectFetchingRef.current) return
-    isProjectFetchingRef.current = true
-    setIsProjectsLoading(true)
+    if (isProjectFetchingRef.current) return;
+    isProjectFetchingRef.current = true;
+    setIsProjectsLoading(true);
     try {
-      const response = await projectService.getProjects({ page, limit: 10 })
+      const response = await projectService.getProjects({ page, limit: 10 });
       const mapped = response.projects.map((p: any) => ({
         id: String(p._id || p.id || ""),
         name: p.projectName,
-      }))
-      setProjectsList(prev => page === 1 ? mapped : [...prev, ...mapped])
-      setHasMoreProjects(page < response.pagination.totalPages)
-      projectPageRef.current = page
+      }));
+      setProjectsList((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
+      setHasMoreProjects(page < response.pagination.totalPages);
+      projectPageRef.current = page;
     } catch (e) {
-      console.error(e)
-      setHasMoreProjects(false)
+      console.error(e);
+      setHasMoreProjects(false);
     } finally {
-      isProjectFetchingRef.current = false
-      setIsProjectsLoading(false)
+      isProjectFetchingRef.current = false;
+      setIsProjectsLoading(false);
     }
-  }
+  };
 
   const fetchPoliciesPage = async (page: number) => {
-    if (isPolicyFetchingRef.current) return
-    isPolicyFetchingRef.current = true
-    setIsPoliciesLoading(true)
+    if (isPolicyFetchingRef.current) return;
+    isPolicyFetchingRef.current = true;
+    setIsPoliciesLoading(true);
     try {
-      const response = await attendancePolicyService.getPolicies({ page, limit: 10 })
+      const response = await attendancePolicyService.getPolicies({
+        page,
+        limit: 10,
+      });
       const mapped = response.data.map((ap: any) => ({
         id: String(ap._id || ap.id || ""),
         name: ap.name,
-      }))
-      setPoliciesList(prev => page === 1 ? mapped : [...prev, ...mapped])
-      const totalPages = response.pagination?.totalPages || 1
-      setHasMorePolicies(page < totalPages)
-      policyPageRef.current = page
+      }));
+      setPoliciesList((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
+      const totalPages = response.pagination?.totalPages || 1;
+      setHasMorePolicies(page < totalPages);
+      policyPageRef.current = page;
     } catch (e) {
-      console.error(e)
-      setHasMorePolicies(false)
+      console.error(e);
+      setHasMorePolicies(false);
     } finally {
-      isPolicyFetchingRef.current = false
-      setIsPoliciesLoading(false)
+      isPolicyFetchingRef.current = false;
+      setIsPoliciesLoading(false);
     }
-  }
+  };
 
   // No longer fetching on mount to prevent unnecessary API calls unless dropdowns are clicked
 
-
   // Observers for infinite scrolling — deps do NOT include page to avoid re-trigger loops
   useEffect(() => {
-    if (!hasMoreGeofences || isGeofencesLoading) return
-    const currentRef = geofenceObserverRef.current
-    if (!currentRef) return
+    if (!hasMoreGeofences || isGeofencesLoading) return;
+    const currentRef = geofenceObserverRef.current;
+    if (!currentRef) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !isGeofenceFetchingRef.current) {
-        fetchGeofencesPage(geofencePageRef.current + 1)
-      }
-    }, { threshold: 0.1 })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isGeofenceFetchingRef.current) {
+          fetchGeofencesPage(geofencePageRef.current + 1);
+        }
+      },
+      { threshold: 0.1 },
+    );
 
-    observer.observe(currentRef)
-    return () => observer.disconnect()
-  }, [hasMoreGeofences, isGeofencesLoading])
-
-  useEffect(() => {
-    if (!hasMoreProjects || isProjectsLoading) return
-    const currentRef = projectObserverRef.current
-    if (!currentRef) return
-
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !isProjectFetchingRef.current) {
-        fetchProjectsPage(projectPageRef.current + 1)
-      }
-    }, { threshold: 0.1 })
-
-    observer.observe(currentRef)
-    return () => observer.disconnect()
-  }, [hasMoreProjects, isProjectsLoading])
+    observer.observe(currentRef);
+    return () => observer.disconnect();
+  }, [hasMoreGeofences, isGeofencesLoading]);
 
   useEffect(() => {
-    if (!hasMorePolicies || isPoliciesLoading) return
-    const currentRef = policyObserverRef.current
-    if (!currentRef) return
+    if (!hasMoreProjects || isProjectsLoading) return;
+    const currentRef = projectObserverRef.current;
+    if (!currentRef) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !isPolicyFetchingRef.current) {
-        fetchPoliciesPage(policyPageRef.current + 1)
-      }
-    }, { threshold: 0.1 })
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isProjectFetchingRef.current) {
+          fetchProjectsPage(projectPageRef.current + 1);
+        }
+      },
+      { threshold: 0.1 },
+    );
 
-    observer.observe(currentRef)
-    return () => observer.disconnect()
-  }, [hasMorePolicies, isPoliciesLoading])
+    observer.observe(currentRef);
+    return () => observer.disconnect();
+  }, [hasMoreProjects, isProjectsLoading]);
 
-  const { user: loggedInUser, hasPermission } = useAuthStore()
-  const isSuperAdmin = loggedInUser?.roleId?.name === "superAdmin"
-  const { allOrganizations, refetch: refetchOrganizations } = useOrganizations({ skipFetch: true })
+  useEffect(() => {
+    if (!hasMorePolicies || isPoliciesLoading) return;
+    const currentRef = policyObserverRef.current;
+    if (!currentRef) return;
 
-  const [name, setName] = useState(initialValues?.name || "")
-  const [email, setEmail] = useState(initialValues?.email || "")
-  const [phone, setPhone] = useState(initialValues?.phone || "")
-  const [emergencyContactNumber, setEmergencyContactNumber] = useState(initialValues?.emergencyContactNumber || "")
-  const [aadhaarNumber, setAadhaarNumber] = useState(initialValues?.aadhaarNumber || "")
-  const [password, setPassword] = useState("")
-  const [roleId, setRoleId] = useState(initialValues?.roleId || "")
-  const [reportsTo, setReportsTo] = useState(initialValues?.reportsTo || "none")
-  const [primaryNodeId, setPrimaryNodeId] = useState(initialValues?.primaryNodeId || "")
-  const [geofenceId, setGeofenceId] = useState(initialValues?.geofenceId || "none")
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isPolicyFetchingRef.current) {
+          fetchPoliciesPage(policyPageRef.current + 1);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(currentRef);
+    return () => observer.disconnect();
+  }, [hasMorePolicies, isPoliciesLoading]);
+
+  const { user: loggedInUser, hasPermission } = useAuthStore();
+  const isSuperAdmin = loggedInUser?.roleId?.name === "superAdmin";
+  const { allOrganizations, refetch: refetchOrganizations } = useOrganizations({
+    skipFetch: true,
+  });
+
+  const [name, setName] = useState(initialValues?.name || "");
+  const [email, setEmail] = useState(initialValues?.email || "");
+  const [phone, setPhone] = useState(initialValues?.phone || "");
+  const [emergencyContactNumber, setEmergencyContactNumber] = useState(
+    initialValues?.emergencyContactNumber || "",
+  );
+  const [aadhaarNumber, setAadhaarNumber] = useState(
+    initialValues?.aadhaarNumber || "",
+  );
+  const [password, setPassword] = useState("");
+  const [salary, setSalary] = useState(initialValues?.salary?.toString() || "");
+  const [dateOfJoining, setDateOfJoining] = useState(
+    initialValues?.dateOfJoining
+      ? new Date(initialValues.dateOfJoining).toISOString().split("T")[0]
+      : "",
+  );
+  const [roleId, setRoleId] = useState(initialValues?.roleId || "");
+  const [reportsTo, setReportsTo] = useState(
+    initialValues?.reportsTo || "none",
+  );
+  const [primaryNodeId, setPrimaryNodeId] = useState(
+    initialValues?.primaryNodeId || "",
+  );
+  const [geofenceId, setGeofenceId] = useState(
+    initialValues?.geofenceId || "none",
+  );
   const [selectedProjects, setSelectedProjects] = useState<string[]>(
-    initialValues?.projectIds || (initialValues?.projectId && initialValues.projectId !== "none" ? [initialValues.projectId] : [])
-  )
-  const [attendancePolicyId, setAttendancePolicyId] = useState(initialValues?.attendancePolicyId || "none")
-  const [organizationId, setOrganizationId] = useState(initialValues?.organizationId || "")
-  
-  // Custom multi-select or single selection list for nodeIds
-  const [selectedNodes, setSelectedNodes] = useState<string[]>(initialValues?.nodeIds || [])
-  const [showPassword, setShowPassword] = useState(false)
+    initialValues?.projectIds ||
+      (initialValues?.projectId && initialValues.projectId !== "none"
+        ? [initialValues.projectId]
+        : []),
+  );
+  const [attendancePolicyId, setAttendancePolicyId] = useState(
+    initialValues?.attendancePolicyId || "none",
+  );
+  const [organizationId, setOrganizationId] = useState(
+    initialValues?.organizationId || "",
+  );
 
-  const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string>(initialValues?.avatarUrl || "")
+  // Custom multi-select or single selection list for nodeIds
+  const [selectedNodes, setSelectedNodes] = useState<string[]>(
+    initialValues?.nodeIds || [],
+  );
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>(
+    initialValues?.avatarUrl || "",
+  );
 
   // Sync state if initialValues changes
   useEffect(() => {
     if (initialValues) {
-      setName(initialValues.name || "")
-      setEmail(initialValues.email || "")
-      setPhone(initialValues.phone || "")
-      setEmergencyContactNumber(initialValues.emergencyContactNumber || "")
-      setAadhaarNumber(initialValues.aadhaarNumber || "")
-      setRoleId(initialValues.roleId || "")
-      setReportsTo(initialValues.reportsTo || "none")
-      setPrimaryNodeId(initialValues.primaryNodeId || "")
-      setSelectedNodes(initialValues.nodeIds || [])
-      setPreviewUrl(initialValues.avatarUrl || "")
-      setProfileImageFile(null)
-      setGeofenceId(initialValues.geofenceId || "none")
-      setSelectedProjects(initialValues.projectIds || (initialValues.projectId && initialValues.projectId !== "none" ? [initialValues.projectId] : []))
-      setAttendancePolicyId(initialValues.attendancePolicyId || "none")
-      setOrganizationId(initialValues.organizationId || "")
+      setName(initialValues.name || "");
+      setEmail(initialValues.email || "");
+      setPhone(initialValues.phone || "");
+      setEmergencyContactNumber(initialValues.emergencyContactNumber || "");
+      setAadhaarNumber(initialValues.aadhaarNumber || "");
+      setSalary(initialValues.salary?.toString() || "");
+      setDateOfJoining(
+        initialValues.dateOfJoining
+          ? new Date(initialValues.dateOfJoining).toISOString().split("T")[0]
+          : "",
+      );
+      setRoleId(initialValues.roleId || "");
+      setReportsTo(initialValues.reportsTo || "none");
+      setPrimaryNodeId(initialValues.primaryNodeId || "");
+      setSelectedNodes(initialValues.nodeIds || []);
+      setPreviewUrl(initialValues.avatarUrl || "");
+      setProfileImageFile(null);
+      setGeofenceId(initialValues.geofenceId || "none");
+      setSelectedProjects(
+        initialValues.projectIds ||
+          (initialValues.projectId && initialValues.projectId !== "none"
+            ? [initialValues.projectId]
+            : []),
+      );
+      setAttendancePolicyId(initialValues.attendancePolicyId || "none");
+      setOrganizationId(initialValues.organizationId || "");
     }
-  }, [initialValues])
+  }, [initialValues]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      setProfileImageFile(file)
-      setPreviewUrl(URL.createObjectURL(file))
+      setProfileImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
     }
-  }
+  };
 
   const handleToggleNode = (nodeId: string) => {
     setSelectedNodes((prev) => {
-      const next = prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
+      const next = prev.includes(nodeId)
+        ? prev.filter((id) => id !== nodeId)
+        : [...prev, nodeId];
       // Clear primaryNodeId if it is removed from node list
       if (!next.includes(primaryNodeId)) {
-        setPrimaryNodeId("")
+        setPrimaryNodeId("");
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!name.trim()) return toast.error("Full Name is required")
-    if (!email.trim()) return toast.error("Email is required")
-    if (!roleId) return toast.error("Role is required")
-    if (isSuperAdmin && !organizationId) return toast.error("Organization is required")
+    if (!name.trim()) return toast.error("Full Name is required");
+    if (!email.trim()) return toast.error("Email is required");
+    if (!roleId) return toast.error("Role is required");
+    if (isSuperAdmin && !organizationId)
+      return toast.error("Organization is required");
 
     try {
       const payload: any = {
@@ -263,55 +360,73 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         roleId,
         nodeIds: selectedNodes,
         primaryNodeId: primaryNodeId || null,
-        reportsTo: isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
+        reportsTo:
+          isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
         geofenceId: geofenceId === "none" || !geofenceId ? null : geofenceId,
         projectIds: selectedProjects.length > 0 ? selectedProjects : undefined,
-        attendancePolicyId: attendancePolicyId === "none" || !attendancePolicyId ? null : attendancePolicyId,
-      }
+        attendancePolicyId:
+          attendancePolicyId === "none" || !attendancePolicyId
+            ? null
+            : attendancePolicyId,
+        salary: salary ? Number(salary) : undefined,
+        dateOfJoining: dateOfJoining || undefined,
+      };
       if (isSuperAdmin && organizationId) {
-        payload.organizationId = organizationId
+        payload.organizationId = organizationId;
       }
       if (profileImageFile) {
-        payload.profileImage = profileImageFile
+        payload.profileImage = profileImageFile;
       }
       if (password) {
-        payload.password = password
+        payload.password = password;
       } else if (!initialValues) {
         // Password is required for new users
-        return toast.error("Password is required for new users")
+        return toast.error("Password is required for new users");
       }
 
       if (initialValues?.id) {
-        await editUser(initialValues.id, payload)
+        await editUser(initialValues.id, payload);
       } else {
-        await addUser(payload)
+        await addUser(payload);
       }
 
-      if (onSuccess) onSuccess()
+      if (onSuccess) onSuccess();
     } catch (err: any) {
       // toast already called by editUser/addUser hooks
     }
-  }
+  };
 
-  const activeRoles = roles.filter((r) => r.isActive)
-  const selectedRole = activeRoles.find(r => r.id === roleId) || roles.find(r => r.id === roleId)
-  const isManager = selectedRole 
-    ? (selectedRole.name.toLowerCase().includes("manager") || selectedRole.name.toLowerCase().includes("admin")) 
-    : (initialValues?.roleId === roleId && initialValues?.role ? (initialValues.role.toLowerCase().includes("manager") || initialValues.role.toLowerCase().includes("admin")) : false)
-  const activeUnits = units.filter((u) => u.status === "Active")
-  
+  const activeRoles = roles.filter((r) => r.isActive);
+  const selectedRole =
+    activeRoles.find((r) => r.id === roleId) ||
+    roles.find((r) => r.id === roleId);
+  const isManager = selectedRole
+    ? selectedRole.name.toLowerCase().includes("manager") ||
+      selectedRole.name.toLowerCase().includes("admin")
+    : initialValues?.roleId === roleId && initialValues?.role
+      ? initialValues.role.toLowerCase().includes("manager") ||
+        initialValues.role.toLowerCase().includes("admin")
+      : false;
+  const activeUnits = units.filter((u) => u.status === "Active");
+
   // Filter out the user itself from reportsTo select dropdown list when editing
-  const potentialReportsTo = allUsers.filter((u) => u.isActive && (!initialValues || u.id !== initialValues.id))
+  const potentialReportsTo = allUsers.filter(
+    (u) => u.isActive && (!initialValues || u.id !== initialValues.id),
+  );
 
-
-  const isLoading = rolesLoading || unitsLoading || userActionLoading
+  const isLoading = rolesLoading || unitsLoading || userActionLoading;
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {!isDialog && (
         <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
           <Link href="/users">
-            <Button type="button" variant="ghost" size="icon" className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100 hover:bg-zinc-50 transition-colors">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-10 w-10 bg-white shadow-sm border border-zinc-100 hover:bg-zinc-50 transition-colors"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
@@ -319,35 +434,61 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             <h1 className="text-3xl font-black text-zinc-900 tracking-tight">
               {initialValues ? "Edit Staff Member" : "Add New Staff"}
             </h1>
-            <p className="text-sm text-zinc-500 font-medium mt-1">Fill in the details below to register a corporate member.</p>
+            <p className="text-sm text-zinc-500 font-medium mt-1">
+              Fill in the details below to register a corporate member.
+            </p>
           </div>
         </div>
       )}
 
       <div className="flex flex-col gap-8">
         {/* Profile & Personal Info Card */}
-        <div className={cn(
-          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75 fill-mode-both",
-          isDialog && "border-none shadow-none p-0 hover:shadow-none"
-        )}>
+        <div
+          className={cn(
+            "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75 fill-mode-both",
+            isDialog && "border-none shadow-none p-0 hover:shadow-none",
+          )}
+        >
           <div className="flex flex-col sm:flex-row gap-10 items-start">
-            <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById("profile-image-upload")?.click()}>
-              <Avatar className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2rem] border-4 border-zinc-50 shadow-sm bg-zinc-100 flex items-center justify-center overflow-hidden transition-all group-hover:scale-105 group-hover:shadow-lg">
-                <AvatarImage src={previewUrl} className="object-cover" />
-                <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
-                  {name ? name[0].toUpperCase() : <User className="h-16 w-16 text-zinc-300" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute inset-0 bg-black/40 rounded-[2rem] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <Camera className="h-10 w-10 text-white" />
+            <div className="flex flex-col items-center gap-4 shrink-0">
+              <div
+                className="relative group cursor-pointer"
+                onClick={() =>
+                  document.getElementById("profile-image-upload")?.click()
+                }
+              >
+                <Avatar className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2.5rem] border-4 border-white shadow-xl bg-zinc-100 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105 group-hover:shadow-2xl group-hover:border-emerald-500/20">
+                  <AvatarImage src={previewUrl} className="object-cover" />
+                  <AvatarFallback className="bg-emerald-50 text-emerald-600 text-5xl font-black">
+                    {name ? (
+                      name[0].toUpperCase()
+                    ) : (
+                      <User className="h-16 w-16 text-emerald-600/40" />
+                    )}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/60 rounded-[2.5rem] flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <Camera className="h-8 w-8 text-white mb-2" />
+                  <span className="text-white text-xs font-bold">Change Photo</span>
+                </div>
+                <input
+                  type="file"
+                  id="profile-image-upload"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
               </div>
-              <input
-                type="file"
-                id="profile-image-upload"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageChange}
-              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                className="w-full rounded-xl font-bold border-zinc-200 text-zinc-600 shadow-sm hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all"
+                onClick={() => document.getElementById("profile-image-upload")?.click()}
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Upload Photo
+              </Button>
             </div>
 
             <div className="flex-1 w-full">
@@ -362,7 +503,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Full Name <span className="text-destructive">*</span></Label>
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Full Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -373,7 +516,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Email Address <span className="text-destructive">*</span></Label>
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Email Address <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       value={email}
@@ -388,7 +533,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Phone Number</Label>
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Phone Number
+                  </Label>
                   <div className="relative">
                     <Input
                       value={phone}
@@ -401,11 +548,16 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Emergency Contact <span className="text-destructive">*</span></Label>
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Emergency Contact{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       value={emergencyContactNumber}
-                      onChange={(e) => setEmergencyContactNumber(e.target.value)}
+                      onChange={(e) =>
+                        setEmergencyContactNumber(e.target.value)
+                      }
                       placeholder="+1 (555) 000-0000"
                       className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
                       required
@@ -415,7 +567,9 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Aadhaar Number <span className="text-destructive">*</span></Label>
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Aadhaar Number <span className="text-destructive">*</span>
+                  </Label>
                   <div className="relative">
                     <Input
                       value={aadhaarNumber}
@@ -430,7 +584,46 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                    Password {initialValues && <span className="text-[10px] text-zinc-400 font-bold tracking-normal normal-case">(Leave blank to keep current)</span>} {!initialValues && <span className="text-destructive">*</span>}
+                    Salary
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={salary}
+                      onChange={(e) => setSalary(e.target.value)}
+                      placeholder="e.g. 50000"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-11 focus-visible:ring-emerald-500 font-medium transition-colors hover:bg-zinc-50"
+                    />
+                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Date of Joining
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="date"
+                      value={dateOfJoining}
+                      onChange={(e) => setDateOfJoining(e.target.value)}
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-11 pr-4 focus-visible:ring-emerald-500 font-medium transition-colors hover:bg-zinc-50"
+                    />
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Password{" "}
+                    {initialValues && (
+                      <span className="text-[10px] text-zinc-400 font-bold tracking-normal normal-case">
+                        (Leave blank to keep current)
+                      </span>
+                    )}{" "}
+                    {!initialValues && (
+                      <span className="text-destructive">*</span>
+                    )}
                   </Label>
                   <div className="relative">
                     <Input
@@ -446,7 +639,11 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 hover:text-primary transition-colors"
                     >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -456,10 +653,12 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         </div>
 
         {/* Corporate Profile Card */}
-        <div className={cn(
-          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both",
-          isDialog && "border-none shadow-none p-0 hover:shadow-none"
-        )}>
+        <div
+          className={cn(
+            "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both",
+            isDialog && "border-none shadow-none p-0 hover:shadow-none",
+          )}
+        >
           <div className="flex flex-col gap-1 mb-8">
             <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" /> Corporate Role
@@ -472,13 +671,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             {isSuperAdmin && (
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Organization <span className="text-destructive">*</span></Label>
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Organization <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={organizationId}
                   onValueChange={setOrganizationId}
                   onOpenChange={(open) => {
                     if (open && allOrganizations.length === 0) {
-                      refetchOrganizations()
+                      refetchOrganizations();
                     }
                   }}
                 >
@@ -500,13 +701,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             )}
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Role <span className="text-destructive">*</span></Label>
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                Role <span className="text-destructive">*</span>
+              </Label>
               <Select
                 value={roleId}
                 onValueChange={setRoleId}
                 onOpenChange={(open) => {
                   if (open && roles.length === 0) {
-                    refetchRoles()
+                    refetchRoles();
                   }
                 }}
               >
@@ -514,9 +717,12 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
-                  {initialValues?.roleId && !activeRoles.some(r => r.id === initialValues.roleId) && (
-                    <SelectItem value={initialValues.roleId}>{initialValues.role || "Current Role"}</SelectItem>
-                  )}
+                  {initialValues?.roleId &&
+                    !activeRoles.some((r) => r.id === initialValues.roleId) && (
+                      <SelectItem value={initialValues.roleId}>
+                        {initialValues.role || "Current Role"}
+                      </SelectItem>
+                    )}
                   {activeRoles.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}
@@ -528,13 +734,15 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
             {!isSuperAdmin && (
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Reports To</Label>
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Reports To
+                </Label>
                 <Select
                   value={reportsTo}
                   onValueChange={setReportsTo}
                   onOpenChange={(open) => {
                     if (open && allUsers.length === 0) {
-                      refetchUsers()
+                      refetchUsers();
                     }
                   }}
                 >
@@ -543,28 +751,37 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
                     <SelectItem value="none">None / Self-Managed</SelectItem>
-                    {initialValues?.reportsTo && initialValues.reportsTo !== "none" && !potentialReportsTo.some(u => u.id === initialValues.reportsTo) && (
-                      <SelectItem value={initialValues.reportsTo}>{initialValues.reportsToName || "Current Manager"}</SelectItem>
-                    )}
+                    {initialValues?.reportsTo &&
+                      initialValues.reportsTo !== "none" &&
+                      !potentialReportsTo.some(
+                        (u) => u.id === initialValues.reportsTo,
+                      ) && (
+                        <SelectItem value={initialValues.reportsTo}>
+                          {initialValues.reportsToName || "Current Manager"}
+                        </SelectItem>
+                      )}
                     {potentialReportsTo.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
-                        {u.name} <span className="text-zinc-400">({u.role})</span>
+                        {u.name}{" "}
+                        <span className="text-zinc-400">({u.role})</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
-            
+
             {selectedNodes.length > 0 && (
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Primary Operating Unit</Label>
+                <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Primary Operating Unit
+                </Label>
                 <Select
                   value={primaryNodeId}
                   onValueChange={setPrimaryNodeId}
                   onOpenChange={(open) => {
                     if (open && units.length === 0) {
-                      refetchUnits()
+                      refetchUnits();
                     }
                   }}
                 >
@@ -587,13 +804,16 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
         </div>
 
         {/* Location & Assignments Card */}
-        <div className={cn(
-          "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both",
-          isDialog && "border-none shadow-none p-0 hover:shadow-none"
-        )}>
+        <div
+          className={cn(
+            "bg-white border border-zinc-100 shadow-sm rounded-[2rem] p-6 sm:p-10 transition-all duration-300 hover:shadow-md animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 fill-mode-both",
+            isDialog && "border-none shadow-none p-0 hover:shadow-none",
+          )}
+        >
           <div className="flex flex-col gap-1 mb-8">
             <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-              <Network className="h-5 w-5 text-primary" /> Assignments & Tracking
+              <Network className="h-5 w-5 text-primary" /> Assignments &
+              Tracking
             </h2>
             <p className="text-sm text-zinc-400">
               Configure geofences, projects, and attendance policies.
@@ -602,14 +822,20 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Geofence Boundary</Label>
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                Geofence Boundary
+              </Label>
               <Select
                 value={geofenceId}
                 onValueChange={setGeofenceId}
                 onOpenChange={(open) => {
-                  if (open && !hasFetchedGeofences.current && !isGeofenceFetchingRef.current) {
-                    hasFetchedGeofences.current = true
-                    fetchGeofencesPage(1)
+                  if (
+                    open &&
+                    !hasFetchedGeofences.current &&
+                    !isGeofenceFetchingRef.current
+                  ) {
+                    hasFetchedGeofences.current = true;
+                    fetchGeofencesPage(1);
                   }
                 }}
               >
@@ -618,16 +844,25 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                   <SelectItem value="none">None / No Geofence</SelectItem>
-                  {initialValues?.geofenceId && initialValues.geofenceId !== "none" && !geofencesList.some(g => g.id === initialValues.geofenceId) && (
-                    <SelectItem value={initialValues.geofenceId}>{initialValues.geofenceName || "Current Geofence"}</SelectItem>
-                  )}
+                  {initialValues?.geofenceId &&
+                    initialValues.geofenceId !== "none" &&
+                    !geofencesList.some(
+                      (g) => g.id === initialValues.geofenceId,
+                    ) && (
+                      <SelectItem value={initialValues.geofenceId}>
+                        {initialValues.geofenceName || "Current Geofence"}
+                      </SelectItem>
+                    )}
                   {geofencesList.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.name}
                     </SelectItem>
                   ))}
                   {hasMoreGeofences && (
-                    <div ref={geofenceObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                    <div
+                      ref={geofenceObserverRef}
+                      className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
+                    >
                       {isGeofencesLoading ? "Loading..." : "Scroll for more"}
                     </div>
                   )}
@@ -636,14 +871,20 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Assigned Project</Label>
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                Assigned Project
+              </Label>
               {isManager ? (
                 <Popover
                   modal={true}
                   onOpenChange={(open) => {
-                    if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
-                      hasFetchedProjects.current = true
-                      fetchProjectsPage(1)
+                    if (
+                      open &&
+                      !hasFetchedProjects.current &&
+                      !isProjectFetchingRef.current
+                    ) {
+                      hasFetchedProjects.current = true;
+                      fetchProjectsPage(1);
                     }
                   }}
                 >
@@ -656,50 +897,71 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                       {selectedProjects.length > 0 ? (
                         <div className="flex gap-1 flex-wrap overflow-hidden h-full items-center">
                           {selectedProjects.map((id) => {
-                            const proj = projectsList.find(p => p.id === id)
-                            const label = proj ? proj.name : (initialValues?.projectNames?.[id] || (initialValues?.projectId === id ? initialValues.projectName : "Project " + id.substring(0,4)))
+                            const proj = projectsList.find((p) => p.id === id);
+                            const label = proj
+                              ? proj.name
+                              : initialValues?.projectNames?.[id] ||
+                                (initialValues?.projectId === id
+                                  ? initialValues.projectName
+                                  : "Project " + id.substring(0, 4));
                             return (
-                              <Badge variant="secondary" key={id} className="rounded-sm px-1 font-normal text-[10px]">
+                              <Badge
+                                variant="secondary"
+                                key={id}
+                                className="rounded-sm px-1 font-normal text-[10px]"
+                              >
                                 {label}
                               </Badge>
-                            )
+                            );
                           })}
                         </div>
                       ) : (
-                        <span className="text-zinc-500 font-normal">Select projects...</span>
+                        <span className="text-zinc-500 font-normal">
+                          Select projects...
+                        </span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[300px] p-0 rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto" align="start">
+                  <PopoverContent
+                    className="w-[300px] p-0 rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto"
+                    align="start"
+                  >
                     <div className="flex flex-col p-1">
                       {projectsList.length === 0 && !hasMoreProjects && (
-                         <div className="p-2 text-center text-xs text-zinc-400">No projects found.</div>
+                        <div className="p-2 text-center text-xs text-zinc-400">
+                          No projects found.
+                        </div>
                       )}
                       {projectsList.map((p) => {
-                        const isSelected = selectedProjects.includes(p.id)
+                        const isSelected = selectedProjects.includes(p.id);
                         return (
-                          <div 
+                          <div
                             key={p.id}
                             className={cn(
                               "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
                             )}
                             onClick={() => {
                               setSelectedProjects((prev) =>
-                                isSelected ? prev.filter((id) => id !== p.id) : [...prev, p.id]
-                              )
+                                isSelected
+                                  ? prev.filter((id) => id !== p.id)
+                                  : [...prev, p.id],
+                              );
                             }}
                           >
-                            <Checkbox 
+                            <Checkbox
                               checked={isSelected}
                               className="mr-2 pointer-events-none"
                             />
                             {p.name}
                           </div>
-                        )
+                        );
                       })}
                       {hasMoreProjects && (
-                        <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                        <div
+                          ref={projectObserverRef}
+                          className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
+                        >
                           {isProjectsLoading ? "Loading..." : "Scroll for more"}
                         </div>
                       )}
@@ -709,11 +971,17 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
               ) : (
                 <Select
                   value={selectedProjects[0] || "none"}
-                  onValueChange={(val) => setSelectedProjects(val === "none" ? [] : [val])}
+                  onValueChange={(val) =>
+                    setSelectedProjects(val === "none" ? [] : [val])
+                  }
                   onOpenChange={(open) => {
-                    if (open && !hasFetchedProjects.current && !isProjectFetchingRef.current) {
-                      hasFetchedProjects.current = true
-                      fetchProjectsPage(1)
+                    if (
+                      open &&
+                      !hasFetchedProjects.current &&
+                      !isProjectFetchingRef.current
+                    ) {
+                      hasFetchedProjects.current = true;
+                      fetchProjectsPage(1);
                     }
                   }}
                 >
@@ -722,16 +990,25 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                     <SelectItem value="none">None / Unassigned</SelectItem>
-                    {selectedProjects[0] && selectedProjects[0] !== "none" && !projectsList.some(p => p.id === selectedProjects[0]) && (
-                      <SelectItem value={selectedProjects[0]}>{initialValues?.projectName || "Current Project"}</SelectItem>
-                    )}
+                    {selectedProjects[0] &&
+                      selectedProjects[0] !== "none" &&
+                      !projectsList.some(
+                        (p) => p.id === selectedProjects[0],
+                      ) && (
+                        <SelectItem value={selectedProjects[0]}>
+                          {initialValues?.projectName || "Current Project"}
+                        </SelectItem>
+                      )}
                     {projectsList.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
                     ))}
                     {hasMoreProjects && (
-                      <div ref={projectObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                      <div
+                        ref={projectObserverRef}
+                        className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
+                      >
                         {isProjectsLoading ? "Loading..." : "Scroll for more"}
                       </div>
                     )}
@@ -741,14 +1018,20 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Attendance Policy</Label>
+              <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                Attendance Policy
+              </Label>
               <Select
                 value={attendancePolicyId}
                 onValueChange={setAttendancePolicyId}
                 onOpenChange={(open) => {
-                  if (open && !hasFetchedPolicies.current && !isPolicyFetchingRef.current) {
-                    hasFetchedPolicies.current = true
-                    fetchPoliciesPage(1)
+                  if (
+                    open &&
+                    !hasFetchedPolicies.current &&
+                    !isPolicyFetchingRef.current
+                  ) {
+                    hasFetchedPolicies.current = true;
+                    fetchPoliciesPage(1);
                   }
                 }}
               >
@@ -757,16 +1040,25 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
                   <SelectItem value="none">None / System Default</SelectItem>
-                  {initialValues?.attendancePolicyId && initialValues.attendancePolicyId !== "none" && !policiesList.some(ap => ap.id === initialValues.attendancePolicyId) && (
-                    <SelectItem value={initialValues.attendancePolicyId}>{initialValues.attendancePolicyName || "Current Policy"}</SelectItem>
-                  )}
+                  {initialValues?.attendancePolicyId &&
+                    initialValues.attendancePolicyId !== "none" &&
+                    !policiesList.some(
+                      (ap) => ap.id === initialValues.attendancePolicyId,
+                    ) && (
+                      <SelectItem value={initialValues.attendancePolicyId}>
+                        {initialValues.attendancePolicyName || "Current Policy"}
+                      </SelectItem>
+                    )}
                   {policiesList.map((ap) => (
                     <SelectItem key={ap.id} value={ap.id}>
                       {ap.name}
                     </SelectItem>
                   ))}
                   {hasMorePolicies && (
-                    <div ref={policyObserverRef} className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50">
+                    <div
+                      ref={policyObserverRef}
+                      className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
+                    >
                       {isPoliciesLoading ? "Loading..." : "Scroll for more"}
                     </div>
                   )}
@@ -775,7 +1067,7 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             </div>
           </div>
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex justify-end gap-4 mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 fill-mode-both">
           <Button
@@ -792,10 +1084,14 @@ export function StaffForm({ initialValues, isDialog, onSuccess }: StaffFormProps
             className="rounded-2xl h-14 px-12 font-bold shadow-lg shadow-primary/20 min-w-[180px] transition-all hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0"
             disabled={isLoading}
           >
-            {isLoading ? "Saving Profile..." : (initialValues ? "Update Member" : "Save Staff Member")}
+            {isLoading
+              ? "Saving Profile..."
+              : initialValues
+                ? "Update Member"
+                : "Save Staff Member"}
           </Button>
         </div>
       </div>
     </form>
-  )
+  );
 }

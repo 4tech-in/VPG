@@ -30,6 +30,8 @@ export type Staff = {
   reportsToName?: string
   organizationId?: string
   projectNames?: Record<string, string>
+  salary?: number
+  dateOfJoining?: string
 }
 
 const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
@@ -121,6 +123,8 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     password: apiUser.password,
     emergencyContactNumber: apiUser.emergencyContactNumber,
     aadhaarNumber: apiUser.aadhaarNumber,
+    salary: apiUser.salary,
+    dateOfJoining: apiUser.dateOfJoining,
   }
 }
 

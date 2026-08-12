@@ -41,6 +41,8 @@ export type ApiUser = {
   password?: string
   emergencyContactNumber?: string
   aadhaarNumber?: string
+  salary?: number
+  dateOfJoining?: string
 }
 
 export type GetUsersParams = {
@@ -83,6 +85,8 @@ export type CreateUserPayload = {
   organizationId?: string | null
   emergencyContactNumber?: string
   aadhaarNumber?: string
+  salary?: number | string
+  dateOfJoining?: string
 }
 
 const convertToFormData = (obj: any): FormData => {
