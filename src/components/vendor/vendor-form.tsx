@@ -243,7 +243,7 @@ export function VendorDialog({ open, onOpenChange, initialValues, onSubmit: onSu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] flex flex-col bg-white">
+      <DialogContent onInteractOutside={(e) => e.preventDefault()} className="sm:max-w-[700px] w-[95vw] max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl rounded-[2rem] flex flex-col bg-white">
         
         {/* Modern Header */}
         <div className="flex items-center justify-between p-8 bg-white shrink-0 border-b border-zinc-50">
