@@ -321,9 +321,16 @@ export function exportPurchaseOrderReceipt(po: any) {
     return acc + Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0)))
   }, 0);
 
+  const freightCharges = Number(po.freightCharges || 0);
+  const packagingCharges = Number(po.packagingCharges || 0);
+  const otherCharges = Number(po.otherCharges || 0);
+  const totalAdditionalCharges = freightCharges + packagingCharges + otherCharges;
+
   const gstPercent = Number(po.gst || 0);
-  const gstCalculatedAmount = (itemsSubtotal * gstPercent) / 100;
-  const grandTotal = Number(po.totalAmount || (itemsSubtotal + gstCalculatedAmount));
+  const taxableAmount = itemsSubtotal + totalAdditionalCharges;
+  const gstCalculatedAmount = (taxableAmount * gstPercent) / 100;
+  
+  const grandTotal = Number(po.totalAmount || (taxableAmount + gstCalculatedAmount));
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -612,7 +619,7 @@ export function exportPurchaseOrderReceipt(po: any) {
               <td>COMPANY NAME</td>
             </tr>
             <tr>
-              <td>${po.vendorCompany || ""}</td>
+              <td>${po.vendorId?.companyName || po.vendorName || ""}</td>
               <td>VPG CONSTRUCTION PVT. LTD.</td>
             </tr>
             <tr class="grey-row">
@@ -657,6 +664,12 @@ export function exportPurchaseOrderReceipt(po: any) {
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Subtotal</td>
                 <td style="border: 1px solid #000;">${itemsSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
+              ${totalAdditionalCharges > 0 ? `
+              <tr class="totals-row">
+                <td colspan="4" style="border: none;"></td>
+                <td style="border: 1px solid #000; border-left: 1px solid #000;">Additional Charges</td>
+                <td style="border: 1px solid #000;">${totalAdditionalCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+              </tr>` : ""}
               <tr class="totals-row">
                 <td colspan="4" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">GST ${gstPercent}%</td>
