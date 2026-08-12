@@ -321,8 +321,9 @@ export function exportPurchaseOrderReceipt(po: any) {
     return acc + Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0)))
   }, 0);
 
-  const gstAmount = Number(po.gst || 0);
-  const grandTotal = Number(po.totalAmount || (itemsSubtotal + gstAmount));
+  const gstPercent = Number(po.gst || 0);
+  const gstCalculatedAmount = (itemsSubtotal * gstPercent) / 100;
+  const grandTotal = Number(po.totalAmount || (itemsSubtotal + gstCalculatedAmount));
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -623,7 +624,7 @@ export function exportPurchaseOrderReceipt(po: any) {
               <td>VPG CONSTRUCTION PVT. LTD. SITE AT ${po.projectId?.projectName || po.projectId?.name || "DAPPAR"}</td>
             </tr>
             <tr class="grey-row">
-              <td>GST NO: - ${po.vendorGst || ""}</td>
+              <td>GST NO: - ${po.vendorId?.gstNumber || ""}</td>
               <td>GST NO: -03AAWCS2873A1ZB</td>
             </tr>
           </tbody>
@@ -658,8 +659,8 @@ export function exportPurchaseOrderReceipt(po: any) {
               </tr>
               <tr class="totals-row">
                 <td colspan="4" style="border: none;"></td>
-                <td style="border: 1px solid #000; border-left: 1px solid #000;">GST 18%</td>
-                <td style="border: 1px solid #000;">${gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                <td style="border: 1px solid #000; border-left: 1px solid #000;">GST ${gstPercent}%</td>
+                <td style="border: 1px solid #000;">${gstCalculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr class="totals-row">
                 <td colspan="4" style="border: none;"></td>
@@ -670,14 +671,22 @@ export function exportPurchaseOrderReceipt(po: any) {
           </table>
         </div>
 
-        <div class="conditions">
-          <div class="conditions-title">Conditions:</div>
-          <ol class="conditions-list">
-            <li>All material is PRM quality.</li>
-            <li>Payment 100% advance.</li>
-            <li>Unloading on Client Scope.</li>
-            <li>Rates are FOR at site ${po.projectId?.projectName || po.projectId?.name || "Dappar"}.</li>
-          </ol>
+        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div class="conditions-title" style="font-weight: bold;">Conditions:</div>
+            <ol class="conditions-list">
+              <li>All material is PRM quality.</li>
+              <li>Payment 100% advance.</li>
+              <li>Unloading on Client Scope.</li>
+              <li>Rates are FOR at site ${po.projectId?.projectName || po.projectId?.name || "Dappar"}.</li>
+            </ol>
+          </div>
+          <div style="border: 1px solid #000; padding: 10px; min-width: 200px;">
+            <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">Bank Details:</div>
+            <div><strong>Bank Name:</strong> ${po.vendorId?.bankName || "N/A"}</div>
+            <div><strong>A/C No:</strong> ${po.vendorId?.accountNumber || "N/A"}</div>
+            <div><strong>IFSC:</strong> ${po.vendorId?.ifscCode || "N/A"}</div>
+          </div>
         </div>
 
         <div class="bottom-wave">
