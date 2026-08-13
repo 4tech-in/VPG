@@ -254,6 +254,8 @@ export function StaffForm({
       ? new Date(initialValues.dateOfJoining).toISOString().split("T")[0]
       : "",
   );
+  const [designation, setDesignation] = useState(initialValues?.designation || "");
+  const [bloodGroup, setBloodGroup] = useState(initialValues?.bloodGroup || "");
   const [roleId, setRoleId] = useState(initialValues?.roleId || "");
   const [reportsTo, setReportsTo] = useState(
     initialValues?.reportsTo || "none",
@@ -302,6 +304,8 @@ export function StaffForm({
           ? new Date(initialValues.dateOfJoining).toISOString().split("T")[0]
           : "",
       );
+      setDesignation(initialValues.designation || "");
+      setBloodGroup(initialValues.bloodGroup || "");
       setRoleId(initialValues.roleId || "");
       setReportsTo(initialValues.reportsTo || "none");
       setPrimaryNodeId(initialValues.primaryNodeId || "");
@@ -370,6 +374,8 @@ export function StaffForm({
             : attendancePolicyId,
         salary: salary ? Number(salary) : undefined,
         dateOfJoining: dateOfJoining || undefined,
+        designation: designation || undefined,
+        bloodGroup: bloodGroup || undefined,
       };
       if (isSuperAdmin && organizationId) {
         payload.organizationId = organizationId;
@@ -615,6 +621,45 @@ export function StaffForm({
 
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Designation
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      value={designation}
+                      onChange={(e) => setDesignation(e.target.value)}
+                      placeholder="e.g. Software Engineer"
+                      autoComplete="off"
+                      className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                    Blood Group
+                  </Label>
+                  <Select
+                    value={bloodGroup || undefined}
+                    onValueChange={setBloodGroup}
+                  >
+                    <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
+                      <SelectValue placeholder="Select Blood Group" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-zinc-100 shadow-xl">
+                      <SelectItem value="A+">A+</SelectItem>
+                      <SelectItem value="A-">A-</SelectItem>
+                      <SelectItem value="B+">B+</SelectItem>
+                      <SelectItem value="B-">B-</SelectItem>
+                      <SelectItem value="AB+">AB+</SelectItem>
+                      <SelectItem value="AB-">AB-</SelectItem>
+                      <SelectItem value="O+">O+</SelectItem>
+                      <SelectItem value="O-">O-</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
                     Password{" "}
                     {initialValues && (
                       <span className="text-[10px] text-zinc-400 font-bold tracking-normal normal-case">
@@ -631,6 +676,7 @@ export function StaffForm({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
+                      autoComplete="new-password"
                       className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 pr-12 focus-visible:ring-primary font-medium transition-colors hover:bg-zinc-50"
                       required={!initialValues}
                     />

@@ -32,6 +32,8 @@ export type Staff = {
   projectNames?: Record<string, string>
   salary?: number
   dateOfJoining?: string
+  designation?: string
+  bloodGroup?: string
 }
 
 const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
@@ -125,6 +127,8 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     aadhaarNumber: apiUser.aadhaarNumber,
     salary: apiUser.salary,
     dateOfJoining: apiUser.dateOfJoining,
+    designation: apiUser.designation,
+    bloodGroup: apiUser.bloodGroup,
   }
 }
 

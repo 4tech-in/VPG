@@ -43,6 +43,8 @@ export type ApiUser = {
   aadhaarNumber?: string
   salary?: number
   dateOfJoining?: string
+  designation?: string
+  bloodGroup?: string
 }
 
 export type GetUsersParams = {
@@ -87,6 +89,8 @@ export type CreateUserPayload = {
   aadhaarNumber?: string
   salary?: number | string
   dateOfJoining?: string
+  designation?: string
+  bloodGroup?: string
 }
 
 const convertToFormData = (obj: any): FormData => {
