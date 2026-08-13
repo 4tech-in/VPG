@@ -52,6 +52,7 @@ export function CreatePODialog({
   const [packagingCharges, setPackagingCharges] = useState<number>(0);
   const [otherCharges, setOtherCharges] = useState<number>(0);
   const [gst, setGst] = useState<number>(0);
+  const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
   // Fetch approved indents & active vendors when Dialog opens
   useEffect(() => {
@@ -154,7 +155,8 @@ export function CreatePODialog({
               qty: item.quantity,
               unitId: item.unitId?._id || item.unitId || "",
               unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
-              price: "",
+              price: item.itemId?.price || item.itemId?.rate || "",
+              originalPrice: item.itemId?.price || item.itemId?.rate || "",
               description: "",
               poCreated,
               selected: !poCreated
@@ -233,6 +235,21 @@ export function CreatePODialog({
       return;
     }
 
+    const hasPriceChange = selectedItems.some((item) => 
+      item.originalPrice !== undefined && 
+      Number(item.price) !== Number(item.originalPrice) && 
+      Number(item.price) > 0
+    );
+
+    if (hasPriceChange && !showPriceConfirm) {
+      setShowPriceConfirm(true);
+      return;
+    }
+
+    submitPO(selectedItems);
+  };
+
+  const submitPO = async (selectedItems: any[]) => {
     setIsFormSubmitting(true);
     try {
       const res = await purchaseOrderService.createPurchaseOrder({
@@ -293,6 +310,31 @@ export function CreatePODialog({
             Generate a new procurement request from an indent
           </DialogDescription>
         </DialogHeader>
+
+        {/* PRICE CONFIRMATION MODAL OVERLAY */}
+        {showPriceConfirm && (
+          <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 rounded-[2.5rem]">
+            <div className="bg-white border border-zinc-100 shadow-2xl rounded-2xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-black text-zinc-900 mb-2">Confirm Price Update</h3>
+              <p className="text-zinc-500 font-medium text-sm mb-6">
+                You have modified the unit price of one or more items. 
+                <br /><br />
+                <strong className="text-rose-600">Are you sure you want to update the price?</strong> 
+                <br />
+                The current item price in the database will be overwritten with the new price.
+              </p>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={() => setShowPriceConfirm(false)} className="rounded-xl font-bold flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={() => { setShowPriceConfirm(false); submitPO(items.filter(item => item.selected)); }} className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90">
+                  Confirm & Generate
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleGeneratePO} className="p-8 space-y-6">
           <ScrollArea className="max-h-[55vh] pr-4">
             <div className="space-y-6">

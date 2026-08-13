@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   FileText,
   Wallet,
@@ -88,6 +96,8 @@ function CreatePOContent() {
   const [otherCharges, setOtherCharges] = useState<number>(0);
   const [gst, setGst] = useState<number>(0);
 
+  const [showPriceConfirm, setShowPriceConfirm] = useState(false);
+
   const calledRef = useRef(false);
 
   const handleIndentSelect = async (val: string) => {
@@ -107,7 +117,8 @@ function CreatePOContent() {
             qty: item.quantity,
             unitId: item.unitId?._id || item.unitId || "",
             unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
-            price: 0,
+            price: item.itemId?.price || item.itemId?.rate || "",
+            originalPrice: item.itemId?.price || item.itemId?.rate || "",
             description: "",
             assignedVendorId: ""
           }))
@@ -249,6 +260,21 @@ function CreatePOContent() {
       return;
     }
 
+    const hasPriceChange = items.some((item) => 
+      item.originalPrice !== undefined && 
+      Number(item.price) !== Number(item.originalPrice) && 
+      Number(item.price) > 0
+    );
+
+    if (hasPriceChange && !showPriceConfirm) {
+      setShowPriceConfirm(true);
+      return;
+    }
+
+    submitPO();
+  };
+
+  const submitPO = async () => {
     try {
       const groupedItems: Record<string, any[]> = {};
       items.forEach((item) => {
@@ -318,6 +344,29 @@ function CreatePOContent() {
 
   return (
     <ContentLayout title="Create Purchase Order">
+      <Dialog open={showPriceConfirm} onOpenChange={setShowPriceConfirm}>
+        <DialogContent className="max-w-md rounded-2xl bg-white border-none shadow-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-zinc-900">Confirm Price Update</DialogTitle>
+            <DialogDescription className="text-zinc-500 font-medium">
+              You have modified the unit price of one or more items. 
+              <br /><br />
+              <strong className="text-rose-600">Are you sure you want to update the price?</strong> 
+              <br />
+              The current item price in the database will be overwritten with the new price.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex items-center gap-3">
+            <Button variant="outline" onClick={() => setShowPriceConfirm(false)} className="rounded-xl font-bold flex-1">
+              Cancel
+            </Button>
+            <Button onClick={() => { setShowPriceConfirm(false); submitPO(); }} className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90">
+              Confirm & Generate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col gap-6 max-w-full mx-auto">
         {/* Header Navigation */}
         <div className="flex items-center gap-4">
