@@ -55,6 +55,7 @@ export default function PODetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConditions, setShowConditions] = useState(true);
 
   const fetchPO = async () => {
     try {
@@ -266,16 +267,28 @@ export default function PODetailPage() {
           </div>
 
           {/* Action Buttons Top Right */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
-              onClick={() => exportPurchaseOrderReceipt(po)}
+              onClick={() => setShowConditions((prev) => !prev)}
+              variant="outline"
+              className={`h-9 rounded-lg font-bold text-[11px] gap-1.5 px-4 shadow-sm border ${
+                showConditions
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                  : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100"
+              }`}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {showConditions ? "Conditions: ON" : "Conditions: OFF"}
+            </Button>
+            <Button
+              onClick={() => exportPurchaseOrderReceipt(po, showConditions)}
               variant="outline"
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >
               <Printer className="h-3.5 w-3.5 text-zinc-500" /> Print
             </Button>
             <Button
-              onClick={() => exportPurchaseOrderReceipt(po)}
+              onClick={() => exportPurchaseOrderReceipt(po, showConditions)}
               variant="outline"
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >

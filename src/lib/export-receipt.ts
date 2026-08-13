@@ -1,8 +1,12 @@
 export function exportIndentReceipt(indent: any) {
   if (!indent) return;
 
-  const formattedCreated = indent.createdAt ? new Date(indent.createdAt).toLocaleDateString("en-IN") : "N/A";
-  const formattedDelivery = indent.estimateDeliveryDate ? new Date(indent.estimateDeliveryDate).toLocaleDateString("en-IN") : "N/A";
+  const formattedCreated = indent.createdAt
+    ? new Date(indent.createdAt).toLocaleDateString("en-IN")
+    : "N/A";
+  const formattedDelivery = indent.estimateDeliveryDate
+    ? new Date(indent.estimateDeliveryDate).toLocaleDateString("en-IN")
+    : "N/A";
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -21,21 +25,36 @@ export function exportIndentReceipt(indent: any) {
         <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: right; font-weight: bold; color: #18181b;">${item.quantity}</td>
         <td style="padding: 12px; border-bottom: 1px solid #e4e4e7; text-align: left; font-weight: 500; color: #71717a; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">${item.unitId?.unitName || item.unitId?.name || "Units"}</td>
       </tr>
-    `
+    `,
     )
     .join("");
 
-  const statusLabel = indent.status === "Pending" ? "PENDING MANAGER" :
-                      indent.status === "Approved" ? "APPROVED / PENDING PO" :
-                      indent.status === "ConvertedToPO" ? "PO CREATED" : "REJECTED";
+  const statusLabel =
+    indent.status === "Pending"
+      ? "PENDING MANAGER"
+      : indent.status === "Approved"
+        ? "APPROVED / PENDING PO"
+        : indent.status === "ConvertedToPO"
+          ? "PO CREATED"
+          : "REJECTED";
 
-  const statusColor = indent.status === "Pending" ? "#d97706" :
-                      indent.status === "Approved" ? "#2563eb" :
-                      indent.status === "ConvertedToPO" ? "#059669" : "#dc2626";
+  const statusColor =
+    indent.status === "Pending"
+      ? "#d97706"
+      : indent.status === "Approved"
+        ? "#2563eb"
+        : indent.status === "ConvertedToPO"
+          ? "#059669"
+          : "#dc2626";
 
-  const statusBg = indent.status === "Pending" ? "#fef3c7" :
-                    indent.status === "Approved" ? "#dbeafe" :
-                    indent.status === "ConvertedToPO" ? "#d1fae5" : "#fee2e2";
+  const statusBg =
+    indent.status === "Pending"
+      ? "#fef3c7"
+      : indent.status === "Approved"
+        ? "#dbeafe"
+        : indent.status === "ConvertedToPO"
+          ? "#d1fae5"
+          : "#fee2e2";
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -291,10 +310,15 @@ export function exportIndentReceipt(indent: any) {
   printWindow.document.close();
 }
 
-export function exportPurchaseOrderReceipt(po: any) {
+export function exportPurchaseOrderReceipt(
+  po: any,
+  showConditions: boolean = true,
+) {
   if (!po) return;
 
-  const formattedCreated = po.createdAt ? new Date(po.createdAt).toLocaleDateString("en-IN") : "N/A";
+  const formattedCreated = po.createdAt
+    ? new Date(po.createdAt).toLocaleDateString("en-IN")
+    : "N/A";
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -312,26 +336,35 @@ export function exportPurchaseOrderReceipt(po: any) {
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.itemId?.unitId?.name || item.itemId?.unitId?.unitName || item.itemId?.unitId?.label || item.unitId?.name || item.unitId?.unitName || item.unitId?.label || "-"}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.orderQuantity || item.indentQuantity}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${Number(item.rate || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-        <td style="padding: 10px; border: 1px solid #000; text-align: right;">${Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+        <td style="padding: 10px; border: 1px solid #000; text-align: right;">${Number(item.amount || (item.orderQuantity || item.indentQuantity) * (item.rate || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
       </tr>
-    `
+    `,
     )
     .join("");
 
   const itemsSubtotal = (po.items || []).reduce((acc: number, item: any) => {
-    return acc + Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0)))
+    return (
+      acc +
+      Number(
+        item.amount ||
+          (item.orderQuantity || item.indentQuantity) * (item.rate || 0),
+      )
+    );
   }, 0);
 
   const freightCharges = Number(po.freightCharges || 0);
   const packagingCharges = Number(po.packagingCharges || 0);
   const otherCharges = Number(po.otherCharges || 0);
-  const totalAdditionalCharges = freightCharges + packagingCharges + otherCharges;
+  const totalAdditionalCharges =
+    freightCharges + packagingCharges + otherCharges;
 
   const gstPercent = Number(po.gst || 0);
   const taxableAmount = itemsSubtotal + totalAdditionalCharges;
   const gstCalculatedAmount = (taxableAmount * gstPercent) / 100;
-  
-  const grandTotal = Number(po.totalAmount || (taxableAmount + gstCalculatedAmount));
+
+  const grandTotal = Number(
+    po.totalAmount || taxableAmount + gstCalculatedAmount,
+  );
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -612,6 +645,8 @@ export function exportPurchaseOrderReceipt(po: any) {
         <div class="po-details">
           <div>PO Number: ${po.poNo || ""}</div>
           <div>Dated: ${formattedCreated}</div>
+          <div>Valid To: ${po.validTo ? new Date(po.validTo).toLocaleDateString("en-IN") : "N/A"}</div>
+          <div>Est. Delivery Date: ${po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString("en-IN") : "N/A"}</div>
           <div>Quotation No.: ${po.quotationNo || ""}</div>
         </div>
 
@@ -682,7 +717,7 @@ export function exportPurchaseOrderReceipt(po: any) {
                 <th style="text-align: left;">DESCRIPTION</th>
                 <th style="width: 80px;">HSN</th>
                 <th style="width: 80px;">UNIT</th>
-                <th style="width: 80px;">QTY(SQFT)</th>
+                <th style="width: 80px;">QTY</th>
                 <th style="width: 80px;">RATE</th>
                 <th style="width: 100px;">TOTAL</th>
               </tr>
@@ -690,21 +725,22 @@ export function exportPurchaseOrderReceipt(po: any) {
             <tbody>
               ${itemsHtml}
               <!-- Empty rows to fill space as in image -->
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+              <!-- Empty rows removed to save space -->
               <tr class="totals-row">
                 <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Subtotal</td>
                 <td style="border: 1px solid #000;">${itemsSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
-              ${totalAdditionalCharges > 0 ? `
+              ${
+                totalAdditionalCharges > 0
+                  ? `
               <tr class="totals-row">
                 <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Additional Charges</td>
                 <td style="border: 1px solid #000;">${totalAdditionalCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-              </tr>` : ""}
+              </tr>`
+                  : ""
+              }
               <tr class="totals-row">
                 <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">GST ${gstPercent}%</td>
@@ -719,7 +755,10 @@ export function exportPurchaseOrderReceipt(po: any) {
           </table>
         </div>
 
-        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        ${
+          showConditions
+            ? `
+        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -20px;">
           <div>
             <div class="conditions-title" style="font-weight: bold;">Conditions:</div>
             <ol class="conditions-list">
@@ -729,6 +768,15 @@ export function exportPurchaseOrderReceipt(po: any) {
               <li>Rates are FOR at site ${po.projectId?.projectName || po.projectId?.name || "Dappar"}.</li>
             </ol>
           </div>
+        </div>`
+            : ""
+        }
+
+        <div style="display: flex; justify-content: flex-start; margin-top: 5px; margin-left: 10px; position: relative; z-index: 10; font-family: Arial, sans-serif;">
+           <div style="text-align: center; color: #0047b3;">
+              <div style="font-weight: bold; margin-bottom: 35px; font-size: 14px;">For VPG Construction Private Limited</div>
+              <div style="border-top: 1.5px solid #0047b3; display: inline-block; padding-top: 5px; font-weight: bold; font-size: 14px; min-width: 150px;">Auth. Sign.</div>
+           </div>
         </div>
 
         <div class="bottom-wave">

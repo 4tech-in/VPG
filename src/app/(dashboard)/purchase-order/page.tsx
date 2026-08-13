@@ -44,6 +44,8 @@ export default function PurchaseOrderPage() {
     refetch
   } = usePurchaseOrders()
 
+  const [showConditions, setShowConditions] = useState(true)
+
 
 
   const columns: ColumnDef<PurchaseOrder>[] = [
@@ -141,7 +143,7 @@ export default function PurchaseOrderPage() {
              </Button>
              <Button 
                variant="ghost" 
-               onClick={() => exportPurchaseOrderReceipt(po)}
+               onClick={() => exportPurchaseOrderReceipt(po, showConditions)}
                className="h-7 px-2 rounded-lg bg-amber-50/50 hover:bg-amber-100/80 text-amber-600 font-bold text-xs transition-all border border-amber-200/50"
                title="Print PO"
              >
@@ -191,6 +193,19 @@ export default function PurchaseOrderPage() {
                 />
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
               </div>
+
+              <Button
+                onClick={() => setShowConditions((prev) => !prev)}
+                variant="outline"
+                className={`h-11 px-4 rounded-xl font-black text-[11px] gap-2 border shadow-sm transition-all ${
+                  showConditions
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                    : "bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100"
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                {showConditions ? "Conditions: ON" : "Conditions: OFF"}
+              </Button>
 
               <Button 
                 onClick={() => router.push("/purchase-order/new")}
