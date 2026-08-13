@@ -308,7 +308,8 @@ export function exportPurchaseOrderReceipt(po: any) {
       <tr>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${index + 1}</td>
         <td style="padding: 10px; border: 1px solid #000;">${item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</td>
-        <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.size || "-"}</td>
+        <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.itemId?.HSNcode || item.itemId?.unindentHSNcode || "-"}</td>
+        <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.itemId?.unitId?.name || item.itemId?.unitId?.unitName || item.itemId?.unitId?.label || item.unitId?.name || item.unitId?.unitName || item.unitId?.label || "-"}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.orderQuantity || item.indentQuantity}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${Number(item.rate || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: right;">${Number(item.amount || ((item.orderQuantity || item.indentQuantity) * (item.rate || 0))).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
@@ -650,6 +651,22 @@ export function exportPurchaseOrderReceipt(po: any) {
               <td>GST NO: - ${po.vendorId?.gstNumber || ""}</td>
               <td>GST NO: -03AAWCS2873A1ZB</td>
             </tr>
+            <tr class="grey-row">
+              <td>BANK DETAILS (VENDOR)</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Bank Name: ${po.vendorId?.bankName || "N/A"}</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>A/C No: ${po.vendorId?.accountNumber || "N/A"}</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>IFSC Code: ${po.vendorId?.ifscCode || "N/A"}</td>
+              <td></td>
+            </tr>
           </tbody>
         </table>
 
@@ -663,7 +680,8 @@ export function exportPurchaseOrderReceipt(po: any) {
               <tr >
                 <th style="width: 40px;">SR</th>
                 <th style="text-align: left;">DESCRIPTION</th>
-                <th style="width: 80px;">SIZE</th>
+                <th style="width: 80px;">HSN</th>
+                <th style="width: 80px;">UNIT</th>
                 <th style="width: 80px;">QTY(SQFT)</th>
                 <th style="width: 80px;">RATE</th>
                 <th style="width: 100px;">TOTAL</th>
@@ -672,28 +690,28 @@ export function exportPurchaseOrderReceipt(po: any) {
             <tbody>
               ${itemsHtml}
               <!-- Empty rows to fill space as in image -->
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td></tr>
-              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td></tr>
+              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+              <tr><td style="height: 22px;"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
               <tr class="totals-row">
-                <td colspan="4" style="border: none;"></td>
+                <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Subtotal</td>
                 <td style="border: 1px solid #000;">${itemsSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
               ${totalAdditionalCharges > 0 ? `
               <tr class="totals-row">
-                <td colspan="4" style="border: none;"></td>
+                <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Additional Charges</td>
                 <td style="border: 1px solid #000;">${totalAdditionalCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>` : ""}
               <tr class="totals-row">
-                <td colspan="4" style="border: none;"></td>
+                <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">GST ${gstPercent}%</td>
                 <td style="border: 1px solid #000;">${gstCalculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr class="totals-row">
-                <td colspan="4" style="border: none;"></td>
+                <td colspan="5" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000; font-weight: bold;">G. Total</td>
                 <td style="border: 1px solid #000; font-weight: bold;">${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
@@ -710,12 +728,6 @@ export function exportPurchaseOrderReceipt(po: any) {
               <li>Unloading on Client Scope.</li>
               <li>Rates are FOR at site ${po.projectId?.projectName || po.projectId?.name || "Dappar"}.</li>
             </ol>
-          </div>
-          <div style="border: 1px solid #000; padding: 10px; min-width: 200px;">
-            <div style="font-weight: bold; margin-bottom: 5px; text-decoration: underline;">Bank Details:</div>
-            <div><strong>Bank Name:</strong> ${po.vendorId?.bankName || "N/A"}</div>
-            <div><strong>A/C No:</strong> ${po.vendorId?.accountNumber || "N/A"}</div>
-            <div><strong>IFSC:</strong> ${po.vendorId?.ifscCode || "N/A"}</div>
           </div>
         </div>
 
