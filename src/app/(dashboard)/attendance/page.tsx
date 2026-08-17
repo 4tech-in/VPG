@@ -147,7 +147,7 @@ export default function AttendancePage() {
     setIsLoading(true)
     try {
       const params: any = {
-        limit: 10,
+        limit: 1000,
       }
 
       if (fromDate) {
@@ -155,10 +155,6 @@ export default function AttendancePage() {
       }
       if (toDate) {
         params.endDate = format(toDate, "yyyy-MM-dd")
-      }
-
-      if (selectedStatus) {
-        params.status = selectedStatus
       }
 
       const response = await attendanceService.getAttendance(params)
@@ -169,26 +165,35 @@ export default function AttendancePage() {
     } finally {
       setIsLoading(false)
     }
-  }, [fromDate, toDate, selectedStatus])
+  }, [fromDate, toDate])
 
   useEffect(() => {
-    const paramsKey = `${fromDate?.getTime() || ""}-${toDate?.getTime() || ""}-${selectedStatus || ""}`
+    const paramsKey = `${fromDate?.getTime() || ""}-${toDate?.getTime() || ""}`
     if (lastFetchedParams.current !== paramsKey) {
       lastFetchedParams.current = paramsKey
       fetchAttendances()
     }
-  }, [fromDate, toDate, selectedStatus, fetchAttendances])
+  }, [fromDate, toDate, fetchAttendances])
 
   // Client side search mapping
   const filteredData = useMemo(() => {
-    if (!search) return data
-    const query = search.toLowerCase()
-    return data.filter(
-      (item) =>
-        item.userId?.name?.toLowerCase().includes(query) ||
-        item.userId?.email?.toLowerCase().includes(query)
-    )
-  }, [data, search])
+    let result = data;
+    
+    if (selectedStatus) {
+      result = result.filter(item => item.status === selectedStatus);
+    }
+
+    if (search) {
+      const query = search.toLowerCase()
+      result = result.filter(
+        (item) =>
+          item.userId?.name?.toLowerCase().includes(query) ||
+          item.userId?.email?.toLowerCase().includes(query)
+      )
+    }
+
+    return result;
+  }, [data, search, selectedStatus])
 
   // Mark Attendance Submit Handler
   const handleMarkAttendance = async (e: React.FormEvent) => {
@@ -421,7 +426,17 @@ export default function AttendancePage() {
     let absent = 0
     let weeklyOff = 0
 
-    filteredData.forEach((record) => {
+    let relevantData = data;
+    if (search) {
+      const query = search.toLowerCase()
+      relevantData = relevantData.filter(
+        (item) =>
+          item.userId?.name?.toLowerCase().includes(query) ||
+          item.userId?.email?.toLowerCase().includes(query)
+      )
+    }
+
+    relevantData.forEach((record) => {
       if (record.status === "Present") onTime++
       else if (record.status === "Late") late++
       else if (record.status === "HalfDay") halfDay++
@@ -430,7 +445,7 @@ export default function AttendancePage() {
     })
 
     return { onTime, late, halfDay, absent, weeklyOff }
-  }, [filteredData])
+  }, [data, search])
 
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
