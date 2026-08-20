@@ -12,7 +12,9 @@ import {
   EyeOff,
   ArrowRight,
   ArrowUpDown,
-  Filter
+  Filter,
+  RotateCcw,
+  Smartphone
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -38,6 +40,7 @@ import { cn } from "@/lib/utils"
 import { useUsers, Staff } from "@/hooks/use-users"
 import { useAuthStore } from "@/store/use-auth-store"
 import { authService } from "@/service/auth.api"
+import { deviceService } from "@/service/devices.api"
 import { toast } from "sonner"
 import {
   Tooltip,
@@ -160,6 +163,23 @@ export default function UserPage() {
     setIsDialogOpen(true)
   }
 
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null)
+
+  const handleResetDevice = async (userId: string, userName?: string) => {
+    if (!confirm(`Are you sure you want to reset device binding for ${userName || "this user"}?`)) {
+      return
+    }
+    try {
+      setResettingUserId(userId)
+      const res = await deviceService.resetDevice(userId)
+      toast.success(res?.message || "Device ID reset successfully")
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to reset device ID")
+    } finally {
+      setResettingUserId(null)
+    }
+  }
+
   const handleAddNew = () => {
     setEditingStaff(null)
     setIsDialogOpen(true)
@@ -224,6 +244,27 @@ export default function UserPage() {
       header: () => <div className="text-center w-full uppercase text-[10px] tracking-widest font-black text-zinc-400">Action</div>,
       cell: ({ row }) => (
         <div className="flex items-center justify-center gap-1">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={resettingUserId === row.original.id}
+                  className="h-9 w-9 rounded-xl text-zinc-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleResetDevice(row.original.id, row.original.name)
+                  }}
+                >
+                  <RotateCcw className={`h-4 w-4 ${resettingUserId === row.original.id ? "animate-spin text-amber-600" : ""}`} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="rounded-xl font-bold text-xs bg-zinc-900 text-white">
+                <p>Reset Device ID</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button
             variant="ghost"
             size="icon"

@@ -688,11 +688,11 @@ export function exportPurchaseOrderReceipt(
             </tr>
             <tr class="grey-row">
               <td>BANK DETAILS (VENDOR)</td>
-              <td></td>
+              <td>DELIVERY ADDRESS</td>
             </tr>
             <tr>
               <td>Bank Name: ${po.vendorId?.bankName || "N/A"}</td>
-              <td></td>
+              <td>${po.deliveryAddress || po.projectId?.address || po.projectId?.location || "As per project site details"}</td>
             </tr>
             <tr>
               <td>A/C No: ${po.vendorId?.accountNumber || "N/A"}</td>
