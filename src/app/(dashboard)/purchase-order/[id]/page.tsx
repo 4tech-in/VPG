@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Printer,
-  Download,
   Share2,
   Calendar,
   Clock,
@@ -47,6 +46,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet";
+import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 
 export default function PODetailPage() {
   const params = useParams();
@@ -54,6 +54,7 @@ export default function PODetailPage() {
   const [po, setPo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
 
@@ -288,11 +289,11 @@ export default function PODetailPage() {
               <Printer className="h-3.5 w-3.5 text-zinc-500" /> Print
             </Button>
             <Button
-              onClick={() => exportPurchaseOrderReceipt(po, showConditions)}
+              onClick={() => setIsReceiptOpen(true)}
               variant="outline"
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >
-              <Download className="h-3.5 w-3.5 text-zinc-500" /> Download PDF
+              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" /> Receipt
             </Button>
             <Button className="h-9 rounded-lg font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none">
               <Share2 className="h-3.5 w-3.5" /> Share{" "}
@@ -300,6 +301,8 @@ export default function PODetailPage() {
             </Button>
           </div>
         </div>
+
+        <ReceiptDialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={po} />
 
         {/* 5-Column Core Dashboard Summary Info Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
