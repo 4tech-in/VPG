@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils"
 import { usePurchaseOrders } from "@/hooks/use-purchase-orders"
 import { PurchaseOrder, purchaseOrderService } from "@/service/purchaseOrderService"
 import { exportPurchaseOrderReceipt } from "@/lib/export-receipt"
+import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function PurchaseOrderPage() {
   const router = useRouter()
@@ -45,8 +47,22 @@ export default function PurchaseOrderPage() {
   } = usePurchaseOrders()
 
   const [showConditions, setShowConditions] = useState(true)
+  const [receiptPO, setReceiptPO] = useState<PurchaseOrder | null>(null)
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
 
-
+  const openReceipt = async (po: PurchaseOrder) => {
+    const id = po._id || po.id
+    if (!id) return
+    try {
+      setReceiptLoadingId(id)
+      const details = await purchaseOrderService.getPurchaseOrderById(id)
+      setReceiptPO(details)
+    } catch (error: any) {
+      toast.error(error?.message || "Unable to load receipt")
+    } finally {
+      setReceiptLoadingId(null)
+    }
+  }
 
   const columns: ColumnDef<PurchaseOrder>[] = [
     {
@@ -127,43 +143,46 @@ export default function PurchaseOrderPage() {
     },
     {
       id: "actions",
-      header: () => <div className="text-center w-40 mx-auto">Action</div>,
+      header: () => <div className="text-center w-44 mx-auto">Action</div>,
       cell: ({ row }) => {
         const po = row.original
         const isCancellable = !["Received", "Issued", "Cancelled"].includes(po.status)
         return (
-          <div className="flex items-center justify-center gap-1.5 w-40 mx-auto">
-             <Button 
-               variant="ghost" 
+          <TooltipProvider delayDuration={150}>
+          <div className="flex items-center justify-center gap-1.5 w-44 mx-auto">
+             <Tooltip><TooltipTrigger asChild><Button
+               variant="ghost" size="icon"
                onClick={() => router.push(`/purchase-order/${po._id || po.id}`)}
-               className="h-7 px-2 rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-600 font-bold text-xs transition-all border border-zinc-200"
-               title="View Details"
-             >
-                View
-             </Button>
-             <Button 
-               variant="ghost" 
+               className="h-8 w-8 rounded-lg bg-zinc-50 hover:bg-zinc-100 text-zinc-600 transition-all border border-zinc-200"
+               aria-label="View purchase order"
+             ><Eye className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>View details</TooltipContent></Tooltip>
+             <Tooltip><TooltipTrigger asChild><Button
+               variant="ghost" size="icon"
                onClick={() => exportPurchaseOrderReceipt(po, showConditions)}
-               className="h-7 px-2 rounded-lg bg-amber-50/50 hover:bg-amber-100/80 text-amber-600 font-bold text-xs transition-all border border-amber-200/50"
-               title="Print PO"
-             >
-                Print
-             </Button>
+               className="h-8 w-8 rounded-lg bg-amber-50/50 hover:bg-amber-100/80 text-amber-600 transition-all border border-amber-200/50"
+               aria-label="Print purchase order"
+             ><Printer className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Print PO</TooltipContent></Tooltip>
+             <Tooltip><TooltipTrigger asChild><Button
+               variant="ghost" size="icon"
+               onClick={() => openReceipt(po)}
+               disabled={receiptLoadingId === (po._id || po.id)}
+               className="h-8 w-8 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 transition-all hover:bg-cyan-100"
+               aria-label="Open material receipt"
+             >{receiptLoadingId === (po._id || po.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}</Button></TooltipTrigger><TooltipContent>Material receipt</TooltipContent></Tooltip>
              {isCancellable && (
-               <Button 
-                 variant="ghost" 
+               <Tooltip><TooltipTrigger asChild><Button
+                 variant="ghost" size="icon"
                  onClick={() => {
                    if (confirm(`Are you sure you want to cancel purchase order ${po.poNo}?`)) {
                      cancelPO(po._id || po.id || "")
                    }
                  }}
-                 className="h-7 px-2 rounded-lg bg-rose-50/50 hover:bg-rose-100/80 text-rose-600 font-bold text-xs transition-all border border-rose-200/50"
-                 title="Cancel Order"
-               >
-                  Cancel
-               </Button>
+                 className="h-8 w-8 rounded-lg bg-rose-50/50 hover:bg-rose-100/80 text-rose-600 transition-all border border-rose-200/50"
+                 aria-label="Cancel purchase order"
+               ><XCircle className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Cancel order</TooltipContent></Tooltip>
              )}
           </div>
+          </TooltipProvider>
         )
       },
     },
@@ -171,6 +190,7 @@ export default function PurchaseOrderPage() {
 
   return (
     <ContentLayout title="Purchase Orders">
+      {receiptPO && <ReceiptDialog open={Boolean(receiptPO)} onOpenChange={(open) => !open && setReceiptPO(null)} po={receiptPO} />}
       <div className="flex flex-col gap-8 p-6 sm:p-10 max-w-[1600px] mx-auto min-h-screen">
         
         {/* Header Control Hub */}
