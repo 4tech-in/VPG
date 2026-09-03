@@ -36,6 +36,16 @@ export function usePurchaseOrders() {
     fetchPOs();
   }, [fetchPOs]);
 
+  const changeSearch = useCallback((value: string) => {
+    setPage(1);
+    setSearch(value);
+  }, []);
+
+  const changeLimit = useCallback((value: number) => {
+    setPage(1);
+    setLimit(value);
+  }, []);
+
   const cancelPO = async (id: string) => {
     try {
       await purchaseOrderService.cancelPurchaseOrder(id);
@@ -81,9 +91,9 @@ export function usePurchaseOrders() {
     page,
     setPage,
     limit,
-    setLimit,
+    setLimit: changeLimit,
     search,
-    setSearch,
+    setSearch: changeSearch,
     totalPages,
     totalItems,
     refetch: fetchPOs,

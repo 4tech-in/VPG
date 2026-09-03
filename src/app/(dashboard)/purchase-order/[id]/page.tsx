@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Printer,
-  Share2,
   Calendar,
   Clock,
   FileText,
@@ -16,7 +15,6 @@ import {
   ShieldCheck,
   Trash2,
   Copy,
-  ChevronDown,
   User,
   Phone,
   MapPin,
@@ -254,6 +252,15 @@ export default function PODetailPage() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-zinc-400" />
+                <span>
+                  Drop Location:{" "}
+                  <strong className="text-zinc-600">
+                    {po.locationAddress || po.deliveryAddress || po.storageLocation || po.indentId?.storageLocation || "N/A"}
+                  </strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5 text-zinc-400" />
                 <span>
                   Created:{" "}
@@ -294,10 +301,6 @@ export default function PODetailPage() {
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >
               <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" /> Receipt
-            </Button>
-            <Button className="h-9 rounded-lg font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white border-none">
-              <Share2 className="h-3.5 w-3.5" /> Share{" "}
-              <ChevronDown className="h-2.5 w-2.5 opacity-60" />
             </Button>
           </div>
         </div>
@@ -578,25 +581,12 @@ export default function PODetailPage() {
                   </h4>
                 </div>
                 {po.notes ? (
-                  <div className="bg-zinc-50/50 p-4 rounded-lg border border-zinc-150/50 text-[11px] font-semibold text-zinc-650 leading-relaxed">
+                  <div className="bg-zinc-50/50 p-4 rounded-lg border border-zinc-150/50 text-[11px] font-semibold text-zinc-650 leading-relaxed whitespace-pre-wrap">
                     {po.notes}
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {[
-                      "Delivery to the designated project location.",
-                      "Verification of quality on site arrival.",
-                      "Standard processing times as per organizational policy."
-                    ].map((term, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <span className="h-5 w-5 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-[9px] font-black shrink-0 border border-emerald-100">
-                          {i + 1}
-                        </span>
-                        <p className="text-[11px] font-bold text-zinc-600 mt-0.5 leading-relaxed">
-                          {term}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="bg-zinc-50/50 p-4 rounded-lg border border-zinc-150/50 text-[11px] font-semibold text-zinc-400 italic leading-relaxed text-center">
+                    No notes provided
                   </div>
                 )}
               </div>
@@ -678,11 +668,11 @@ export default function PODetailPage() {
                   {[
                     {
                       label: "Requested By",
-                      val: po.requesterId ? `${po.requesterId.name}` : "N/A"
+                      val: po.indentId?.requestedBy?.name || po.requesterId?.name || po.requesterId?.firstName || (typeof po.requesterId === "string" ? po.requesterId : "N/A")
                     },
                     {
                       label: "Approved By",
-                      val: po.approvedBy ? `${po.approvedBy.name}` : "N/A"
+                      val: po.approvedBy?.name || po.approvedBy?.firstName || (typeof po.approvedBy === "string" ? po.approvedBy : "N/A")
                     },
                     {
                       label: "Approved At",

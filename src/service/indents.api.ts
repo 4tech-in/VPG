@@ -6,6 +6,7 @@ export type ApiIndent = {
   projectId: any;
   towerId?: any;
   status: string;
+  storageLocation?: string;
   items: any[];
 };
 

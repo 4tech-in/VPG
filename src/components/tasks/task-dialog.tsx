@@ -10,7 +10,9 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Briefcase
+  Briefcase,
+  Check,
+  ChevronsUpDown
 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -37,6 +39,19 @@ import {
 } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 
 import { useUsers } from "@/hooks/use-users"
 import { useTasks, Task } from "@/hooks/use-tasks"
@@ -62,8 +77,9 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
   const [dueDate, setDueDate] = useState("")
   const [priority, setPriority] = useState("medium")
   const [status, setStatus] = useState("pending")
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
 
-  const { users } = useUsers()
+  const { users } = useUsers({ initialLimit: 1000 })
   const { projects } = useProjects()
   const { addTask, editTask } = useTasks({ skipFetch: true })
 
@@ -213,20 +229,53 @@ export function TaskDialog({ onSuccess, task, open, onOpenChange }: TaskDialogPr
             {/* Assignee Selection */}
             <div className="space-y-2 group">
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest group-focus-within:text-primary transition-colors">Assign To</Label>
-              <Select onValueChange={setAssignedToId} value={assignedToId} required>
-                <SelectTrigger className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 focus:ring-primary focus:bg-white font-bold shadow-sm hover:border-primary/20 transition-all px-5">
-                  <SelectValue placeholder="Select Team Member" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-zinc-100 shadow-2xl p-1">
-                  {users.map(u => (
-                    <SelectItem key={u.id} value={u.id} className="rounded-xl cursor-pointer focus:bg-primary/5 focus:text-primary transition-colors">
-                      <div className="flex items-center gap-2 font-semibold">
-                        {u.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={isUserDropdownOpen} onOpenChange={setIsUserDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isUserDropdownOpen}
+                    className="w-full h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 focus-visible:ring-primary focus-visible:bg-white font-bold shadow-sm hover:border-primary/20 transition-all text-sm px-5 justify-between hover:bg-zinc-50/50"
+                  >
+                    {assignedToId
+                      ? (() => {
+                          const user = users.find((u) => u.id === assignedToId)
+                          return user ? user.name : "Select Team Member"
+                        })()
+                      : "Select Team Member"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search member..." className="h-11" />
+                    <CommandList>
+                      <CommandEmpty>No member found.</CommandEmpty>
+                      <CommandGroup>
+                        {users.map((u) => (
+                          <CommandItem
+                            key={u.id}
+                            value={`${u.name} ${u.role} ${u.id}`}
+                            onSelect={() => {
+                              setAssignedToId(u.id)
+                              setIsUserDropdownOpen(false)
+                            }}
+                            className="font-bold text-xs text-zinc-700 cursor-pointer"
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                assignedToId === u.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {u.name} ({u.role})
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Priority */}

@@ -66,6 +66,12 @@ import { indentService } from "@/service/indents.api";
 import { vendorService } from "@/service/vendorService";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
 
+const getLocalDateInputValue = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().split("T")[0];
+};
+
 function CreatePOContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,8 +93,8 @@ function CreatePOContent() {
   const [dropLocation, setDropLocation] = useState("");
   const [remark, setRemark] = useState("");
   const [notes, setNotes] = useState("");
-  const [validFrom, setValidFrom] = useState("2026-05-12");
-  const [validTo, setValidTo] = useState("2026-06-01");
+  const [validFrom, setValidFrom] = useState(getLocalDateInputValue);
+  const [validTo, setValidTo] = useState("");
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState("");
   const [poImages, setPoImages] = useState<File[]>([]);
   const [freightCharges, setFreightCharges] = useState<number>(0);
@@ -109,6 +115,15 @@ function CreatePOContent() {
     try {
       const fullIndent = await indentService.getIndentById(val);
       setActiveIndent(fullIndent);
+      
+      if (fullIndent?.storageLocation) {
+        setDropLocation(fullIndent.storageLocation);
+      } else if (fullIndent?.projectId?.address) {
+        setDropLocation(fullIndent.projectId.address);
+      } else {
+        setDropLocation("");
+      }
+
       if (fullIndent && Array.isArray(fullIndent.items)) {
         setItems(
           fullIndent.items.map((item: any) => ({
@@ -260,6 +275,17 @@ function CreatePOContent() {
       return;
     }
 
+    const today = getLocalDateInputValue();
+    if ([validFrom, validTo, expectedDeliveryDate].some((value) => value && value < today)) {
+      toast.error("Validity and delivery dates cannot be in the past");
+      return;
+    }
+
+    if (validFrom && validTo && validTo < validFrom) {
+      toast.error("Valid To date cannot be earlier than Valid From date");
+      return;
+    }
+
     const hasPriceChange = items.some((item) => 
       item.originalPrice !== undefined && 
       Number(item.price) !== Number(item.originalPrice) && 
@@ -287,12 +313,15 @@ function CreatePOContent() {
         const vendor = vendors.find((v) => (v._id || v.id) === vendorId);
         if (!vendor) continue;
 
-        const res = await purchaseOrderService.createPurchaseOrder({
+        await purchaseOrderService.createPurchaseOrder({
           indentId: selectedIndentId,
           vendorId: vendorId,
           vendorName: vendor.name,
           vendorMobile: vendor.contactNumber || "",
           vendorAddress: vendor.address || "",
+          locationAddress: dropLocation || null,
+          deliveryAddress: dropLocation || null,
+          storageLocation: dropLocation || null,
           items: groupedItems[vendorId].map((item) => ({
             itemId: item.itemId.startsWith("custom-") ? null : item.itemId,
             unitId: item.unitId || null,
@@ -306,7 +335,6 @@ function CreatePOContent() {
           expectedDeliveryDate: expectedDeliveryDate || null,
           remark: remark || null,
           notes: notes || null,
-          bypassApproval: true,
           images: poImages,
           freightCharges: Number(freightCharges) || 0,
           packagingCharges: Number(packagingCharges) || 0,
@@ -314,14 +342,6 @@ function CreatePOContent() {
           gst: Number(gst) || 0
         });
 
-        const poId = res?._id || res?.id;
-        if (poId) {
-          try {
-            await purchaseOrderService.approvePurchaseOrder(poId, { status: "Approved" });
-          } catch (approveErr) {
-            console.error("Failed to auto-approve PO", poId, approveErr);
-          }
-        }
       }
 
       toast.success("Purchase Order(s) created successfully");
@@ -485,7 +505,11 @@ function CreatePOContent() {
                         />
                         <CommandList className="max-h-60">
                           <CommandEmpty>No vendor found.</CommandEmpty>
-                          {vendors.map((vendor) => {
+                          {vendors.filter(vendor => {
+                            if (!selectedIndentId || items.length === 0) return true;
+                            const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
+                            return items.some(item => vendorItemIds.includes(item.itemId));
+                          }).map((vendor) => {
                             const vId = vendor._id || vendor.id;
                             const isSelected = selectedVendorIds.includes(vId);
                             return (
@@ -645,8 +669,16 @@ function CreatePOContent() {
                                     <SelectValue placeholder="Select Vendor" />
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl shadow-lg border border-zinc-200">
-                                    {activeVendors.length > 0 ? (
-                                      activeVendors.map((vendor) => (
+                                    {activeVendors.filter(vendor => {
+                                      if (item.itemId.startsWith("custom-")) return true;
+                                      const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
+                                      return vendorItemIds.includes(item.itemId);
+                                    }).length > 0 ? (
+                                      activeVendors.filter(vendor => {
+                                        if (item.itemId.startsWith("custom-")) return true;
+                                        const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
+                                        return vendorItemIds.includes(item.itemId);
+                                      }).map((vendor) => (
                                         <SelectItem
                                           key={vendor._id || vendor.id}
                                           value={vendor._id || vendor.id}
@@ -657,7 +689,7 @@ function CreatePOContent() {
                                       ))
                                     ) : (
                                       <div className="p-3 text-xs text-zinc-500 text-center font-semibold">
-                                        Select vendors first
+                                        {activeVendors.length === 0 ? "Select vendors first" : "No selected vendors supply this item"}
                                       </div>
                                     )}
                                   </SelectContent>
@@ -724,8 +756,14 @@ function CreatePOContent() {
                           </Label>
                           <Input
                             type="date"
+                            min={getLocalDateInputValue()}
                             value={validFrom}
-                            onChange={(e) => setValidFrom(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setValidFrom(value);
+                              if (validTo && validTo < value) setValidTo("");
+                              if (expectedDeliveryDate && expectedDeliveryDate < value) setExpectedDeliveryDate("");
+                            }}
                             className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary"
                           />
                         </div>
@@ -735,6 +773,7 @@ function CreatePOContent() {
                           </Label>
                           <Input
                             type="date"
+                            min={validFrom || getLocalDateInputValue()}
                             value={validTo}
                             onChange={(e) => setValidTo(e.target.value)}
                             className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary"
@@ -746,6 +785,7 @@ function CreatePOContent() {
                           </Label>
                           <Input
                             type="date"
+                            min={validFrom || getLocalDateInputValue()}
                             value={expectedDeliveryDate}
                             onChange={(e) =>
                               setExpectedDeliveryDate(e.target.value)

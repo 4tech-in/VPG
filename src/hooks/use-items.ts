@@ -79,13 +79,13 @@ const mapApiItemToItem = (apiItem: ApiItem): Item => {
   }
 }
 
-export function useItems(autoFetch = true) {
+export function useItems(autoFetch = true, initialLimit = 10) {
   const [items, setItems] = useState<Item[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(10)
+  const [limit, setLimit] = useState(initialLimit)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [pagination, setPagination] = useState({

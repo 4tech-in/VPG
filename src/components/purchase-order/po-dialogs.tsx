@@ -252,12 +252,15 @@ export function CreatePODialog({
   const submitPO = async (selectedItems: any[]) => {
     setIsFormSubmitting(true);
     try {
-      const res = await purchaseOrderService.createPurchaseOrder({
+      await purchaseOrderService.createPurchaseOrder({
         indentId: selectedIndentId,
         vendorId: selectedVendorId,
         vendorName: activeVendor.name,
         vendorMobile: activeVendor.contactNumber || "",
         vendorAddress: activeVendor.address || "",
+        locationAddress: dropLocation || null,
+        deliveryAddress: dropLocation || null,
+        storageLocation: dropLocation || null,
         items: selectedItems.map((item) => ({
           itemId: item.itemId || null,
           unitId: item.unitId || null,
@@ -266,21 +269,11 @@ export function CreatePODialog({
           rate: item.price,
           description: item.description || ""
         })),
-        bypassApproval: true,
         freightCharges: Number(freightCharges) || 0,
         packagingCharges: Number(packagingCharges) || 0,
         otherCharges: Number(otherCharges) || 0,
         gst: Number(gst) || 0
       });
-
-      const poId = res?._id || res?.id;
-      if (poId) {
-        try {
-          await purchaseOrderService.approvePurchaseOrder(poId, { status: "Approved" });
-        } catch (approveErr) {
-          console.error("Failed to auto-approve PO", poId, approveErr);
-        }
-      }
 
       toast.success("Purchase Order created successfully");
       setIsOpen(false);

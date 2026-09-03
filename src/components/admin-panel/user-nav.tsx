@@ -24,12 +24,15 @@ import {
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/use-auth-store";
 
+import { unregisterTokenOnLogout } from "@/lib/firebase";
+
 export function UserNav() {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const user = useAuthStore((state) => state.user);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await unregisterTokenOnLogout();
     clearAuth();
     router.push("/login");
   };

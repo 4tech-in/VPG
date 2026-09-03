@@ -28,7 +28,8 @@ import {
   Eye,
   X,
   Check,
-  SquarePen
+  SquarePen,
+  ChevronsUpDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,6 +55,19 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 const getImageUrl = (filePath: string) => {
@@ -1076,18 +1090,21 @@ export function CreateIndentDialog({
     }
   };
 
-  const addItem = () =>
-    setItems([
-      ...items,
+  const addNewItem = () => {
+    setItems((prev) => [
+      ...prev,
       {
         id: Date.now(),
         itemId: "",
         quantity: 1,
         unitId: "",
         description: "",
-        images: []
+        images: [],
+        files: [],
+        isDropdownOpen: false
       }
     ]);
+  };
   const removeItem = (id: number) => setItems(items.filter((i) => i.id !== id));
 
   const fetchProjects = async (pageToFetch = 1, reset = false) => {
@@ -1096,7 +1113,7 @@ export function CreateIndentDialog({
     try {
       const res = await projectService.getProjects({
         page: pageToFetch,
-        limit: 10
+        limit: 1000
       });
       const newProjects = res.projects || [];
       setProjects((prev) => (reset ? newProjects : [...prev, ...newProjects]));
@@ -1114,7 +1131,7 @@ export function CreateIndentDialog({
     if (isLoadingItems || (!hasMoreItems && !reset)) return;
     setIsLoadingItems(true);
     try {
-      const res = await itemService.getItems({ page: pageToFetch, limit: 10 });
+      const res = await itemService.getItems({ page: pageToFetch, limit: 1000 });
       const newItems = res.items || [];
       setAvailableItems((prev) => (reset ? newItems : [...prev, ...newItems]));
       setItemsPage(pageToFetch);
@@ -1154,7 +1171,7 @@ export function CreateIndentDialog({
     if (isLoadingUnits || (!hasMoreUnits && !reset)) return;
     setIsLoadingUnits(true);
     try {
-      const res = await unitService.getUnits({ page: pageToFetch, limit: 10 });
+      const res = await unitService.getUnits({ page: pageToFetch, limit: 1000 });
       const newUnits = res.units || [];
       setUnits((prev) => (reset ? newUnits : [...prev, ...newUnits]));
       setUnitsPage(pageToFetch);
@@ -1195,7 +1212,9 @@ export function CreateIndentDialog({
         quantity: 1,
         unitId: "",
         description: "",
-        images: []
+        images: [],
+        files: [],
+        isDropdownOpen: false
       }
     ]);
   }, [indentType]);
@@ -1269,13 +1288,13 @@ export function CreateIndentDialog({
     fetchFlats();
   }, [floorId]);
 
-  const handleItemSelect = (index: number, itemId: string) => {
+  const handleItemSelect = (id: number, itemId: string, unitId?: string) => {
     const selectedItemObj =
-      indentType === "material" || indentType === "item"
+      indentType === "material"
         ? availableItems.find((i) => i._id === itemId)
         : availableAssets.find((a) => a._id === itemId);
-    const defaultUnitId =
-      selectedItemObj?.unitId?._id || selectedItemObj?.unitId || "";
+    
+    const finalUnitId = unitId || selectedItemObj?.unitId?._id || selectedItemObj?.unitId || "";
 
     if (selectedItemObj?.unitId && typeof selectedItemObj.unitId === "object") {
       setUnits((prev) => {
@@ -1287,12 +1306,12 @@ export function CreateIndentDialog({
     }
 
     setItems((prev) =>
-      prev.map((item, idx) =>
-        idx === index
+      prev.map((item) =>
+        item.id === id
           ? {
               ...item,
               itemId,
-              unitId: defaultUnitId
+              unitId: finalUnitId
             }
           : item
       )
@@ -1410,7 +1429,8 @@ export function CreateIndentDialog({
           unitId: "",
           description: "",
           images: [],
-          files: []
+          files: [],
+          isDropdownOpen: false
         }
       ]);
       if (onSuccess) onSuccess();
@@ -1762,7 +1782,7 @@ export function CreateIndentDialog({
               </div>
               <Button
                 type="button"
-                onClick={addItem}
+                onClick={addNewItem}
                 variant="outline"
                 className="h-10 px-6 rounded-xl border-zinc-200 font-black text-[10px] uppercase tracking-widest gap-2 hover:bg-zinc-50 shadow-sm"
               >
@@ -1786,97 +1806,121 @@ export function CreateIndentDialog({
                           ? "Select Item"
                           : "Select Asset"}
                       </Label>
-                      <Select
-                        value={item.itemId}
-                        onValueChange={(val) => {
-                          if (val === "CREATE_NEW_ITEM") {
-                            setActiveItemIndex(idx);
-                            setIsCreateItemOpen(true);
-                          } else if (val === "CREATE_NEW_ASSET") {
-                            setActiveItemIndex(idx);
-                            setIsCreateAssetOpen(true);
-                          } else {
-                            handleItemSelect(idx, val);
-                          }
-                        }}
+                      <Popover
+                        open={item.isDropdownOpen}
                         onOpenChange={(open) => {
+                          setItems(prev => prev.map((i, iIdx) => iIdx === idx ? { ...i, isDropdownOpen: open } : i));
                           if (open) {
-                            if (
-                              indentType === "material" &&
-                              availableItems.length === 0
-                            ) {
+                            if (indentType === "material" && availableItems.length === 0) {
                               fetchItems(1, true);
-                            } else if (
-                              indentType === "asset" &&
-                              availableAssets.length === 0
-                            ) {
+                            } else if (indentType === "asset" && availableAssets.length === 0) {
                               fetchAssets(1, true);
                             }
                           }
                         }}
                       >
-                        <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold">
-                          <SelectValue
-                            placeholder={
-                              indentType === "material"
-                                ? "Select item"
-                                : "Select asset"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent
-                          className="rounded-xl bg-white shadow-xl border border-zinc-100 max-h-60 overflow-y-auto"
-                          onScroll={(e) => {
-                            const target = e.currentTarget;
-                            if (
-                              target.scrollHeight - target.scrollTop <=
-                              target.clientHeight + 15
-                            ) {
-                              if (indentType === "material") {
-                                if (hasMoreItems && !isLoadingItems) {
-                                  fetchItems(itemsPage + 1);
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={item.isDropdownOpen}
+                            className="w-full h-14 rounded-2xl bg-white border-zinc-100 font-bold justify-between shadow-sm hover:bg-zinc-50 px-4"
+                          >
+                            {item.itemId
+                              ? indentType === "material"
+                                ? availableItems.find((i) => i._id === item.itemId)?.itemName || "Select item"
+                                : availableAssets.find((a) => a._id === item.itemId)?.name || "Select asset"
+                              : indentType === "material"
+                              ? "Select item"
+                              : "Select asset"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white" align="start">
+                          <Command>
+                            <CommandInput placeholder={indentType === "material" ? "Search item..." : "Search asset..."} className="h-11" />
+                            <CommandList
+                              onScroll={(e) => {
+                                const target = e.currentTarget;
+                                if (target.scrollHeight - target.scrollTop <= target.clientHeight + 15) {
+                                  if (indentType === "material") {
+                                    if (hasMoreItems && !isLoadingItems) fetchItems(itemsPage + 1);
+                                  } else {
+                                    if (hasMoreAssets && !isLoadingAssets) fetchAssets(assetsPage + 1);
+                                  }
                                 }
-                              } else {
-                                if (hasMoreAssets && !isLoadingAssets) {
-                                  fetchAssets(assetsPage + 1);
-                                }
-                              }
-                            }
-                          }}
-                        >
-                          {indentType === "material" ? (
-                            <SelectItem
-                              value="CREATE_NEW_ITEM"
-                              className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
+                              }}
                             >
-                              <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
-                                <Plus className="h-3.5 w-3.5" /> Create New Item
-                              </span>
-                            </SelectItem>
-                          ) : (
-                            <SelectItem
-                              value="CREATE_NEW_ASSET"
-                              className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 focus:bg-teal-50 focus:text-teal-700 py-3 rounded-t-xl"
-                            >
-                              <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
-                                <Plus className="h-3.5 w-3.5" /> Create New
-                                Asset
-                              </span>
-                            </SelectItem>
-                          )}
-                          {indentType === "material"
-                            ? availableItems.map((i) => (
-                                <SelectItem key={i._id} value={i._id}>
-                                  {i.itemName}
-                                </SelectItem>
-                              ))
-                            : availableAssets.map((a) => (
-                                <SelectItem key={a._id} value={a._id}>
-                                  {a.name}
-                                </SelectItem>
-                              ))}
-                        </SelectContent>
-                      </Select>
+                              <CommandEmpty>No results found.</CommandEmpty>
+                              <CommandGroup>
+                                {indentType === "material" ? (
+                                  <CommandItem
+                                    value="CREATE_NEW_ITEM"
+                                    onSelect={() => {
+                                      setIsCreateItemOpen(true);
+                                      setItems(prev => prev.map((i, iIdx) => iIdx === idx ? { ...i, isDropdownOpen: false } : i));
+                                    }}
+                                    className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 cursor-pointer py-3 rounded-t-xl"
+                                  >
+                                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Create New Item
+                                  </CommandItem>
+                                ) : (
+                                  <CommandItem
+                                    value="CREATE_NEW_ASSET"
+                                    onSelect={() => {
+                                      setIsCreateAssetOpen(true);
+                                      setItems(prev => prev.map((i, iIdx) => iIdx === idx ? { ...i, isDropdownOpen: false } : i));
+                                    }}
+                                    className="font-black text-xs text-teal-600 hover:text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-b border-zinc-100 cursor-pointer py-3 rounded-t-xl"
+                                  >
+                                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Create New Asset
+                                  </CommandItem>
+                                )}
+                                {indentType === "material"
+                                  ? availableItems.map((i) => (
+                                      <CommandItem
+                                        key={i._id}
+                                        value={i.itemName}
+                                        onSelect={() => {
+                                          const selectedItem = availableItems.find(itemObj => itemObj._id === i._id);
+                                          handleItemSelect(item.id, i._id, selectedItem?.unitId);
+                                          setItems(prev => prev.map((itemObj, iIdx) => iIdx === idx ? { ...itemObj, isDropdownOpen: false } : itemObj));
+                                        }}
+                                        className="font-bold text-xs text-zinc-700 cursor-pointer"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            item.itemId === i._id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {i.itemName}
+                                      </CommandItem>
+                                    ))
+                                  : availableAssets.map((a) => (
+                                      <CommandItem
+                                        key={a._id}
+                                        value={a.name}
+                                        onSelect={() => {
+                                          handleItemSelect(item.id, a._id, undefined);
+                                          setItems(prev => prev.map((itemObj, iIdx) => iIdx === idx ? { ...itemObj, isDropdownOpen: false } : itemObj));
+                                        }}
+                                        className="font-bold text-xs text-zinc-700 cursor-pointer"
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            item.itemId === a._id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {a.name}
+                                      </CommandItem>
+                                    ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     {items.length > 1 && (
                       <Button

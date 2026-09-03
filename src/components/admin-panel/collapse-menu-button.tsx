@@ -91,7 +91,8 @@ export function CollapseMenuButton({
                   "max-w-[150px] truncate",
                   isOpen
                     ? "translate-x-0 opacity-100"
-                    : "-translate-x-96 opacity-0"
+                    : "-translate-x-96 opacity-0",
+                  isSubmenuActive ? "text-white" : ""
                 )}
               >
                 {label}
@@ -102,7 +103,8 @@ export function CollapseMenuButton({
                 "whitespace-nowrap",
                 isOpen
                   ? "translate-x-0 opacity-100"
-                  : "-translate-x-96 opacity-0"
+                  : "-translate-x-96 opacity-0",
+                isSubmenuActive ? "text-white" : ""
               )}
             >
               <ChevronDown

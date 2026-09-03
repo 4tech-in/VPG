@@ -3,10 +3,10 @@ export function exportIndentReceipt(indent: any) {
 
   const formattedCreated = indent.createdAt
     ? new Date(indent.createdAt).toLocaleDateString("en-IN")
-    : "N/A";
+    : "";
   const formattedDelivery = indent.estimateDeliveryDate
     ? new Date(indent.estimateDeliveryDate).toLocaleDateString("en-IN")
-    : "N/A";
+    : "";
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -239,11 +239,11 @@ export function exportIndentReceipt(indent: any) {
             <div class="section-title">Project & Requester</div>
             <div class="info-row">
               <span class="info-label">Project</span>
-              <span class="info-val">${indent.projectId?.projectName || indent.projectId?.name || "N/A"}</span>
+              <span class="info-val">${indent.projectId?.projectName || indent.projectId?.name || ""}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Tower / Area</span>
-              <span class="info-val">${indent.towerId?.towerName || indent.towerId?.name || "N/A"}</span>
+              <span class="info-val">${indent.towerId?.towerName || indent.towerId?.name || ""}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Submitted By</span>
@@ -251,7 +251,7 @@ export function exportIndentReceipt(indent: any) {
             </div>
             <div class="info-row">
               <span class="info-label">Contact Email</span>
-              <span class="info-val">${indent.requestedBy?.email || "N/A"}</span>
+              <span class="info-val">${indent.requestedBy?.email || ""}</span>
             </div>
           </div>
         </div>
@@ -318,7 +318,7 @@ export function exportPurchaseOrderReceipt(
 
   const formattedCreated = po.createdAt
     ? new Date(po.createdAt).toLocaleDateString("en-IN")
-    : "N/A";
+    : "";
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -605,6 +605,18 @@ export function exportPurchaseOrderReceipt(
             z-index: -1;
             overflow: hidden;
           }
+          .authorization-signature {
+            position: absolute;
+            left: 40px;
+            bottom: 58px;
+            z-index: 10;
+            width: 285px;
+          }
+          .authorization-signature img {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
         </style>
       </head>
       <body>
@@ -645,8 +657,8 @@ export function exportPurchaseOrderReceipt(
         <div class="po-details">
           <div>PO Number: ${po.poNo || ""}</div>
           <div>Dated: ${formattedCreated}</div>
-          <div>Valid To: ${po.validTo ? new Date(po.validTo).toLocaleDateString("en-IN") : "N/A"}</div>
-          <div>Est. Delivery Date: ${po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString("en-IN") : "N/A"}</div>
+          <div>Valid To: ${po.validTo ? new Date(po.validTo).toLocaleDateString("en-IN") : ""}</div>
+          <div>Est. Delivery Date: ${po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString("en-IN") : ""}</div>
           <div>Quotation No.: ${po.quotationNo || ""}</div>
         </div>
 
@@ -680,7 +692,7 @@ export function exportPurchaseOrderReceipt(
             </tr>
             <tr>
               <td>${po.vendorAddress || ""}</td>
-              <td>VPG CONSTRUCTION PVT. LTD. SITE AT ${po.projectId?.projectName || po.projectId?.name || "DAPPAR"}</td>
+              <td>SCO No. 26 KALGIDHAR ENCLAVE, BALTANA ZIRAKPUR</td>
             </tr>
             <tr class="grey-row">
               <td>GST NO: - ${po.vendorId?.gstNumber || ""}</td>
@@ -691,15 +703,15 @@ export function exportPurchaseOrderReceipt(
               <td>DELIVERY ADDRESS</td>
             </tr>
             <tr>
-              <td>Bank Name: ${po.vendorId?.bankName || "N/A"}</td>
-              <td>${po.deliveryAddress || po.projectId?.address || po.projectId?.location || "As per project site details"}</td>
+              <td>Bank Name: ${po.vendorId?.bankName || ""}</td>
+              <td>${po.locationAddress || po.storageLocation || po.deliveryAddress || po.indentId?.storageLocation || po.projectId?.address || po.projectId?.location || ""}</td>
             </tr>
             <tr>
-              <td>A/C No: ${po.vendorId?.accountNumber || "N/A"}</td>
+              <td>A/C No: ${po.vendorId?.accountNumber || ""}</td>
               <td></td>
             </tr>
             <tr>
-              <td>IFSC Code: ${po.vendorId?.ifscCode || "N/A"}</td>
+              <td>IFSC Code: ${po.vendorId?.ifscCode || ""}</td>
               <td></td>
             </tr>
           </tbody>
@@ -756,27 +768,19 @@ export function exportPurchaseOrderReceipt(
         </div>
 
         ${
-          showConditions
+          showConditions && po.notes
             ? `
-        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -20px;">
+        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -90px;">
           <div>
             <div class="conditions-title" style="font-weight: bold;">Conditions:</div>
-            <ol class="conditions-list">
-              <li>All material is PRM quality.</li>
-              <li>Payment 100% advance.</li>
-              <li>Unloading on Client Scope.</li>
-              <li>Rates are FOR at site ${po.projectId?.projectName || po.projectId?.name || "Dappar"}.</li>
-            </ol>
+            <div style="padding-left: 20px; white-space: pre-wrap; line-height: 1.6;">${po.notes.replace(/\\n/g, "<br/>")}</div>
           </div>
         </div>`
-            : ""
+            : `<div style="height: 140px;"></div>`
         }
 
-        <div style="display: flex; justify-content: flex-start; margin-top: 5px; margin-left: 10px; position: relative; z-index: 10; font-family: Arial, sans-serif;">
-           <div style="text-align: center; color: #0047b3;">
-              <div style="font-weight: bold; margin-bottom: 35px; font-size: 14px;">For VPG Construction Private Limited</div>
-              <div style="border-top: 1.5px solid #0047b3; display: inline-block; padding-top: 5px; font-weight: bold; font-size: 14px; min-width: 150px;">Auth. Sign.</div>
-           </div>
+        <div class="authorization-signature">
+          <img src="/image.png" alt="VPG authorized signature" />
         </div>
 
         <div class="bottom-wave">

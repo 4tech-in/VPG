@@ -17,6 +17,19 @@ import {
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Box,
   Search,
   Scale,
@@ -27,7 +40,9 @@ import {
   RefreshCw,
   Eye,
   Layers,
-  Filter
+  Filter,
+  Check,
+  ChevronsUpDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -63,9 +78,10 @@ export default function MaterialMasterPage() {
 
   const { projects } = useProjects();
   const { vendors } = useVendors();
-  const { items } = useItems();
+  const { items } = useItems(true, 1000);
   const { groups } = useGroups();
   const { subGroups } = useSubGroups();
+  const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
 
   const [assets, setAssets] = useState<any[]>([]);
 
@@ -520,7 +536,10 @@ export default function MaterialMasterPage() {
             <Button
               variant={showPOFilters ? "default" : "outline"}
               onClick={() => setShowPOFilters(!showPOFilters)}
-              className="h-11 rounded-xl px-4 border-zinc-200 gap-2 font-bold text-sm shadow-sm transition-all text-zinc-600 hover:text-zinc-900"
+              className={cn(
+                "h-11 rounded-xl px-4 gap-2 font-bold text-sm shadow-sm transition-all",
+                showPOFilters ? "text-white" : "border-zinc-200 text-zinc-600 hover:text-zinc-900"
+              )}
             >
               <Filter className="h-4 w-4" />
               Filters {Object.values(poFilters).filter(Boolean).length > 0 && `(${Object.values(poFilters).filter(Boolean).length})`}
@@ -626,24 +645,94 @@ export default function MaterialMasterPage() {
               <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                 {poFilters.purchaseOrderType === "assets" ? "Asset" : "Item"}
               </Label>
-              <select 
-                value={poFilters.itemId}
-                onChange={e => setPoFilters(prev => ({ ...prev, itemId: e.target.value }))}
-                className="h-11 w-full rounded-xl bg-zinc-50 border-zinc-100 font-bold text-sm px-3 focus:ring-primary shadow-sm"
-              >
-                <option value="">{poFilters.purchaseOrderType === "assets" ? "All Assets" : "All Items"}</option>
-                {poFilters.purchaseOrderType === "assets" 
-                  ? assets.map((a: any) => (
-                      <option key={a._id} value={a._id}>{a.name}</option>
-                    ))
-                  : items.filter((i: any) => 
-                      (!poFilters.groupId || i.groupId === poFilters.groupId) &&
-                      (!poFilters.subGroupId || i.subGroupId === poFilters.subGroupId)
-                    ).map((i: any) => (
-                      <option key={i.id} value={i.id}>{i.name}</option>
-                    ))
-                }
-              </select>
+              <Popover open={isItemDropdownOpen} onOpenChange={setIsItemDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isItemDropdownOpen}
+                    className="w-full h-11 rounded-xl bg-zinc-50 border-zinc-100 focus-visible:ring-primary focus-visible:bg-white font-bold text-sm px-3 justify-between shadow-sm hover:bg-zinc-50"
+                  >
+                    {poFilters.itemId
+                      ? poFilters.purchaseOrderType === "assets"
+                        ? assets.find((a: any) => a._id === poFilters.itemId)?.name || "Select Asset..."
+                        : items.find((i: any) => i.id === poFilters.itemId)?.name || "Select Item..."
+                      : (poFilters.purchaseOrderType === "assets" ? "All Assets" : "All Items")}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white" align="start">
+                  <Command>
+                    <CommandInput placeholder={poFilters.purchaseOrderType === "assets" ? "Search assets..." : "Search items..."} className="h-10" />
+                    <CommandList>
+                      <CommandEmpty>No results found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="all"
+                          onSelect={() => {
+                            setPoFilters(prev => ({ ...prev, itemId: "" }))
+                            setIsItemDropdownOpen(false)
+                          }}
+                          className="font-bold text-xs text-zinc-700 cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              poFilters.itemId === "" ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {poFilters.purchaseOrderType === "assets" ? "All Assets" : "All Items"}
+                        </CommandItem>
+                        {poFilters.purchaseOrderType === "assets"
+                          ? assets.map((a: any) => (
+                              <CommandItem
+                                key={a._id}
+                                value={a.name}
+                                onSelect={() => {
+                                  setPoFilters(prev => ({ ...prev, itemId: a._id }))
+                                  setIsItemDropdownOpen(false)
+                                }}
+                                className="font-bold text-xs text-zinc-700 cursor-pointer"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    poFilters.itemId === a._id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {a.name}
+                              </CommandItem>
+                            ))
+                          : items
+                              .filter(
+                                (i: any) =>
+                                  (!poFilters.groupId || i.groupId === poFilters.groupId) &&
+                                  (!poFilters.subGroupId || i.subGroupId === poFilters.subGroupId)
+                              )
+                              .map((i: any) => (
+                                <CommandItem
+                                  key={i.id}
+                                  value={i.name}
+                                  onSelect={() => {
+                                    setPoFilters(prev => ({ ...prev, itemId: i.id }))
+                                    setIsItemDropdownOpen(false)
+                                  }}
+                                  className="font-bold text-xs text-zinc-700 cursor-pointer"
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      poFilters.itemId === i.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {i.name}
+                                </CommandItem>
+                              ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">

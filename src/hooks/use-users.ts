@@ -132,7 +132,7 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
   }
 }
 
-export function useUsers(options?: { skipFetch?: boolean }) {
+export function useUsers(options?: { skipFetch?: boolean; initialLimit?: number }) {
   const skipFetch = options?.skipFetch ?? false
 
   const [users, setUsers] = useState<Staff[]>([])
@@ -141,7 +141,7 @@ export function useUsers(options?: { skipFetch?: boolean }) {
 
   // Server-side state
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(10)
+  const [limit, setLimit] = useState(options?.initialLimit || 10)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">("")
   const [roleFilter, setRoleFilter] = useState("")

@@ -32,6 +32,9 @@ export type PurchaseOrder = {
   vendorName: string;
   vendorMobile?: string | null;
   vendorAddress?: string | null;
+  locationAddress?: string | null;
+  deliveryAddress?: string | null;
+  storageLocation?: string | null;
   items: POItem[];
   totalAmount: number;
   status:
@@ -78,9 +81,9 @@ export const purchaseOrderService = {
     return {
       success: true,
       data: pos,
-      total: pos.length,
-      page: 1,
-      totalPages: 1,
+      total: Number(response?.total ?? pos.length),
+      page: Number(response?.page ?? params?.page ?? 1),
+      totalPages: Number(response?.totalPages ?? 1),
     };
   },
 
@@ -126,7 +129,7 @@ export const purchaseOrderService = {
     payload: { status: "Approved" | "Rejected"; rejectionReason?: string },
   ): Promise<PurchaseOrder> {
     const response = await apiRequest<any>(`purchase-orders/approve/${id}`, {
-      method: "PATCH",
+      method: "POST",
       body: JSON.stringify(payload),
     });
     return response?.data || response;

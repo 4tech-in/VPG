@@ -12,7 +12,9 @@ import {
   Calendar,
   Clock,
   Edit,
-  Loader2
+  Loader2,
+  ChevronsUpDown,
+  Check
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -43,6 +45,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -68,11 +83,12 @@ export default function AdvancePage() {
     pagination,
   } = useAdvances()
 
-  const { allUsers } = useUsers()
+  const { allUsers } = useUsers({ initialLimit: 1000 })
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [selectedAdvance, setSelectedAdvance] = useState<Advance | null>(null)
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
 
   // Form states
   const [formUserId, setFormUserId] = useState("")
@@ -366,18 +382,53 @@ export default function AdvancePage() {
                 <form onSubmit={handleCreateAdvance} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
                   <div className="space-y-2.5">
                     <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Select Team Member</Label>
-                    <Select onValueChange={setFormUserId} value={formUserId}>
-                      <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm focus:ring-primary shadow-sm">
-                        <SelectValue placeholder="Choose a member" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-zinc-100 shadow-xl bg-white max-h-56 overflow-y-auto">
-                        {allUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id} className="font-bold text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer">
-                            {user.name} ({user.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={isUserDropdownOpen} onOpenChange={setIsUserDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isUserDropdownOpen}
+                          className="w-full h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm justify-between shadow-sm hover:bg-white"
+                        >
+                          {formUserId
+                            ? (() => {
+                                const user = allUsers.find((user) => user.id === formUserId)
+                                return user ? `${user.name} (${user.role})` : "Choose a member"
+                              })()
+                            : "Choose a member"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search member..." className="h-11" />
+                          <CommandList>
+                            <CommandEmpty>No member found.</CommandEmpty>
+                            <CommandGroup>
+                              {allUsers.map((user) => (
+                                <CommandItem
+                                  key={user.id}
+                                  value={`${user.name} ${user.role} ${user.id}`}
+                                  onSelect={() => {
+                                    setFormUserId(user.id)
+                                    setIsUserDropdownOpen(false)
+                                  }}
+                                  className="font-bold text-xs text-zinc-700 cursor-pointer"
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formUserId === user.id ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {user.name} ({user.role})
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div className="space-y-2.5">

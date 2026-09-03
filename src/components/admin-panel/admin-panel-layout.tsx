@@ -7,6 +7,8 @@ import { useStore } from "@/hooks/use-store";
 import { cn } from "@/lib/utils";
 import { validateSession } from "@/store/proxy";
 
+import { NotificationProvider } from "@/components/providers/notification-provider";
+
 export default function AdminPanelLayout({
   children
 }: {
@@ -19,7 +21,7 @@ export default function AdminPanelLayout({
   if (!sidebar) return null;
   const { getOpenState, settings } = sidebar;
   return (
-    <>
+    <NotificationProvider>
       <Sidebar />
       <main
         className={cn(
@@ -29,6 +31,6 @@ export default function AdminPanelLayout({
       >
         {children}
       </main>
-    </>
+    </NotificationProvider>
   );
 }
