@@ -60,6 +60,15 @@ export type GetPOsResponse = {
   total: number;
   page: number;
   totalPages: number;
+  totalOrders?: number;
+  totalItems?: number;
+  totalQuantity?: number;
+  totalValue?: number;
+  totalAmount?: number;
+  pendingQuantity?: number;
+  totalPendingQuantity?: number;
+  receivedQuantity?: number;
+  totalReceivedQuantity?: number;
 };
 
 export const purchaseOrderService = {
@@ -84,6 +93,15 @@ export const purchaseOrderService = {
       total: Number(response?.total ?? pos.length),
       page: Number(response?.page ?? params?.page ?? 1),
       totalPages: Number(response?.totalPages ?? 1),
+      totalOrders: response?.totalOrders,
+      totalItems: response?.totalItems,
+      totalQuantity: response?.totalQuantity,
+      totalValue: response?.totalValue,
+      totalAmount: response?.totalAmount,
+      pendingQuantity: response?.pendingQuantity,
+      totalPendingQuantity: response?.totalPendingQuantity,
+      receivedQuantity: response?.receivedQuantity,
+      totalReceivedQuantity: response?.totalReceivedQuantity,
     };
   },
 

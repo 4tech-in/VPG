@@ -13,7 +13,7 @@ import {
   MoreVertical,
   ArrowUpRight,
   Plus,
-  Coffee
+  Palmtree
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -74,6 +74,9 @@ export default function AttendancePage() {
   const [toDate, setToDate] = useState<Date | undefined>(new Date())
   const [search, setSearch] = useState("")
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
+  const [attendanceSummary, setAttendanceSummary] = useState<any>(null)
+  const [leaveCount, setLeaveCount] = useState(0)
+  const attendanceUsersRef = useRef<Map<string, string>>(new Map())
 
   // Active Tab: "attendance" or "leaves"
   const [activeTab, setActiveTab] = useState<"attendance" | "leaves">("attendance")
@@ -156,19 +159,36 @@ export default function AttendancePage() {
       if (toDate) {
         params.endDate = format(toDate, "yyyy-MM-dd")
       }
+      if (search.trim()) {
+        params.search = search.trim()
+        const query = search.trim().toLowerCase()
+        const matchedUser = Array.from(attendanceUsersRef.current.entries()).find(
+          ([label]) => label.includes(query)
+        )
+        if (matchedUser) params.userId = matchedUser[1]
+      }
 
       const response = await attendanceService.getAttendance(params)
       const records = response.data || response || []
+      records.forEach((record: AttendanceRecord) => {
+        if (!record.userId?._id) return
+        const name = record.userId.name?.toLowerCase() || ""
+        const email = record.userId.email?.toLowerCase() || ""
+        if (name) attendanceUsersRef.current.set(name, record.userId._id)
+        if (email) attendanceUsersRef.current.set(email, record.userId._id)
+      })
       setData(records)
+      setAttendanceSummary(response.summary || null)
+      setLeaveCount(Number(response.leaveCount || 0))
     } catch (err: any) {
       toast.error("Failed to fetch attendance data")
     } finally {
       setIsLoading(false)
     }
-  }, [fromDate, toDate])
+  }, [fromDate, toDate, search])
 
   useEffect(() => {
-    const paramsKey = `${fromDate?.getTime() || ""}-${toDate?.getTime() || ""}`
+    const paramsKey = `${fromDate?.getTime() || ""}-${toDate?.getTime() || ""}-${search.trim()}`
     if (lastFetchedParams.current !== paramsKey) {
       lastFetchedParams.current = paramsKey
       fetchAttendances()
@@ -444,8 +464,9 @@ export default function AttendancePage() {
       else if (record.status === "WeeklyOff") weeklyOff++
     })
 
-    return { onTime, late, halfDay, absent, weeklyOff }
-  }, [data, search])
+    const leaveDays = Number(attendanceSummary?.totalLeaveDays ?? leaveCount ?? 0)
+    return { onTime, late, halfDay, absent, weeklyOff, leaveDays }
+  }, [data, search, attendanceSummary, leaveCount])
 
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
@@ -738,15 +759,16 @@ export default function AttendancePage() {
                 { label: "Late Arrivals", val: stats.late.toString(), icon: AlertCircle, color: "text-amber-500", bg: "bg-amber-50/50", statusVal: "Late" },
                 { label: "Half Day", val: stats.halfDay.toString(), icon: Calendar, color: "text-blue-500", bg: "bg-blue-50/50", statusVal: "HalfDay" },
                 { label: "Absent / Off", val: stats.absent.toString(), icon: XCircle, color: "text-rose-500", bg: "bg-rose-50/50", statusVal: "Absent" },
-                { label: "Weekly Off", val: stats.weeklyOff.toString(), icon: Coffee, color: "text-sky-500", bg: "bg-sky-50/50", statusVal: "WeeklyOff" },
+                { label: "Leave Days", val: stats.leaveDays.toString(), icon: Palmtree, color: "text-sky-500", bg: "bg-sky-50/50", statusVal: null },
               ].map((stat, i) => {
-                const isActive = selectedStatus === stat.statusVal;
+                const isActive = Boolean(stat.statusVal && selectedStatus === stat.statusVal);
                 return (
                   <div
                     key={i}
-                    onClick={() => setSelectedStatus(prev => prev === stat.statusVal ? null : stat.statusVal)}
+                    onClick={() => stat.statusVal && setSelectedStatus(prev => prev === stat.statusVal ? null : stat.statusVal)}
                     className={cn(
-                      "bg-white p-6 rounded-[2.5rem] transition-all cursor-pointer overflow-hidden relative flex items-center justify-between group h-28",
+                      "bg-white p-6 rounded-[2.5rem] transition-all overflow-hidden relative flex items-center justify-between group h-28",
+                      stat.statusVal && "cursor-pointer",
                       isActive
                         ? "shadow-md ring-2 ring-zinc-900/10 scale-[1.02]"
                         : "border border-zinc-50 shadow-sm hover:shadow-md hover:scale-[1.01]"

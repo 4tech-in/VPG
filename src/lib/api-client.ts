@@ -64,12 +64,14 @@ export async function apiRequest<T>(
     if (data && typeof data === "object") {
       if (data.pagination !== undefined && data.data !== undefined) {
         return {
+          ...data,
           data: data.data,
           pagination: data.pagination,
         } as unknown as T;
       }
       if (data.totalPages !== undefined && data.data !== undefined) {
         return {
+          ...data,
           data: data.data,
           totalPages: data.totalPages,
           total: data.total,

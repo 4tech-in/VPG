@@ -57,6 +57,13 @@ import { assetService } from "@/service/assets.api";
 export default function MaterialMasterPage() {
   const router = useRouter();
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [summaryStats, setSummaryStats] = useState({
+    totalOrders: 0,
+    totalQuantity: 0,
+    receivedQuantity: 0,
+    pendingQuantity: 0,
+    totalValue: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingAction, setIsProcessingAction] = useState<string | null>(
     null
@@ -123,6 +130,18 @@ export default function MaterialMasterPage() {
       });
       const pos = response.data || [];
 
+      setSummaryStats({
+        totalOrders: Number(response.totalOrders ?? response.total ?? pos.length),
+        totalQuantity: Number(response.totalQuantity ?? response.totalItems ?? 0),
+        receivedQuantity: Number(
+          response.receivedQuantity ?? response.totalReceivedQuantity ?? 0
+        ),
+        pendingQuantity: Number(
+          response.pendingQuantity ?? response.totalPendingQuantity ?? 0
+        ),
+        totalValue: Number(response.totalValue ?? response.totalAmount ?? 0),
+      });
+
       // Filter out POs that are Draft, PendingApproval, Rejected, or Cancelled if no status is chosen
       const activePOs = poFilters.status 
         ? pos 
@@ -173,23 +192,6 @@ export default function MaterialMasterPage() {
       return matchesSearch && matchesStatus;
     });
   }, [purchaseOrders, searchQuery, statusFilter]);
-
-  // Compute summary stats for the filtered POs
-  const summaryStats = useMemo(() => {
-    let totalItems = 0;
-    let totalPrice = 0;
-    
-    filteredPOs.forEach((po) => {
-      totalPrice += Number(po.totalAmount) || 0;
-      if (po.items && Array.isArray(po.items)) {
-        po.items.forEach((item: any) => {
-          totalItems += Number(item.orderQty) || 1;
-        });
-      }
-    });
-
-    return { totalItems, totalPrice };
-  }, [filteredPOs]);
 
   // Count helper for Approved POs
   const approvedPOCount = useMemo(() => {
@@ -793,19 +795,27 @@ export default function MaterialMasterPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
-            <p className="text-2xl font-black text-zinc-800">{filteredPOs.length}</p>
+            <p className="text-2xl font-black text-zinc-800">{summaryStats.totalOrders}</p>
           </div>
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Items (Qty)</p>
-            <p className="text-2xl font-black text-indigo-600">{summaryStats.totalItems}</p>
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Quantity</p>
+            <p className="text-2xl font-black text-indigo-600">{summaryStats.totalQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Received Quantity</p>
+            <p className="text-2xl font-black text-emerald-600">{summaryStats.receivedQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pending Quantity</p>
+            <p className="text-2xl font-black text-amber-600">{summaryStats.pendingQuantity}</p>
           </div>
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Value</p>
             <p className="text-2xl font-black text-emerald-600">
-              ₹{summaryStats.totalPrice.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+              ₹{summaryStats.totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
