@@ -549,20 +549,22 @@ export default function IndentPage() {
                   className="h-9 px-3 rounded-xl text-zinc-400 hover:text-primary hover:bg-primary/5 font-bold text-[11px] gap-2 transition-all"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  Details
+
                 </Button>
               }
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push(`/quotation/${row.original._id || row.original.id}`)}
-              className="h-9 w-9 rounded-xl text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-all"
-              aria-label="Open quotation"
-              title="Quotation"
-            >
-              <FileQuestion className="h-4 w-4" />
-            </Button>
+            {row.original.status === "Approved" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push(`/quotation/${row.original._id || row.original.id}`)}
+                className="h-9 w-9 rounded-xl text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-all"
+                aria-label="Open quotation"
+                title="Quotation"
+              >
+                <FileQuestion className="h-4 w-4" />
+              </Button>
+            )}
             {/* {row.original.supplyStatus === "PartiallySupplied" && (
               <Button
                 variant="ghost"
@@ -581,7 +583,7 @@ export default function IndentPage() {
               className="h-9 px-3 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 font-bold text-[11px] gap-2 transition-all"
             >
               <FileText className="h-3.5 w-3.5" />
-              Export
+
             </Button>
           </div>
         );
