@@ -1813,6 +1813,7 @@ export function CreateIndentDialog({
                           : "Select Asset"}
                       </Label>
                       <Popover
+                        modal={true}
                         open={item.isDropdownOpen}
                         onOpenChange={(open) => {
                           setItems(prev => prev.map((i, iIdx) => iIdx === idx ? { ...i, isDropdownOpen: open } : i));
