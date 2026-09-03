@@ -9,6 +9,7 @@ import {
   MoreVertical,
   Clock,
   FileText,
+  FileQuestion,
   CheckCircle2,
   Filter,
   Eye,
@@ -552,6 +553,16 @@ export default function IndentPage() {
                 </Button>
               }
             />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push(`/quotation/${row.original._id || row.original.id}`)}
+              className="h-9 w-9 rounded-xl text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-all"
+              aria-label="Open quotation"
+              title="Quotation"
+            >
+              <FileQuestion className="h-4 w-4" />
+            </Button>
             {/* {row.original.supplyStatus === "PartiallySupplied" && (
               <Button
                 variant="ghost"

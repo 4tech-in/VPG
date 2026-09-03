@@ -10,6 +10,12 @@ import { unitService } from "@/service/unitService";
 import { indentService } from "@/service/indents.api";
 import { outsideService } from "@/service/outsideService";
 import { assetService } from "@/service/assets.api";
+
+const getItemSelectLabel = (item: any) => {
+  if (!item) return "Select item";
+  const itemNumber = item.itemCode || item.newItemCode;
+  return itemNumber ? `${itemNumber} - ${item.itemName}` : item.itemName;
+};
 import { toast } from "sonner";
 import {
   Building2,
@@ -1828,7 +1834,7 @@ export function CreateIndentDialog({
                           >
                             {item.itemId
                               ? indentType === "material"
-                                ? availableItems.find((i) => i._id === item.itemId)?.itemName || "Select item"
+                                ? getItemSelectLabel(availableItems.find((i) => i._id === item.itemId))
                                 : availableAssets.find((a) => a._id === item.itemId)?.name || "Select asset"
                               : indentType === "material"
                               ? "Select item"
@@ -1880,7 +1886,7 @@ export function CreateIndentDialog({
                                   ? availableItems.map((i) => (
                                       <CommandItem
                                         key={i._id}
-                                        value={i.itemName}
+                                        value={`${i.itemCode || i.newItemCode || ""} ${i.itemName}`.trim()}
                                         onSelect={() => {
                                           const selectedItem = availableItems.find(itemObj => itemObj._id === i._id);
                                           handleItemSelect(item.id, i._id, selectedItem?.unitId);
@@ -1894,7 +1900,7 @@ export function CreateIndentDialog({
                                             item.itemId === i._id ? "opacity-100" : "opacity-0"
                                           )}
                                         />
-                                        {i.itemName}
+                                        {getItemSelectLabel(i)}
                                       </CommandItem>
                                     ))
                                   : availableAssets.map((a) => (
