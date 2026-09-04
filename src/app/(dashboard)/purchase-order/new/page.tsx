@@ -120,6 +120,8 @@ function CreatePOContent() {
         setDropLocation(fullIndent.storageLocation);
       } else if (fullIndent?.projectId?.address) {
         setDropLocation(fullIndent.projectId.address);
+      } else if (fullIndent?.projectId?.location) {
+        setDropLocation(fullIndent.projectId.location);
       } else {
         setDropLocation("");
       }
@@ -319,9 +321,7 @@ function CreatePOContent() {
           vendorName: vendor.name,
           vendorMobile: vendor.contactNumber || "",
           vendorAddress: vendor.address || "",
-          locationAddress: dropLocation || null,
-          deliveryAddress: dropLocation || null,
-          storageLocation: dropLocation || null,
+          locationAddress: dropLocation.trim() || null,
           items: groupedItems[vendorId].map((item) => ({
             itemId: item.itemId.startsWith("custom-") ? null : item.itemId,
             unitId: item.unitId || null,

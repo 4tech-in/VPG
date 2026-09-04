@@ -116,6 +116,12 @@ export function CreatePODialog({
     try {
       const fullIndent = await indentService.getIndentById(val);
       setActiveIndent(fullIndent);
+      setDropLocation(
+        fullIndent?.storageLocation ||
+          fullIndent?.projectId?.address ||
+          fullIndent?.projectId?.location ||
+          ""
+      );
 
       let alreadyPoItemIds = new Set<string>();
       try {
@@ -258,9 +264,7 @@ export function CreatePODialog({
         vendorName: activeVendor.name,
         vendorMobile: activeVendor.contactNumber || "",
         vendorAddress: activeVendor.address || "",
-        locationAddress: dropLocation || null,
-        deliveryAddress: dropLocation || null,
-        storageLocation: dropLocation || null,
+        locationAddress: dropLocation.trim() || null,
         items: selectedItems.map((item) => ({
           itemId: item.itemId || null,
           unitId: item.unitId || null,
