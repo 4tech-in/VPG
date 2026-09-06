@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
@@ -441,7 +443,7 @@ export default function DashboardPage() {
                           <td className="py-3 px-6">
                             <div className="flex items-center gap-2">
                               {row.assignedToId?.profilePic ? (
-                                <Image src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api", "") || ""}${row.assignedToId.profilePic}`} alt={row.assignedToId?.name} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
+                                <Image src={getImageUrl(row.assignedToId.profilePic)} alt={row.assignedToId?.name} width={24} height={24} className="rounded-full object-cover w-6 h-6 border border-zinc-200" />
                               ) : (
                                 <div className="rounded-full bg-blue-100 text-blue-600 w-6 h-6 flex items-center justify-center font-bold text-[10px]">
                                   {row.assignedToId?.name?.charAt(0) || "U"}

@@ -1,5 +1,7 @@
 "use client"
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useState } from "react"
 import { 
   Sheet, 
@@ -98,7 +100,7 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Bill/Invoice</span>
                   {pendingReceipt.billPhoto ? (
-                    <a href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${pendingReceipt.billPhoto}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1">
+                    <a href={getImageUrl(pendingReceipt.billPhoto)} target="_blank" rel="noreferrer" className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1">
                       <FileText className="h-3.5 w-3.5" /> View Bill
                     </a>
                   ) : <span className="text-xs font-bold text-zinc-500">Not provided</span>}
@@ -106,7 +108,7 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Photo</span>
                   {pendingReceipt.materialPhoto ? (
-                    <a href={`${process.env.NEXT_PUBLIC_BASE_URL?.split('/api')[0] || ''}${pendingReceipt.materialPhoto}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1">
+                    <a href={getImageUrl(pendingReceipt.materialPhoto)} target="_blank" rel="noreferrer" className="text-xs font-bold text-teal-600 hover:underline flex items-center gap-1">
                       <FileText className="h-3.5 w-3.5" /> View Photo
                     </a>
                   ) : <span className="text-xs font-bold text-zinc-500">Not provided</span>}

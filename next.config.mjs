@@ -4,6 +4,11 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'erp.vpgconstruction.co.in',
+        pathname: '/api/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'images.unsplash.com',
       },
     ],

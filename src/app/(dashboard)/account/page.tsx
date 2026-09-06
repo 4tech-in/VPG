@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/use-auth-store";
 import { authService } from "@/service/auth.api";
@@ -166,9 +168,7 @@ export default function AccountPage() {
                 {(user as any)?.profileImage && (
                   <AvatarImage
                     src={
-                      (user as any).profileImage.startsWith("http")
-                        ? (user as any).profileImage
-                        : `${process.env.NEXT_PUBLIC_BASE_URL || ""}${(user as any).profileImage}`
+                      getImageUrl((user as any).profileImage)
                     }
                     alt="Profile"
                     className="object-cover"

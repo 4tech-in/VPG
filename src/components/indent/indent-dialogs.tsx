@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useState, useEffect } from "react";
 import { projectService } from "@/service/projectService";
 import { towerService } from "@/service/towerService";
@@ -76,22 +78,6 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
-const getImageUrl = (filePath: string) => {
-  if (!filePath) return "";
-  if (filePath.startsWith("http")) return filePath;
-  let cleanPath = filePath;
-  if (filePath.startsWith("/uploads/")) {
-    cleanPath = `/api${filePath}`;
-  }
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:9090/api/";
-  try {
-    const origin = new URL(baseUrl).origin;
-    return `${origin}${cleanPath}`;
-  } catch (e) {
-    return `http://localhost:9090${cleanPath}`;
-  }
-};
 
 // --- VIEW INDENT DIALOG ---
 

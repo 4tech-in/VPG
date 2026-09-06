@@ -1,5 +1,7 @@
 "use client"
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useState, useMemo, useEffect } from "react"
 import {
   DollarSign,
@@ -103,8 +105,7 @@ export default function AdvancePage() {
 
   const getAvatarUrl = (profileImage?: string) => {
     if (!profileImage) return undefined
-    const base = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/api$/, "") || ""
-    return `${base}${profileImage}`
+    return getImageUrl(profileImage)
   }
 
   const columns: ColumnDef<Advance>[] = [

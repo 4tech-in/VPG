@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@tanstack/react-table";
@@ -52,21 +54,6 @@ import { indentService } from "@/service/indents.api";
 import { unitService } from "@/service/unitService";
 import { exportIndentReceipt } from "@/lib/export-receipt";
 
-const getImageUrl = (filePath: string) => {
-  if (!filePath) return "";
-  if (filePath.startsWith("http")) return filePath;
-  let cleanPath = filePath;
-  if (filePath.startsWith("/uploads/")) {
-    cleanPath = `/api${filePath}`;
-  }
-  const baseUrl = `${process.env.NEXT_PUBLIC_BASE_URL}`;
-  try {
-    const origin = new URL(baseUrl).origin;
-    return `${origin}${cleanPath}`;
-  } catch (e) {
-    return `http://localhost:9090${cleanPath}`;
-  }
-};
 
 const mapBackendStatusToUI = (status: string) => {
   switch (status) {

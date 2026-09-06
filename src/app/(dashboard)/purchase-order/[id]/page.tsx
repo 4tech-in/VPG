@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
@@ -713,10 +715,7 @@ export default function PODetailPage() {
                 {po.images && po.images.length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 my-auto pt-1">
                     {po.images.map((img: string, idx: number) => {
-                      const backendBase =
-                        process.env.NEXT_PUBLIC_BASE_URL?.split("/api")[0] ||
-                        "";
-                      const fullUrl = `${backendBase}${img}`;
+                      const fullUrl = getImageUrl(img);
                       const isPdf = img.toLowerCase().endsWith(".pdf");
                       return (
                         <a

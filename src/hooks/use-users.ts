@@ -1,3 +1,5 @@
+
+import { getImageUrl } from "@/lib/image-url";
 import { useState, useEffect, useCallback, useRef } from "react"
 import { userService, ApiUser, CreateUserPayload, GetUsersParams } from "@/service/userService"
 import { toast } from "sonner"
@@ -111,7 +113,7 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     primaryNodeId,
     reportsTo,
     isActive: apiUser.isActive ?? true,
-    avatarUrl: apiUser.profileImage ? `${process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/api$/, "")}${apiUser.profileImage}` : undefined,
+    avatarUrl: getImageUrl(apiUser.profileImage) || undefined,
     geofenceId,
     projectId,
     projectIds,

@@ -1,5 +1,7 @@
 "use client";
 
+import { getImageUrl } from "@/lib/image-url";
+
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
@@ -894,12 +896,12 @@ export default function MaterialDetailPage() {
                           <td className="px-4 py-3">
                             {h.photo ? (
                               <img
-                                src={`${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/", "") || "http://localhost:9090"}${h.photo}`}
+                                src={getImageUrl(h.photo)}
                                 alt="Usage"
                                 className="h-10 w-10 object-cover rounded-lg border border-zinc-200 cursor-pointer hover:scale-105 transition-transform"
                                 onClick={() =>
                                   window.open(
-                                    `${process.env.NEXT_PUBLIC_BASE_URL?.replace("/api/", "") || "http://localhost:9090"}${h.photo}`,
+                                    getImageUrl(h.photo),
                                     "_blank"
                                   )
                                 }
