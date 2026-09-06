@@ -1,6 +1,7 @@
 "use client";
 
 import { getImageUrl } from "@/lib/image-url";
+import { getMaterialPending } from "@/lib/material-totals";
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -510,7 +511,7 @@ export default function MaterialDetailPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { label: "Material Used", value: po.materialUsed, icon: Check, theme: "border-teal-100 bg-teal-50/60", accent: "text-teal-700", iconBackground: "bg-teal-100" },
-              { label: "Material Pending", value: po.pending, icon: Clock, theme: "border-amber-100 bg-amber-50/60", accent: "text-amber-700", iconBackground: "bg-amber-100" },
+              { label: "Material Pending", value: getMaterialPending(po), icon: Clock, theme: "border-amber-100 bg-amber-50/60", accent: "text-amber-700", iconBackground: "bg-amber-100" },
               { label: "Total Count", value: po.totalCount, icon: ClipboardCheck, theme: "border-indigo-100 bg-indigo-50/60", accent: "text-indigo-700", iconBackground: "bg-indigo-100" },
               { label: "Total Quantity", value: po.totalQuantity, icon: Box, theme: "border-slate-200 bg-slate-50", accent: "text-slate-800", iconBackground: "bg-slate-200" },
             ].map(({ label, value, icon: Icon, theme, accent, iconBackground }) => (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { getMaterialPending } from "@/lib/material-totals";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,7 +164,7 @@ export default function MaterialMasterPage() {
       const missingTotals = ordersWithTotals
         .map((po, index) => ({ po, index }))
         .filter(({ po }) =>
-          po.materialUsed == null || po.pending == null || po.totalCount == null
+          po.materialUsed == null || po.totalCount == null
         );
       let nextIndex = 0;
       await Promise.all(
@@ -177,7 +178,6 @@ export default function MaterialMasterPage() {
               ordersWithTotals[index] = {
                 ...po,
                 materialUsed: po.materialUsed ?? details.materialUsed,
-                pending: po.pending ?? details.pending,
                 totalCount: po.totalCount ?? details.totalCount,
               };
             } catch (error) {
@@ -186,7 +186,10 @@ export default function MaterialMasterPage() {
           }
         })
       );
-      setPurchaseOrders(ordersWithTotals);
+      setPurchaseOrders(ordersWithTotals.map((po) => ({
+        ...po,
+        pending: getMaterialPending(po),
+      })));
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load Purchase Orders");
@@ -223,7 +226,7 @@ export default function MaterialMasterPage() {
   }, [purchaseOrders, searchQuery, statusFilter]);
 
   const materialSummary = useMemo(() => {
-    const sumTotal = (field: "materialUsed" | "pending") => {
+    const sumTotal = (field: "materialUsed" | "pending" | "totalCount") => {
       if (filteredPOs.some((po) => po[field] == null || !Number.isFinite(Number(po[field])))) {
         return "—";
       }
@@ -233,6 +236,7 @@ export default function MaterialMasterPage() {
     return {
       used: sumTotal("materialUsed"),
       pending: sumTotal("pending"),
+      total: sumTotal("totalCount"),
     };
   }, [filteredPOs]);
 
@@ -872,7 +876,7 @@ export default function MaterialMasterPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
             <p className="text-2xl font-black text-zinc-800">{summaryStats.totalOrders}</p>
@@ -888,6 +892,11 @@ export default function MaterialMasterPage() {
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pending Quantity</p>
             <p className="text-2xl font-black text-amber-600">{summaryStats.pendingQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Material</p>
+            <p className="text-2xl font-black text-indigo-600">{isLoading ? "—" : materialSummary.total}</p>
+            <p className="text-[10px] text-zinc-400">Listed orders</p>
           </div>
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Used</p>
