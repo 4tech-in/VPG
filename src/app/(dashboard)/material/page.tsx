@@ -355,23 +355,7 @@ export default function MaterialMasterPage() {
   };
 
   const columns: ColumnDef<any>[] = [
-    {
-      accessorKey: "poNo",
-      header: "PO ID",
-      cell: ({ row }) => (
-        <div
-          onClick={() =>
-            router.push(
-              `/purchase-order/${row.original._id || row.original.id}`
-            )
-          }
-          className="font-bold text-teal-600 hover:underline cursor-pointer flex items-center gap-1.5"
-        >
-          <ClipboardList className="h-4 w-4 shrink-0 text-teal-600" />
-          {row.getValue("poNo")}
-        </div>
-      )
-    },
+
     {
       accessorKey: "projectId",
       header: "Project",
@@ -403,26 +387,49 @@ export default function MaterialMasterPage() {
       cell: ({ row }) => {
         const items = row.original.items || [];
         return (
-          <div className="flex flex-col gap-1 max-w-xs">
+          <div className="flex flex-col gap-1 max-w-[200px]">
             {items.slice(0, 3).map((item: any, i: number) => {
               const name =
                 item.itemId?.itemName || item.itemId?.name || "Material";
-              const unit = item.unitId?.unitName || item.unitId?.name || "Nos";
               return (
                 <div
                   key={i}
-                  className="text-[11px] font-bold text-zinc-500 truncate flex items-center justify-between border-b border-zinc-100/50 pb-0.5 last:border-none"
+                  className="text-[11px] font-bold text-zinc-500 truncate border-b border-zinc-100/50 pb-0.5 last:border-none"
                 >
-                  <span>{name}</span>
-                  <span className="shrink-0 text-zinc-800 ml-2 font-extrabold">
-                    {item.receivedQuantity || 0}/{item.orderQuantity} {unit}
-                  </span>
+                  {name}
                 </div>
               );
             })}
             {items.length > 3 && (
               <span className="text-[9px] font-bold text-teal-600 uppercase mt-0.5">
                 + {items.length - 3} more item(s)
+              </span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      id: "quantity",
+      header: "Quantity",
+      cell: ({ row }) => {
+        const items = row.original.items || [];
+        return (
+          <div className="flex flex-col gap-1 max-w-[150px]">
+            {items.slice(0, 3).map((item: any, i: number) => {
+              const unit = item.unitId?.unitName || item.unitId?.name || "Nos";
+              return (
+                <div
+                  key={i}
+                  className="text-[11px] font-extrabold text-zinc-800 truncate border-b border-zinc-100/50 pb-0.5 last:border-none"
+                >
+                  {item.receivedQuantity || 0}/{item.orderQuantity} {unit}
+                </div>
+              );
+            })}
+            {items.length > 3 && (
+              <span className="text-[9px] text-transparent mt-0.5">
+                ...
               </span>
             )}
           </div>
