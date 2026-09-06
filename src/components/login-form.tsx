@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -11,7 +11,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import apiClient from "@/lib/api-client"
 import { useAuthStore } from "@/store/use-auth-store"
-import { hasActiveSession } from "@/store/proxy"
 
 export function LoginForm({
   className,
@@ -19,25 +18,8 @@ export function LoginForm({
 }: React.ComponentPropsWithoutRef<"form">) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-
-  useEffect(() => {
-    if (hasActiveSession()) {
-      setIsRedirecting(true)
-      router.push("/dashboard")
-    }
-  }, [router])
-
-  if (isRedirecting) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 gap-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0B1A30] border-t-transparent" />
-        <p className="text-sm font-semibold text-zinc-500">Redirecting to dashboard...</p>
-      </div>
-    )
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

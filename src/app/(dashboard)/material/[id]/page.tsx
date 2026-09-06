@@ -82,12 +82,30 @@ export default function MaterialDetailPage() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 
   const fetchHistory = async () => {
+    const poId = po?._id || po?.id || params.id;
+    if (!poId || Array.isArray(poId)) return;
+
     try {
       setIsHistoryLoading(true);
-      const res = await materialIssueService.getMaterialUsageHistory({
-        projectId: po?.projectId?._id || po?.projectId
-      });
-      setHistoryData(res.data || res || []);
+      setHistoryData([]);
+      const res = await materialIssueService.getMaterialUsageHistory({ poId });
+      const getItemId = (
+        item: string | { _id?: string; id?: string } | null | undefined
+      ) => typeof item === "string" ? item : item?._id || item?.id;
+      const orderItemIds = new Set<string>(
+        (po?.items || [])
+          .map((item: any) => getItemId(item.itemId))
+          .filter((id: string | undefined): id is string => Boolean(id))
+      );
+      const records = res?.data || res || [];
+      setHistoryData(
+        Array.isArray(records)
+          ? records.filter((record: any) => {
+              const itemId = getItemId(record.itemId);
+              return Boolean(itemId && orderItemIds.has(itemId));
+            })
+          : []
+      );
     } catch (err) {
       toast.error("Failed to fetch history");
     } finally {
@@ -425,7 +443,7 @@ export default function MaterialDetailPage() {
         )}
 
         {/* Quick Stats Horizontal Row */}
-        <div className="bg-white rounded-xl border border-slate-200/70 p-1 shadow-sm grid grid-cols-4 gap-1">
+        <div className="bg-white rounded-xl border border-slate-200/70 p-1 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-1">
           {[
             {
               label: "Ordered",
@@ -478,6 +496,40 @@ export default function MaterialDetailPage() {
             </div>
           ))}
         </div>
+
+        <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6" aria-label="Material summary">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-teal-50 p-2.5 text-teal-600">
+              <Box className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Material Summary</h3>
+              <p className="text-xs text-slate-500">Usage and quantities for this purchase order</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Material Used", value: po.materialUsed, icon: Check, theme: "border-teal-100 bg-teal-50/60", accent: "text-teal-700", iconBackground: "bg-teal-100" },
+              { label: "Material Pending", value: po.pending, icon: Clock, theme: "border-amber-100 bg-amber-50/60", accent: "text-amber-700", iconBackground: "bg-amber-100" },
+              { label: "Total Count", value: po.totalCount, icon: ClipboardCheck, theme: "border-indigo-100 bg-indigo-50/60", accent: "text-indigo-700", iconBackground: "bg-indigo-100" },
+              { label: "Total Quantity", value: po.totalQuantity, icon: Box, theme: "border-slate-200 bg-slate-50", accent: "text-slate-800", iconBackground: "bg-slate-200" },
+            ].map(({ label, value, icon: Icon, theme, accent, iconBackground }) => (
+              <div key={label} className={cn("rounded-xl border p-4", theme)}>
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-slate-600">{label}</p>
+                  <span className={cn("rounded-lg p-2", iconBackground, accent)}>
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </div>
+                <p className={cn("break-words text-3xl font-bold tabular-nums tracking-tight", accent)}>
+                  {value != null && Number.isFinite(Number(value))
+                    ? Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })
+                    : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* 3-Panel Command Center */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -846,7 +898,7 @@ export default function MaterialDetailPage() {
               Material Usage History
             </DialogTitle>
             <DialogDescription className="font-bold text-xs uppercase tracking-widest text-zinc-400">
-              Activity log for materials in this project.
+              Activity log for materials in this purchase order.
             </DialogDescription>
           </DialogHeader>
           {isHistoryLoading ? (

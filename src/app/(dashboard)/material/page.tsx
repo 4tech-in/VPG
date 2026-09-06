@@ -157,7 +157,36 @@ export default function MaterialMasterPage() {
                 "PendingVerification"
               ].includes(po.status)
           );
-      setPurchaseOrders(activePOs);
+      // The list endpoint may omit totals supplied by the detail endpoint.
+      // Limit concurrent requests when loading those totals for older responses.
+      const ordersWithTotals = [...activePOs];
+      const missingTotals = ordersWithTotals
+        .map((po, index) => ({ po, index }))
+        .filter(({ po }) =>
+          po.materialUsed == null || po.pending == null || po.totalCount == null
+        );
+      let nextIndex = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(6, missingTotals.length) }, async () => {
+          while (nextIndex < missingTotals.length) {
+            const { po, index } = missingTotals[nextIndex++];
+            const id = po._id || po.id;
+            if (!id) continue;
+            try {
+              const details = await purchaseOrderService.getPurchaseOrderById(id);
+              ordersWithTotals[index] = {
+                ...po,
+                materialUsed: po.materialUsed ?? details.materialUsed,
+                pending: po.pending ?? details.pending,
+                totalCount: po.totalCount ?? details.totalCount,
+              };
+            } catch (error) {
+              console.error("Failed to load material totals for purchase order", id, error);
+            }
+          }
+        })
+      );
+      setPurchaseOrders(ordersWithTotals);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load Purchase Orders");
@@ -192,6 +221,20 @@ export default function MaterialMasterPage() {
       return matchesSearch && matchesStatus;
     });
   }, [purchaseOrders, searchQuery, statusFilter]);
+
+  const materialSummary = useMemo(() => {
+    const sumTotal = (field: "materialUsed" | "pending") => {
+      if (filteredPOs.some((po) => po[field] == null || !Number.isFinite(Number(po[field])))) {
+        return "—";
+      }
+      return filteredPOs.reduce((total, po) => total + Number(po[field]), 0)
+        .toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    };
+    return {
+      used: sumTotal("materialUsed"),
+      pending: sumTotal("pending"),
+    };
+  }, [filteredPOs]);
 
   // Count helper for Approved POs
   const approvedPOCount = useMemo(() => {
@@ -435,6 +478,33 @@ export default function MaterialMasterPage() {
           </div>
         );
       }
+    },
+    {
+      accessorKey: "materialUsed",
+      header: "Material Used",
+      cell: ({ row }) => (
+        <span className="font-bold text-zinc-800">
+          {row.original.materialUsed ?? "—"}
+        </span>
+      )
+    },
+    {
+      accessorKey: "pending",
+      header: "Pending",
+      cell: ({ row }) => (
+        <span className="font-bold text-amber-600">
+          {row.original.pending ?? "—"}
+        </span>
+      )
+    },
+    {
+      accessorKey: "totalCount",
+      header: "Total Count",
+      cell: ({ row }) => (
+        <span className="font-bold text-zinc-800">
+          {row.original.totalCount ?? "—"}
+        </span>
+      )
     },
     {
       accessorKey: "status",
@@ -802,7 +872,7 @@ export default function MaterialMasterPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
             <p className="text-2xl font-black text-zinc-800">{summaryStats.totalOrders}</p>
@@ -818,6 +888,16 @@ export default function MaterialMasterPage() {
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pending Quantity</p>
             <p className="text-2xl font-black text-amber-600">{summaryStats.pendingQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Used</p>
+            <p className="text-2xl font-black text-teal-600">{isLoading ? "—" : materialSummary.used}</p>
+            <p className="text-[10px] text-zinc-400">Listed orders</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Pending</p>
+            <p className="text-2xl font-black text-amber-600">{isLoading ? "—" : materialSummary.pending}</p>
+            <p className="text-[10px] text-zinc-400">Listed orders</p>
           </div>
           <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Value</p>

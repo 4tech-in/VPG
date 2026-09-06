@@ -37,6 +37,9 @@ export type PurchaseOrder = {
   storageLocation?: string | null;
   items: POItem[];
   totalAmount: number;
+  materialUsed?: number;
+  pending?: number;
+  totalCount?: number;
   status:
     | "Draft"
     | "PendingApproval"
