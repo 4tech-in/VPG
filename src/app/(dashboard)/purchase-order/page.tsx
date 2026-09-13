@@ -27,6 +27,7 @@ import { usePurchaseOrders } from "@/hooks/use-purchase-orders"
 import { PurchaseOrder, purchaseOrderService } from "@/service/purchaseOrderService"
 import { exportPurchaseOrderReceipt } from "@/lib/export-receipt"
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog"
+import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function PurchaseOrderPage() {
@@ -143,13 +144,13 @@ export default function PurchaseOrderPage() {
     },
     {
       id: "actions",
-      header: () => <div className="text-center w-44 mx-auto">Action</div>,
+      header: () => <div className="text-center w-52 mx-auto">Action</div>,
       cell: ({ row }) => {
         const po = row.original
         const isCancellable = !["Received", "Issued", "Cancelled"].includes(po.status)
         return (
           <TooltipProvider delayDuration={150}>
-          <div className="flex items-center justify-center gap-1.5 w-44 mx-auto">
+          <div className="flex items-center justify-center gap-1.5 w-52 mx-auto">
              <Tooltip><TooltipTrigger asChild><Button
                variant="ghost" size="icon"
                onClick={() => router.push(`/purchase-order/${po._id || po.id}`)}
@@ -162,6 +163,7 @@ export default function PurchaseOrderPage() {
                className="h-8 w-8 rounded-lg bg-amber-50/50 hover:bg-amber-100/80 text-amber-600 transition-all border border-amber-200/50"
                aria-label="Print purchase order"
              ><Printer className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Print PO</TooltipContent></Tooltip>
+             <WhatsAppShareButton po={po} variant="icon" />
              <Tooltip><TooltipTrigger asChild><Button
                variant="ghost" size="icon"
                onClick={() => openReceipt(po)}

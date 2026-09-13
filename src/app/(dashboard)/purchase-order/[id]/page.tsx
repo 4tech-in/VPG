@@ -47,6 +47,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
+import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog";
 
 export default function PODetailPage() {
   const params = useParams();
@@ -304,6 +305,7 @@ export default function PODetailPage() {
             >
               <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" /> Receipt
             </Button>
+            <WhatsAppShareButton po={po} variant="button" label="Send WhatsApp" />
           </div>
         </div>
 

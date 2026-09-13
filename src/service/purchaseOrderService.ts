@@ -251,4 +251,16 @@ export const purchaseOrderService = {
     });
     return response?.data || response;
   },
+
+  async sendPurchaseOrderWhatsApp(
+    id: string,
+    options?: { vendorMobile?: string; pdfUrl?: string; message?: string }
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await apiRequest<any>(`purchase-orders/send-whatsapp/${id}`, {
+      method: "POST",
+      body: JSON.stringify(options || {}),
+    });
+    return response?.data || response;
+  },
 };
+
