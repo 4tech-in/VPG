@@ -53,3 +53,35 @@ export async function generatePurchaseOrderPdf(po: any): Promise<File> {
     frame.remove();
   }
 }
+
+export async function generateReceiptPdf(po: any): Promise<File> {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas"),
+    import("jspdf"),
+  ]);
+
+  const cleanVendor = String(
+    po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.name || "Vendor"
+  ).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const filename = `Receipt_${po?.poNo || "Slip"}_${cleanVendor}.pdf`;
+
+  const targetNode = typeof document !== "undefined" ? document.getElementById("material-receipt-print-area") : null;
+  if (targetNode) {
+    const canvas = await html2canvas(targetNode, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+      logging: false,
+    });
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+    const pdfWidth = 148;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.setProperties({ title: filename.replace(/\.pdf$/, "") });
+    return new File([pdf.output("blob")], filename, { type: "application/pdf" });
+  }
+
+  const poFile = await generatePurchaseOrderPdf(po);
+  return new File([poFile], filename, { type: "application/pdf" });
+}
+

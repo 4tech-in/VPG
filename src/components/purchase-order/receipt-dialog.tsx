@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SendWhatsAppDialog, WhatsAppIcon } from "@/components/purchase-order/send-whatsapp-dialog";
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void; po: any };
 const num = (value: unknown) => Number(value || 0);
@@ -11,6 +13,7 @@ const time = (value: unknown) => value ? new Date(value as string).toLocaleTimeS
 const person = (value: any) => value?.name || value?.fullName || value?.employeeName || value?.userName || "";
 
 export function ReceiptDialog({ open, onOpenChange, po }: Props) {
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const receipts = po?.receipts || [];
   const receipt = receipts[receipts.length - 1] || {};
   const receiptItems = receipt.items || [];
@@ -59,7 +62,8 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[95vh] overflow-y-auto bg-stone-200 p-0 sm:max-w-[640px]">
         <DialogHeader className="sr-only">
           <DialogTitle>Receipt Slip</DialogTitle>
@@ -135,8 +139,24 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
           </main>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-white px-5 py-3"><Button variant="outline" onClick={() => onOpenChange(false)} className="h-9 text-xs font-bold">Close</Button><Button onClick={printReceipt} className="h-9 gap-2 bg-zinc-900 text-xs font-bold text-white"><Printer className="h-4 w-4" /> Print Receipt</Button></div>
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-white px-5 py-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-9 text-xs font-bold">Close</Button>
+          <Button
+            onClick={() => setIsWhatsAppOpen(true)}
+            className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm"
+          >
+            <WhatsAppIcon className="h-4 w-4" /> Send to Vendor
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
+
+    <SendWhatsAppDialog
+      open={isWhatsAppOpen}
+      onOpenChange={setIsWhatsAppOpen}
+      po={po}
+      mode="receipt"
+    />
+  </>
   );
 }

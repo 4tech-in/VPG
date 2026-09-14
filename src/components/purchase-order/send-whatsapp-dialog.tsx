@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
-import { generatePurchaseOrderPdf } from "@/lib/generate-purchase-order-pdf";
+import { generatePurchaseOrderPdf, generateReceiptPdf } from "@/lib/generate-purchase-order-pdf";
 import { purchaseOrderPdfFilename } from "@/lib/purchase-order-filename";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -38,6 +38,7 @@ interface SendWhatsAppDialogProps {
   onOpenChange: (open: boolean) => void;
   po: any;
   onSuccess?: () => void;
+  mode?: "po" | "receipt";
 }
 
 export function SendWhatsAppDialog({
@@ -45,7 +46,9 @@ export function SendWhatsAppDialog({
   onOpenChange,
   po,
   onSuccess,
+  mode = "po",
 }: SendWhatsAppDialogProps) {
+  const isReceipt = mode === "receipt";
   const [vendorMobile, setVendorMobile] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [attachFile, setAttachFile] = useState(true);
@@ -80,7 +83,9 @@ export function SendWhatsAppDialog({
       try {
         const details = await purchaseOrderService.getPurchaseOrderById(po._id || po.id);
         if (cancelled) return;
-        const file = await generatePurchaseOrderPdf(details);
+        const file = isReceipt
+          ? await generateReceiptPdf(details)
+          : await generatePurchaseOrderPdf(details);
         if (!cancelled) setPdfFile(file);
       } catch (error) {
         if (!cancelled) setPdfError(error instanceof Error ? error.message : "Could not generate the PDF");
@@ -90,14 +95,17 @@ export function SendWhatsAppDialog({
     };
     void prepare();
     return () => { cancelled = true; };
-  }, [open, po, generationAttempt]);
+  }, [open, po, generationAttempt, isReceipt]);
 
   if (!po) return null;
 
   const poId = po._id || po.id;
   const vendorName = po.vendorName || po.vendorId?.name || "Vendor";
   const poNo = po.poNo || "N/A";
-  const pdfFilename = purchaseOrderPdfFilename(po);
+  const cleanVendor = String(vendorName).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const pdfFilename = isReceipt
+    ? `Receipt_${poNo}_${cleanVendor}.pdf`
+    : purchaseOrderPdfFilename(po);
   const amount = po.totalAmount
     ? `₹${Number(po.totalAmount).toLocaleString("en-IN")}`
     : "₹0";
@@ -115,22 +123,26 @@ export function SendWhatsAppDialog({
     setIsSending(true);
     try {
       if (attachFile && !pdfFile) {
-        toast.error("Please wait for the purchase order PDF to finish generating.");
+        toast.error(`Please wait for the ${isReceipt ? "receipt" : "purchase order"} PDF to finish generating.`);
         return;
       }
       if (attachFile && pdfFile && await pdfFile.slice(0, 5).text() !== "%PDF-") {
         toast.error("The selected file is not a valid PDF.");
         return;
       }
+      const defaultMessage = isReceipt
+        ? `Receipt Slip for ${poNo} - ${vendorName}`
+        : undefined;
+
       const res = await purchaseOrderService.sendPurchaseOrderWhatsApp(poId, {
         phone: vendorMobile.trim(),
-        message: customMessage.trim() || undefined,
+        message: customMessage.trim() || defaultMessage,
         pdf: attachFile && pdfFile ? pdfFile : undefined,
         pdfUrl: attachFile ? undefined : "",
       });
 
       if (res && res.success !== false) {
-        toast.success(`Purchase Order ${poNo} sent to ${vendorName} on WhatsApp!`, {
+        toast.success(`${isReceipt ? "Receipt" : "Purchase Order"} ${poNo} sent to ${vendorName} on WhatsApp!`, {
           icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
         });
         onOpenChange(false);
@@ -155,29 +167,33 @@ export function SendWhatsAppDialog({
             </div>
             <div>
               <DialogTitle className="text-lg font-black text-zinc-900">
-                Send PO on WhatsApp
+                {isReceipt ? "Send Receipt on WhatsApp" : "Send PO on WhatsApp"}
               </DialogTitle>
               <DialogDescription className="text-xs font-medium text-zinc-500">
-                Deliver the purchase order document & details to the vendor.
+                {isReceipt
+                  ? "Deliver the receipt slip & details to the vendor."
+                  : "Deliver the purchase order document & details to the vendor."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {/* PO Quick Info Card */}
+        {/* Quick Info Card */}
         <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3.5 flex flex-col gap-2 mt-2">
           <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-zinc-500">Purchase Order:</span>
+            <span className="text-zinc-500">{isReceipt ? "Receipt Slip:" : "Purchase Order:"}</span>
             <span className="text-zinc-900 font-extrabold">{poNo}</span>
           </div>
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-zinc-500">Vendor:</span>
             <span className="text-zinc-900">{vendorName}</span>
           </div>
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-zinc-500">Total Value:</span>
-            <span className="text-emerald-700 font-black">{amount}</span>
-          </div>
+          {!isReceipt && (
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-zinc-500">Total Value:</span>
+              <span className="text-emerald-700 font-black">{amount}</span>
+            </div>
+          )}
         </div>
 
         {/* Form Fields */}
@@ -207,7 +223,11 @@ export function SendWhatsAppDialog({
             </Label>
             <Textarea
               id="customMessage"
-              placeholder="Leave empty to send default PO details and attachment..."
+              placeholder={
+                isReceipt
+                  ? "Leave empty to send default receipt details and attachment..."
+                  : "Leave empty to send default PO details and attachment..."
+              }
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
               className="rounded-xl text-xs font-medium bg-white text-zinc-900 border-zinc-200 resize-none min-h-[70px] focus-visible:ring-emerald-500"
@@ -220,7 +240,11 @@ export function SendWhatsAppDialog({
               <FileText className="h-4 w-4 text-emerald-600" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-zinc-800">Attach Document / PDF</span>
-                <span className="text-[10px] text-zinc-400 font-medium">The purchase order PDF is generated automatically</span>
+                <span className="text-[10px] text-zinc-400 font-medium">
+                  {isReceipt
+                    ? "The receipt slip PDF is generated automatically"
+                    : "The purchase order PDF is generated automatically"}
+                </span>
               </div>
             </div>
             <input
@@ -235,7 +259,13 @@ export function SendWhatsAppDialog({
           {attachFile && (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs text-zinc-500 break-all">
-                {isGenerating ? "Generating purchase order PDF…" : pdfFile ? `Ready: ${pdfFile.name}` : `PDF: ${pdfFilename}`}
+                {isGenerating
+                  ? isReceipt
+                    ? "Generating receipt PDF…"
+                    : "Generating purchase order PDF…"
+                  : pdfFile
+                    ? `Ready: ${pdfFile.name}`
+                    : `PDF: ${pdfFilename}`}
               </p>
               {pdfError && (
                 <>
@@ -285,6 +315,7 @@ interface WhatsAppShareButtonProps {
   className?: string;
   label?: string;
   onSuccess?: () => void;
+  mode?: "po" | "receipt";
 }
 
 export function WhatsAppShareButton({
@@ -293,6 +324,7 @@ export function WhatsAppShareButton({
   className,
   label = "WhatsApp",
   onSuccess,
+  mode = "po",
 }: WhatsAppShareButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -310,12 +342,12 @@ export function WhatsAppShareButton({
                   className ||
                   "h-8 w-8 rounded-lg bg-emerald-50/70 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 transition-all border border-emerald-200/60 shadow-xs"
                 }
-                aria-label="Send purchase order via WhatsApp"
+                aria-label={mode === "receipt" ? "Send receipt via WhatsApp" : "Send purchase order via WhatsApp"}
               >
                 <WhatsAppIcon className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Send on WhatsApp</TooltipContent>
+            <TooltipContent>{mode === "receipt" ? "Send Receipt on WhatsApp" : "Send on WhatsApp"}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -324,6 +356,7 @@ export function WhatsAppShareButton({
           onOpenChange={setOpen}
           po={po}
           onSuccess={onSuccess}
+          mode={mode}
         />
       </>
     );
@@ -350,6 +383,7 @@ export function WhatsAppShareButton({
         onOpenChange={setOpen}
         po={po}
         onSuccess={onSuccess}
+        mode={mode}
       />
     </>
   );
