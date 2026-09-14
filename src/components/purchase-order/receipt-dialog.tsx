@@ -35,6 +35,8 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
   });
 
   const site = po?.projectId?.projectName || po?.projectId?.name || po?.locationAddress || po?.deliveryAddress || po?.projectId?.location || "";
+  const vendorName = po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.companyName || po?.vendorId?.name || "";
+  const vehicleNo = po?.vehicleNo || po?.vehicleNumber || receipt?.vehicleNo || receipt?.vehicleNumber || "";
   const receivedBy = person(receipt.receivedBy) || receipt.receiverName || person(po?.requesterId) || person(po?.requestedBy);
 
   const printReceipt = () => {
@@ -46,7 +48,14 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
     popup.document.write(`<!doctype html><html><head><title>Receipt Slip - ${po?.poNo || "PO"}</title>${styles}<style>@page{size:A5 portrait;margin:8mm}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body{margin:0;background:#fff!important}#material-receipt-print-area{width:100%!important;max-width:none!important;box-shadow:none!important}.receipt-slip{min-height:190mm!important;padding:8mm!important}</style></head><body>${node.outerHTML}</body></html>`);
     popup.document.close();
     popup.focus();
-    window.setTimeout(() => { popup.print(); popup.close(); }, 500);
+    const imgs = Array.from(popup.document.images);
+    if (imgs.length > 0) {
+      Promise.all(imgs.map((img) => img.decode().catch(() => {}))).finally(() => {
+        window.setTimeout(() => { popup.print(); popup.close(); }, 300);
+      });
+    } else {
+      window.setTimeout(() => { popup.print(); popup.close(); }, 500);
+    }
   };
 
   return (
@@ -74,10 +83,13 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
 
             <section className="mt-5 space-y-2 text-[13px] font-semibold">
               <div className="flex items-end gap-3"><span>PO No.</span><span className="border-b border-zinc-700 px-2 font-normal">{po?.poNo || ""}</span><span className="ml-auto">No.</span><span className="h-5 w-20 border-b border-zinc-700" /></div>
-              <div className="flex items-end gap-2"><span>Date</span><span className="border-b border-zinc-700 px-2 font-normal">{date(receiptDate)}</span></div>
-              <div className="flex items-end gap-2"><span>Time</span><span className="border-b border-zinc-700 px-2 font-normal">{time(receiptDate)}</span></div>
+              <div className="flex items-end gap-3">
+                <span className="flex items-end gap-2"><span>Date</span><span className="border-b border-zinc-700 px-2 font-normal">{date(receiptDate)}</span></span>
+                <span className="ml-auto flex items-end gap-2"><span>Time</span><span className="border-b border-zinc-700 px-2 font-normal">{time(receiptDate)}</span></span>
+              </div>
+              <div className="flex items-end gap-2"><span>Vehicle No.</span><span className="border-b border-zinc-700 px-2 font-normal">{vehicleNo || "-"}</span></div>
               <div className="flex items-end gap-2"><span>Site</span><span className="max-w-[360px] border-b border-zinc-700 px-2 font-normal">{site}</span></div>
-              <div className="flex items-end gap-2"><span>Vendor Name</span><span className="max-w-[300px] border-b border-zinc-700 px-2 font-normal">{po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.name || ""}</span></div>
+              <div className="flex items-end gap-2"><span>Vendor Name</span><span className="max-w-[300px] border-b border-zinc-700 px-2 font-normal">{vendorName}</span></div>
               <div className="flex items-end gap-2"><span>Received By</span><span className="max-w-[300px] border-b border-zinc-700 px-2 font-normal">{receivedBy}</span></div>
             </section>
 
@@ -91,7 +103,35 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
               </tbody>
             </table>
 
-            <footer className="mt-12 grid grid-cols-2 gap-14 text-[13px] font-bold"><div><div className="mb-2 border-b border-zinc-700" /><p>Incharge</p></div><div className="text-right"><div className="mb-2 border-b border-zinc-700" /><p>Rec. Signature</p></div></footer>
+            <footer className="mt-10 grid grid-cols-3 items-end gap-5 text-[13px] font-bold">
+              <div>
+                <div className="min-h-[44px] flex flex-col justify-end">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Vendor</span>
+                  <span className="truncate text-[12px] font-bold text-zinc-900">{vendorName || "—"}</span>
+                  {vehicleNo ? (
+                    <span className="text-[11px] font-medium text-zinc-600">Veh. No: {vehicleNo}</span>
+                  ) : null}
+                </div>
+                <div className="mt-2 mb-1.5 border-b border-zinc-700" />
+                <p className="text-[12px]">Vendor Signature</p>
+              </div>
+              <div className="text-center">
+                <div className="min-h-[44px]" />
+                <div className="mt-2 mb-1.5 border-b border-zinc-700" />
+                <p className="text-[12px]">Incharge</p>
+              </div>
+              <div className="flex flex-col items-end text-right">
+                <div className="min-h-[44px] flex items-end justify-end">
+                  <img
+                    src="/image.png"
+                    alt="Authorized Signature"
+                    className="h-11 w-auto object-contain"
+                  />
+                </div>
+                <div className="mt-2 mb-1.5 w-full border-b border-zinc-700" />
+                <p className="text-[12px]">Rec. Signature</p>
+              </div>
+            </footer>
           </main>
         </div>
 

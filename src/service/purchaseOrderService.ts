@@ -32,6 +32,7 @@ export type PurchaseOrder = {
   vendorName: string;
   vendorMobile?: string | null;
   vendorAddress?: string | null;
+  vehicleNo?: string | null;
   locationAddress?: string | null;
   deliveryAddress?: string | null;
   storageLocation?: string | null;
@@ -254,13 +255,18 @@ export const purchaseOrderService = {
 
   async sendPurchaseOrderWhatsApp(
     id: string,
-    options?: { vendorMobile?: string; pdfUrl?: string; message?: string }
+    options?: { phone?: string; pdfUrl?: string; message?: string; pdf?: File }
   ): Promise<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    if (options?.phone) formData.append("phone", options.phone);
+    if (options?.message) formData.append("message", options.message);
+    if (options?.pdf) formData.append("pdf", options.pdf, options.pdf.name);
+    if (options?.pdfUrl !== undefined) formData.append("pdfUrl", options.pdfUrl);
     const response = await apiRequest<any>(`purchase-orders/send-whatsapp/${id}`, {
       method: "POST",
-      body: JSON.stringify(options || {}),
+      body: formData,
+      isFormData: true,
     });
     return response?.data || response;
   },
 };
-

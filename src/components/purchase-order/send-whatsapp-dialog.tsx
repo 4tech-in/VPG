@@ -16,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
+import { generatePurchaseOrderPdf } from "@/lib/generate-purchase-order-pdf";
+import { purchaseOrderPdfFilename } from "@/lib/purchase-order-filename";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function WhatsAppIcon({ className = "h-4 w-4", ...props }: React.SVGProps<SVGSVGElement>) {
@@ -47,6 +49,10 @@ export function SendWhatsAppDialog({
   const [vendorMobile, setVendorMobile] = useState("");
   const [customMessage, setCustomMessage] = useState("");
   const [attachFile, setAttachFile] = useState(true);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState("");
+  const [generationAttempt, setGenerationAttempt] = useState(0);
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
@@ -60,14 +66,38 @@ export function SendWhatsAppDialog({
       setVendorMobile(initialMobile);
       setCustomMessage("");
       setAttachFile(true);
+      setPdfFile(null);
     }
   }, [po, open]);
+
+  useEffect(() => {
+    if (!open || !po) return;
+    let cancelled = false;
+    setPdfFile(null);
+    setPdfError("");
+    setIsGenerating(true);
+    const prepare = async () => {
+      try {
+        const details = await purchaseOrderService.getPurchaseOrderById(po._id || po.id);
+        if (cancelled) return;
+        const file = await generatePurchaseOrderPdf(details);
+        if (!cancelled) setPdfFile(file);
+      } catch (error) {
+        if (!cancelled) setPdfError(error instanceof Error ? error.message : "Could not generate the PDF");
+      } finally {
+        if (!cancelled) setIsGenerating(false);
+      }
+    };
+    void prepare();
+    return () => { cancelled = true; };
+  }, [open, po, generationAttempt]);
 
   if (!po) return null;
 
   const poId = po._id || po.id;
   const vendorName = po.vendorName || po.vendorId?.name || "Vendor";
   const poNo = po.poNo || "N/A";
+  const pdfFilename = purchaseOrderPdfFilename(po);
   const amount = po.totalAmount
     ? `₹${Number(po.totalAmount).toLocaleString("en-IN")}`
     : "₹0";
@@ -84,9 +114,18 @@ export function SendWhatsAppDialog({
 
     setIsSending(true);
     try {
+      if (attachFile && !pdfFile) {
+        toast.error("Please wait for the purchase order PDF to finish generating.");
+        return;
+      }
+      if (attachFile && pdfFile && await pdfFile.slice(0, 5).text() !== "%PDF-") {
+        toast.error("The selected file is not a valid PDF.");
+        return;
+      }
       const res = await purchaseOrderService.sendPurchaseOrderWhatsApp(poId, {
-        vendorMobile: vendorMobile.trim(),
+        phone: vendorMobile.trim(),
         message: customMessage.trim() || undefined,
+        pdf: attachFile && pdfFile ? pdfFile : undefined,
         pdfUrl: attachFile ? undefined : "",
       });
 
@@ -107,7 +146,7 @@ export function SendWhatsAppDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!isSending) onOpenChange(nextOpen); }}>
       <DialogContent className="max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <DialogHeader className="gap-1">
           <div className="flex items-center gap-2.5">
@@ -181,7 +220,7 @@ export function SendWhatsAppDialog({
               <FileText className="h-4 w-4 text-emerald-600" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-zinc-800">Attach Document / PDF</span>
-                <span className="text-[10px] text-zinc-400 font-medium">Uncheck to send instant text summary if file is local</span>
+                <span className="text-[10px] text-zinc-400 font-medium">The purchase order PDF is generated automatically</span>
               </div>
             </div>
             <input
@@ -193,6 +232,19 @@ export function SendWhatsAppDialog({
               className="h-4 w-4 rounded accent-emerald-600 cursor-pointer"
             />
           </div>
+          {attachFile && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-zinc-500 break-all">
+                {isGenerating ? "Generating purchase order PDF…" : pdfFile ? `Ready: ${pdfFile.name}` : `PDF: ${pdfFilename}`}
+              </p>
+              {pdfError && (
+                <>
+                  <p role="alert" className="text-xs text-rose-600">{pdfError}</p>
+                  <Button variant="outline" disabled={isGenerating || isSending} onClick={() => setGenerationAttempt((attempt) => attempt + 1)}>Retry PDF generation</Button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="mt-2 flex items-center gap-2 sm:justify-end">
@@ -206,7 +258,7 @@ export function SendWhatsAppDialog({
           </Button>
           <Button
             onClick={handleSend}
-            disabled={isSending || !isValidNumber}
+            disabled={isSending || !isValidNumber || (attachFile && !pdfFile)}
             className="rounded-xl font-black text-xs h-10 px-5 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
           >
             {isSending ? (

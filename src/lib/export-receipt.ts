@@ -1,3 +1,5 @@
+import { purchaseOrderPdfFilename } from "@/lib/purchase-order-filename";
+
 export function exportIndentReceipt(indent: any) {
   if (!indent) return;
 
@@ -310,21 +312,15 @@ export function exportIndentReceipt(indent: any) {
   printWindow.document.close();
 }
 
-export function exportPurchaseOrderReceipt(
+export function purchaseOrderReceiptHtml(
   po: any,
   showConditions: boolean = true,
 ) {
-  if (!po) return;
+  if (!po) throw new Error("Purchase order is required");
 
   const formattedCreated = po.createdAt
     ? new Date(po.createdAt).toLocaleDateString("en-IN")
     : "";
-
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("Please allow popups to export the receipt.");
-    return;
-  }
 
   const itemsHtml = (po.items || [])
     .map(
@@ -370,7 +366,7 @@ export function exportPurchaseOrderReceipt(
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Purchase Order - ${po.poNo}</title>
+        <title>${purchaseOrderPdfFilename(po).replace(/\.pdf$/, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cambria:wght@400;700&display=swap');
           @page {
@@ -660,6 +656,7 @@ export function exportPurchaseOrderReceipt(
           <div>Valid To: ${po.validTo ? new Date(po.validTo).toLocaleDateString("en-IN") : ""}</div>
           <div>Est. Delivery Date: ${po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString("en-IN") : ""}</div>
           <div>Quotation No.: ${po.quotationNo || ""}</div>
+          <div>Vehicle No.: ${po.vehicleNo || "-"}</div>
         </div>
 
         <table class="vendor-table">
@@ -780,7 +777,7 @@ export function exportPurchaseOrderReceipt(
         }
 
         <div class="authorization-signature">
-          <img src="/image.png" alt="VPG authorized signature" />
+          <img src="/image.png" alt="VPG authorized signature" loading="eager" decoding="sync" />
         </div>
 
         <div class="bottom-wave">
@@ -791,16 +788,31 @@ export function exportPurchaseOrderReceipt(
         </div>
 
         <script>
-          window.onload = function() {
-            setTimeout(function() {
+          window.onload = async function() {
+            try {
+              await Promise.all(Array.from(document.images).map(function(img) {
+                return img.decode();
+              }));
               window.print();
-            }, 500);
+            } catch (error) {
+              alert("The logo or signature could not load. Please reload the receipt before printing.");
+            }
           }
         </script>
       </body>
     </html>
   `;
 
-  printWindow.document.write(htmlContent);
+  return htmlContent;
+}
+
+export function exportPurchaseOrderReceipt(po: any, showConditions = true) {
+  if (!po) return;
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    alert("Please allow popups to export the receipt.");
+    return;
+  }
+  printWindow.document.write(purchaseOrderReceiptHtml(po, showConditions));
   printWindow.document.close();
 }
