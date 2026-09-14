@@ -505,17 +505,14 @@ function CreatePOContent() {
                         />
                         <CommandList className="max-h-60">
                           <CommandEmpty>No vendor found.</CommandEmpty>
-                          {vendors.filter(vendor => {
-                            if (!selectedIndentId || items.length === 0) return true;
-                            const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
-                            return items.some(item => vendorItemIds.includes(item.itemId));
-                          }).map((vendor) => {
+                          {vendors.map((vendor) => {
                             const vId = vendor._id || vendor.id;
                             const isSelected = selectedVendorIds.includes(vId);
+                            const vendorDisplayName = vendor.name || vendor.companyName || "Unnamed Vendor";
                             return (
                               <CommandItem
                                 key={vId}
-                                value={vendor.name}
+                                value={`${vendorDisplayName} ${vendor.companyName || ""} ${vendor.contactNumber || ""}`}
                                 onSelect={() => handleVendorToggle(vId)}
                                 className="flex items-center gap-3 px-3 py-2.5 cursor-pointer font-bold"
                               >
@@ -531,7 +528,12 @@ function CreatePOContent() {
                                     <Check className="h-3 w-3 text-white" />
                                   )}
                                 </div>
-                                <span className="text-sm">{vendor.name}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{vendorDisplayName}</span>
+                                  {vendor.companyName && vendor.companyName !== vendor.name && (
+                                    <span className="text-[10px] text-zinc-400 font-normal">{vendor.companyName}</span>
+                                  )}
+                                </div>
                               </CommandItem>
                             );
                           })}
