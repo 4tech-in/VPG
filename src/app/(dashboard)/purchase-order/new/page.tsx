@@ -159,7 +159,7 @@ function CreatePOContent() {
         const loadedIndents = indentsRes.data || indentsRes || [];
         setIndents(loadedIndents);
 
-        const vendorsRes = await vendorService.getVendors({ limit: 200 });
+        const vendorsRes = await vendorService.getVendors({ limit: 1000 });
         setVendors(vendorsRes.vendors || vendorsRes || []);
 
         if (urlIndentId) {
@@ -671,28 +671,20 @@ function CreatePOContent() {
                                   <SelectTrigger className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-semibold focus:ring-2 focus:ring-[#0A5C53]/20 focus:border-[#0A5C53] transition-all shadow-sm">
                                     <SelectValue placeholder="Select Vendor" />
                                   </SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-lg border border-zinc-200">
-                                    {activeVendors.filter(vendor => {
-                                      if (item.itemId.startsWith("custom-")) return true;
-                                      const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
-                                      return vendorItemIds.includes(item.itemId);
-                                    }).length > 0 ? (
-                                      activeVendors.filter(vendor => {
-                                        if (item.itemId.startsWith("custom-")) return true;
-                                        const vendorItemIds = vendor.itemIds || vendor.items?.map((i: any) => i._id || i.id) || [];
-                                        return vendorItemIds.includes(item.itemId);
-                                      }).map((vendor) => (
+                                  <SelectContent className="rounded-xl shadow-lg border border-zinc-200 max-h-56">
+                                    {(activeVendors.length > 0 ? activeVendors : vendors).length > 0 ? (
+                                      (activeVendors.length > 0 ? activeVendors : vendors).map((vendor) => (
                                         <SelectItem
                                           key={vendor._id || vendor.id}
                                           value={vendor._id || vendor.id}
                                           className="text-xs font-semibold cursor-pointer py-2"
                                         >
-                                          {vendor.name}
+                                          {vendor.name || vendor.companyName || "Vendor"}
                                         </SelectItem>
                                       ))
                                     ) : (
                                       <div className="p-3 text-xs text-zinc-500 text-center font-semibold">
-                                        {activeVendors.length === 0 ? "Select vendors first" : "No selected vendors supply this item"}
+                                        No vendors found
                                       </div>
                                     )}
                                   </SelectContent>
