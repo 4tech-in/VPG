@@ -74,9 +74,19 @@ export async function generateReceiptPdf(po: any): Promise<File> {
       logging: false,
     });
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
-    const pdfWidth = 148;
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdfWidth, pdfHeight);
+    const pageWidth = 148;
+    const pageHeight = 210;
+    const margin = 6;
+    const maxWidth = pageWidth - margin * 2;
+    const maxHeight = pageHeight - margin * 2;
+
+    const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
+    const pdfWidth = canvas.width * ratio;
+    const pdfHeight = canvas.height * ratio;
+    const x = (pageWidth - pdfWidth) / 2;
+    const y = (pageHeight - pdfHeight) / 2;
+
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, pdfWidth, pdfHeight);
     pdf.setProperties({ title: filename.replace(/\.pdf$/, "") });
     return new File([pdf.output("blob")], filename, { type: "application/pdf" });
   }
