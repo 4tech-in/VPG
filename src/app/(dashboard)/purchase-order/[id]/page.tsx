@@ -26,7 +26,10 @@ import {
   UserCheck,
   Building,
   Loader2,
-  ClipboardCheck
+  ClipboardCheck,
+  ChevronDown,
+  ChevronUp,
+  Eye
 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
@@ -46,6 +49,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet";
+import { ReceiptHistory } from "@/components/purchase-order/receipt-history";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog";
 
@@ -56,8 +60,11 @@ export default function PODetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [selectedReceiptIndex, setSelectedReceiptIndex] = useState<number | null>(null);
+  const [verificationReceiptId, setVerificationReceiptId] = useState<string | undefined>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
+  const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(0);
 
   const fetchPO = async () => {
     try {
@@ -119,9 +126,6 @@ export default function PODetailPage() {
   }, 0);
 
   const isPendingVerification = po.verificationStatus === "PendingVerification";
-  const pendingReceipt = po.receipts?.find(
-    (r: any) => r.verificationStatus === "Pending"
-  );
 
   const getInitials = (name: string) => {
     if (!name) return "VD";
@@ -299,7 +303,7 @@ export default function PODetailPage() {
               <Printer className="h-3.5 w-3.5 text-zinc-500" /> Print
             </Button>
             <Button
-              onClick={() => setIsReceiptOpen(true)}
+              onClick={() => { setSelectedReceiptIndex(null); setIsReceiptOpen(true); }}
               variant="outline"
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >
@@ -309,7 +313,7 @@ export default function PODetailPage() {
           </div>
         </div>
 
-        <ReceiptDialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={po} />
+        <ReceiptDialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }} />
 
         {/* 5-Column Core Dashboard Summary Info Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -415,9 +419,9 @@ export default function PODetailPage() {
         </div>
 
         {/* Dashboard Panels Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,330px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),330px] gap-6">
           {/* LEFT AREA: Material, Remarks, Governance, Approval Timeline */}
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             {/* Material List Card */}
             <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -554,6 +558,19 @@ export default function PODetailPage() {
               </div>
             </div>
 
+            <ReceiptHistory
+              receipts={po.receipts ?? []}
+              items={items}
+              onViewReceipt={(index) => {
+                setSelectedReceiptIndex(index);
+                setIsReceiptOpen(true);
+              }}
+              onApprove={(receiptId) => {
+                setVerificationReceiptId(receiptId);
+                setIsVerificationSheetOpen(true);
+              }}
+            />
+
             {/* Remarks & Notes Card row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm space-y-4">
@@ -595,65 +612,6 @@ export default function PODetailPage() {
                 )}
               </div>
             </div>
-
-            {isPendingVerification && pendingReceipt && (
-              <div className="bg-white p-5 rounded-lg border border-orange-200 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100">
-                    <ClipboardCheck className="h-4.5 w-4.5" />
-                  </div>
-                  <h4 className="text-xs font-black text-zinc-900 uppercase tracking-wider">
-                    Pending Receipt Details
-                  </h4>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-orange-50/30 p-4 rounded-lg border border-orange-100/50">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                      Receipt Date
-                    </span>
-                    <span className="text-xs font-bold text-zinc-800">
-                      {new Date(
-                        pendingReceipt.receiptDate
-                      ).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                      Bill / Invoice
-                    </span>
-                    <span className="text-xs font-bold text-zinc-800">
-                      {pendingReceipt.billPhoto ? "Uploaded" : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                      Material Photo
-                    </span>
-                    <span className="text-xs font-bold text-zinc-800">
-                      {pendingReceipt.materialPhoto ? "Uploaded" : "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                      Items Count
-                    </span>
-                    <span className="text-xs font-bold text-zinc-800">
-                      {pendingReceipt.items?.length || 0}
-                    </span>
-                  </div>
-                  {pendingReceipt.remark && (
-                    <div className="flex flex-col gap-1 col-span-2 md:col-span-4 mt-2 border-t border-orange-100/50 pt-2">
-                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
-                        Remark
-                      </span>
-                      <span className="text-xs font-semibold text-zinc-700 italic">
-                        {pendingReceipt.remark}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Governance and Attachments dual panel */}
             <div className="grid grid-cols-1 md:grid-cols-[1.1fr,1.3fr] gap-6">
@@ -878,7 +836,7 @@ export default function PODetailPage() {
                 {isPendingVerification && (
                   <Button
                     className="w-full justify-start gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold"
-                    onClick={() => setIsVerificationSheetOpen(true)}
+                    onClick={() => { setVerificationReceiptId(undefined); setIsVerificationSheetOpen(true); }}
                   >
                     <ClipboardCheck className="h-4 w-4" /> Verify Receipt
                   </Button>
@@ -895,7 +853,9 @@ export default function PODetailPage() {
       </div>
 
       <VerificationSheet
+        key={verificationReceiptId || "pending-receipt"}
         po={po}
+        receiptId={verificationReceiptId}
         isOpen={isVerificationSheetOpen}
         onClose={() => setIsVerificationSheetOpen(false)}
         onSuccess={() => {

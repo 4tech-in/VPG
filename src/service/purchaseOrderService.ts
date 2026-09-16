@@ -244,7 +244,7 @@ export const purchaseOrderService = {
 
   async verifyPurchaseOrderReceipt(
     id: string,
-    payload: { action: "APPROVED" | "REMAINING" | "REJECTED"; remark?: string }
+    payload: { action: "APPROVED" | "REMAINING" | "REJECTED"; remark?: string; receiptId?: string }
   ): Promise<any> {
     const response = await apiRequest<any>(`purchase-orders/verify/${id}`, {
       method: "PATCH",

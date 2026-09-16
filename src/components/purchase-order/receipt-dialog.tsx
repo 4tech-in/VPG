@@ -17,7 +17,12 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
   const receipts = po?.receipts || [];
   const receipt = receipts[receipts.length - 1] || {};
   const receiptItems = receipt.items || [];
-  const receiptDate = receipt.receiptDate || receipt.createdAt || new Date().toISOString();
+  const receiptDate = receipt.receiptDate || receipt.createdAt || po?.createdAt;
+  const receiptYear = receiptDate ? new Date(receiptDate).getFullYear() : NaN;
+  const poSequence = String(po?.poNo || "").match(/(\d+)$/)?.[1];
+  const receiptNumber = Number.isFinite(receiptYear) && poSequence
+    ? `${String(receiptYear).slice(-2)}${poSequence.padStart(3, "0")}`
+    : "—";
 
   const quantityFor = (item: any) => {
     const id = String(item.itemId?._id || item.itemId || item._id || "");
@@ -39,7 +44,7 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
 
   const site = po?.projectId?.projectName || po?.projectId?.name || po?.locationAddress || po?.deliveryAddress || po?.projectId?.location || "";
   const vendorName = po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.companyName || po?.vendorId?.name || "";
-  const vehicleNo = po?.vehicleNo || po?.vehicleNumber || receipt?.vehicleNo || receipt?.vehicleNumber || "";
+  const vehicleNo = receipt?.vehicleNo || receipt?.vehicleNumber || po?.vehicleNo || po?.vehicleNumber || "";
   const receivedBy = person(receipt.receivedBy) || receipt.receiverName || person(po?.requesterId) || person(po?.requestedBy);
 
   const printReceipt = () => {
@@ -88,27 +93,27 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
             <table className="mt-3.5 w-full table-fixed border-collapse text-[12px] font-semibold">
               <tbody>
                 <tr>
-                  <td className="w-16 py-1 whitespace-nowrap text-zinc-800">PO No.</td>
-                  <td className="border-b border-zinc-700 px-2 py-1 font-normal text-zinc-900">{po?.poNo || ""}</td>
+                  <td className="w-[104px] py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">PO No.</td>
+                  <td className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{po?.poNo || ""}</td>
                   <td className="w-10 text-right py-1 pr-2 text-zinc-800">No.</td>
-                  <td className="w-20 border-b border-zinc-700 py-1 font-normal"></td>
+                  <td className="w-20 border-b border-zinc-700 px-2 py-1.5 font-semibold tabular-nums">{receiptNumber}</td>
                 </tr>
                
                 <tr>
-                  <td className="py-1 whitespace-nowrap text-zinc-800">Vehicle No.</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1 font-normal text-zinc-900">{vehicleNo || "-"}</td>
+                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Vehicle No.</td>
+                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{vehicleNo || "-"}</td>
                 </tr>
                 <tr>
-                  <td className="py-1 whitespace-nowrap text-zinc-800">Site</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1 font-normal text-zinc-900">{site}</td>
+                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Site</td>
+                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{site}</td>
                 </tr>
                 <tr>
-                  <td className="py-1 whitespace-nowrap text-zinc-800">Vendor Name</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1 font-normal text-zinc-900">{vendorName}</td>
+                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Vendor Name</td>
+                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{vendorName}</td>
                 </tr>
                 <tr>
-                  <td className="py-1 whitespace-nowrap text-zinc-800">Received By</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1 font-normal text-zinc-900">{receivedBy}</td>
+                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Received By</td>
+                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{receivedBy}</td>
                 </tr>
               </tbody>
             </table>
@@ -127,10 +132,7 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
               <div>
                 <div className="min-h-[40px] flex flex-col justify-end">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Vendor</span>
-                  <span className="truncate text-[12px] font-bold text-zinc-900">{vendorName || "—"}</span>
-                  {vehicleNo ? (
-                    <span className="text-[10px] font-medium text-zinc-600">Veh. No: {vehicleNo}</span>
-                  ) : null}
+                  <span className="break-words text-[12px] font-bold text-zinc-900">{vendorName || "—"}</span>
                 </div>
                 <div className="mt-2 mb-1.5 border-b border-zinc-700" />
                 <p className="text-[11px]">Vendor Signature</p>

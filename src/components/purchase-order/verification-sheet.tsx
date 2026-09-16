@@ -20,14 +20,14 @@ import { purchaseOrderService } from "@/service/purchaseOrderService"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any, isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
+export function VerificationSheet({ po, receiptId, isOpen, onClose, onSuccess }: { po: any, receiptId?: string, isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeDialog, setActiveDialog] = useState<"approve" | "remaining" | "reject" | null>(null)
   const [remark, setRemark] = useState("")
 
   if (!po) return null
   
-  const pendingReceipt = po.receipts?.find((r: any) => r.verificationStatus === "Pending")
+  const pendingReceipt = po.receipts?.find((r: any) => r.verificationStatus === "Pending" && (!receiptId || String(r._id) === receiptId))
   if (!pendingReceipt) return null
 
   const handleAction = async (action: "APPROVED" | "REMAINING" | "REJECTED") => {
@@ -40,6 +40,7 @@ export function VerificationSheet({ po, isOpen, onClose, onSuccess }: { po: any,
       setIsSubmitting(true)
       await purchaseOrderService.verifyPurchaseOrderReceipt(po._id || po.id, {
         action,
+        receiptId: pendingReceipt._id,
         remark: remark || (action === "APPROVED" ? "Verified and completed successfully." : "Verified partial delivery. Remaining expected.")
       })
       toast.success(action === "REJECTED" ? "Receipt rejected successfully." : "Receipt verified successfully.")
