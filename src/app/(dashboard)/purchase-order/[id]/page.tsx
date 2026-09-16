@@ -313,7 +313,7 @@ export default function PODetailPage() {
           </div>
         </div>
 
-        <ReceiptDialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }} />
+        <ReceiptDialog allReceived={selectedReceiptIndex === null} open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }} />
 
         {/* 5-Column Core Dashboard Summary Info Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

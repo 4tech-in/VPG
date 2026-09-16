@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SendWhatsAppDialog, WhatsAppIcon } from "@/components/purchase-order/send-whatsapp-dialog";
 
-type Props = { open: boolean; onOpenChange: (open: boolean) => void; po: any };
+type Props = { open: boolean; onOpenChange: (open: boolean) => void; po: any; allReceived?: boolean };
 const num = (value: unknown) => Number(value || 0);
 const date = (value: unknown) => value ? new Date(value as string).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 const time = (value: unknown) => value ? new Date(value as string).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
 const person = (value: any) => value?.name || value?.fullName || value?.employeeName || value?.userName || "";
 
-export function ReceiptDialog({ open, onOpenChange, po }: Props) {
+export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: Props) {
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const receipts = po?.receipts || [];
   const receipt = receipts[receipts.length - 1] || {};
@@ -25,12 +25,15 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
     : "—";
 
   const quantityFor = (item: any) => {
+    if (allReceived) return num(item.receivedQuantity);
     const id = String(item.itemId?._id || item.itemId || item._id || "");
     const match = receiptItems.find((entry: any) => String(entry.itemId?._id || entry.itemId || "") === id);
     return num(match?.suppliedQuantity ?? match?.receivedQuantity ?? item.receivedQuantity ?? item.orderQuantity ?? item.indentQuantity);
   };
 
-  const sourceItems = receiptItems.length ? receiptItems : po?.items || [];
+  const sourceItems = allReceived
+    ? (po?.items || []).filter((item: any) => num(item.receivedQuantity) > 0)
+    : receiptItems.length ? receiptItems : po?.items || [];
   const rows = sourceItems.map((item: any, index: number) => {
     const poItem = (po?.items || []).find((entry: any) => String(entry.itemId?._id || entry.itemId || "") === String(item.itemId?._id || item.itemId || ""));
     const source = poItem || item;
@@ -123,6 +126,9 @@ export function ReceiptDialog({ open, onOpenChange, po }: Props) {
               <tbody>
                 {Array.from({ length: Math.max(6, rows.length) }).map((_, index) => {
                   const row = rows[index];
+                  if (allReceived && rows.length === 0 && index === 0) {
+                    return <tr key="no-received-materials"><td colSpan={3} className="h-8 border border-zinc-700 px-3 py-2 text-center text-zinc-500">No materials received yet.</td></tr>;
+                  }
                   return <tr key={row?.key || `empty-${index}`}><td className="h-8 border border-zinc-700 px-2 text-center">{row ? index + 1 : ""}</td><td className="h-8 border border-zinc-700 px-3 font-medium">{row?.material || ""}</td><td className="h-8 border border-zinc-700 px-2 text-center">{row ? `${row.quantity}${row.unit ? ` ${row.unit}` : ""}` : ""}</td></tr>;
                 })}
               </tbody>

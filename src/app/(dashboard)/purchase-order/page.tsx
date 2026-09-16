@@ -192,7 +192,7 @@ export default function PurchaseOrderPage() {
 
   return (
     <ContentLayout title="Purchase Orders">
-      {receiptPO && <ReceiptDialog open={Boolean(receiptPO)} onOpenChange={(open) => !open && setReceiptPO(null)} po={receiptPO} />}
+      {receiptPO && <ReceiptDialog open={Boolean(receiptPO)} onOpenChange={(open) => !open && setReceiptPO(null)} po={receiptPO} allReceived />}
       <div className="flex flex-col gap-8 p-6 sm:p-10 max-w-[1600px] mx-auto min-h-screen">
         
         {/* Header Control Hub */}
