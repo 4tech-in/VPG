@@ -170,7 +170,7 @@ export default function PODetailPage() {
 
   return (
     <ContentLayout title={`Purchase Order Detail: ${po.poNo || "N/A"}`}>
-      <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-[1500px] mx-auto min-h-screen bg-zinc-50/45">
+      <div className="flex w-full min-w-0 flex-col gap-4 p-3 sm:gap-6 sm:p-6 max-w-[1500px] mx-auto min-h-screen bg-zinc-50/45">
         {/* Navigation Breadcrumb / Back Link */}
         <div className="flex items-center gap-1 text-zinc-500 text-[11px] font-bold hover:text-zinc-800 transition-colors">
           <Button
@@ -419,7 +419,7 @@ export default function PODetailPage() {
         </div>
 
         {/* Dashboard Panels Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr),330px] gap-6">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr),330px]">
           {/* LEFT AREA: Material, Remarks, Governance, Approval Timeline */}
           <div className="min-w-0 space-y-6">
             {/* Material List Card */}

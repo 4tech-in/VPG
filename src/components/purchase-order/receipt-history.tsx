@@ -40,13 +40,13 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
   ).length;
 
   return (
-    <section className="min-w-0 [container-type:inline-size] overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 px-5 py-5">
-        <div className="flex items-center gap-3">
+    <section className="w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 p-3 sm:p-5">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-600">
             <ClipboardCheck className="h-5 w-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h4 className="text-sm font-bold text-zinc-900">Receipt Requests</h4>
             <p className="mt-0.5 text-xs text-zinc-500">Delivery records and verification status</p>
           </div>
@@ -67,18 +67,17 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
           <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-500">Submitted deliveries will appear here with their materials and verification status.</p>
         </div>
       ) : (
-        <div className="min-w-0">
-          {/* Use the card width because the dashboard sidebar reduces the available space. */}
-          <table className="block w-full text-left text-xs [@container(min-width:900px)]:table [@container(min-width:900px)]:table-fixed">
+        <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500" role="region" aria-label="Receipt requests table, scroll horizontally to view all columns" tabIndex={0}>
+          <table className="w-full min-w-[760px] table-fixed text-left text-xs">
             <caption className="sr-only">All receipt requests for this purchase order</caption>
-            <thead className="hidden border-b border-zinc-100 bg-zinc-50/80 text-zinc-500 [@container(min-width:900px)]:table-header-group">
+            <thead className="border-b border-zinc-100 bg-zinc-50/80 text-zinc-500">
               <tr>
                 {["Request / Date", "Status", "Materials", "Remarks", "Documents", "Actions"].map((label) => (
-                  <th key={label} scope="col" className="whitespace-nowrap px-5 py-3 text-[10px] font-semibold uppercase tracking-wider">{label}</th>
+                  <th key={label} scope="col" className="whitespace-nowrap px-2 py-3 text-[10px] sm:px-3 font-semibold uppercase tracking-wider">{label}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="block divide-y divide-zinc-100 [@container(min-width:900px)]:table-row-group">
+            <tbody className="divide-y divide-zinc-100">
               {receipts.map((receipt, index) => {
                 const date = receipt.receiptDate || receipt.createdAt;
                 const parsedDate = date ? new Date(date) : null;
@@ -88,20 +87,19 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                 const rejected = status === "rejected";
                 const StatusIcon = pending ? Clock3 : approved ? CheckCircle2 : rejected ? XCircle : ClipboardCheck;
                 return (
-                  <tr key={receipt._id || index} className="grid grid-cols-[minmax(0,1fr),auto] gap-x-3 gap-y-4 p-5 align-top transition-colors hover:bg-zinc-50/50 [@container(min-width:900px)]:table-row [@container(min-width:900px)]:p-0">
-                    <td className="[@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
+                  <tr key={receipt._id || index} className="align-top transition-colors hover:bg-zinc-50/50">
+                    <td className="px-2 py-3 sm:px-3 sm:py-5">
                       <span className="font-bold tabular-nums text-zinc-800">REQ-{String(index + 1).padStart(3, "0")}</span>
                       <span className="mt-1.5 block whitespace-nowrap text-[11px] text-zinc-500">
                         {parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date unavailable"}
                       </span>
                     </td>
-                    <td className="text-right [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5 [@container(min-width:900px)]:text-left">
+                    <td className="px-2 py-3 sm:px-3 sm:py-5 text-left">
                       <Badge variant="outline" className={cn("gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-none", pending ? "border-amber-200 bg-amber-50 text-amber-700" : approved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : rejected ? "border-rose-200 bg-rose-50 text-rose-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
                         <StatusIcon className="h-3 w-3" />{pending ? "Pending" : receipt.verificationStatus || "Unknown"}
                       </Badge>
                     </td>
-                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
-                      <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 [@container(min-width:900px)]:hidden">Materials</span>
+                    <td className="px-2 py-3 sm:px-3 sm:py-5">
                       {receipt.items?.length ? (
                         <ul className="space-y-3">
                           {receipt.items.map((material, materialIndex) => {
@@ -121,30 +119,29 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                         </ul>
                       ) : <span className="text-zinc-400">No materials</span>}
                     </td>
-                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 [@container(min-width:900px)]:hidden">Remarks</span>
-                      <p className="whitespace-pre-wrap [overflow-wrap:anywhere] leading-5 text-zinc-500 [@container(min-width:900px)]:max-w-[180px]">{receipt.remark || "—"}</p>
+                    <td className="px-2 py-3 sm:px-3 sm:py-5">
+                      <p className="whitespace-pre-wrap [overflow-wrap:anywhere] leading-5 text-zinc-500 max-w-[180px]">{receipt.remark || "—"}</p>
                     </td>
-                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
-                      <div className="flex flex-wrap gap-2 [@container(min-width:900px)]:flex-col [@container(min-width:900px)]:items-start">
+                    <td className="px-2 py-3 sm:px-3 sm:py-5">
+                      <div className="flex flex-col items-start gap-2">
                         {[
                           { path: receipt.billPhoto, label: "Bill", Icon: FileText },
                           { path: receipt.materialPhoto, label: "Photo", Icon: ImageIcon },
                         ].map(({ path, label, Icon }) => path && (
-                          <a key={label} href={getImageUrl(path)} target="_blank" rel="noreferrer" aria-label={`View ${label.toLowerCase()} for request ${index + 1}`} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-zinc-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2">
+                          <a key={label} href={getImageUrl(path)} target="_blank" rel="noreferrer" aria-label={`View ${label.toLowerCase()} for request ${index + 1}`} className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-md sm:min-h-8 border border-zinc-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-zinc-600 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2">
                             <Icon className="h-3.5 w-3.5" />{label}<ArrowUpRight className="h-3 w-3 text-zinc-400" />
                           </a>
                         ))}
                         {!receipt.billPhoto && !receipt.materialPhoto && <span className="text-[11px] text-zinc-400">No documents</span>}
                       </div>
                     </td>
-                    <td className="col-span-2 min-w-0 border-t border-zinc-100 pt-3 [@container(min-width:900px)]:border-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
-                      <div className="flex flex-wrap gap-2 [@container(min-width:900px)]:flex-col">
-                        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => onViewReceipt(index)} aria-label={`View receipt for request ${index + 1}`}>
+                    <td className="px-2 py-3 sm:px-3 sm:py-5">
+                      <div className="flex flex-col gap-2">
+                        <Button variant="outline" size="sm" className="h-11 gap-1.5 sm:h-8 text-xs" onClick={() => onViewReceipt(index)} aria-label={`View receipt for request ${index + 1}`}>
                           <FileText className="h-3.5 w-3.5" />Receipt
                         </Button>
                         {pending && (
-                          <Button size="sm" className="h-8 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700" disabled={!receipt._id} onClick={() => receipt._id && onApprove(receipt._id)} aria-label={`Approve request ${index + 1}`}>
+                          <Button size="sm" className="h-11 gap-1.5 sm:h-8 bg-emerald-600 text-xs text-white hover:bg-emerald-700" disabled={!receipt._id} onClick={() => receipt._id && onApprove(receipt._id)} aria-label={`Approve request ${index + 1}`}>
                             <CheckCircle2 className="h-3.5 w-3.5" />Approve
                           </Button>
                         )}
