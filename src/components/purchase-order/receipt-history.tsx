@@ -40,7 +40,7 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
   ).length;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm">
+    <section className="min-w-0 [container-type:inline-size] overflow-hidden rounded-xl border border-zinc-200/80 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 px-5 py-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-teal-100 bg-teal-50 text-teal-600">
@@ -67,17 +67,18 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
           <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-500">Submitted deliveries will appear here with their materials and verification status.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="block w-full text-left text-xs md:table md:min-w-[790px]">
+        <div className="min-w-0">
+          {/* Use the card width because the dashboard sidebar reduces the available space. */}
+          <table className="block w-full text-left text-xs [@container(min-width:900px)]:table [@container(min-width:900px)]:table-fixed">
             <caption className="sr-only">All receipt requests for this purchase order</caption>
-            <thead className="hidden border-b border-zinc-100 bg-zinc-50/80 text-zinc-500 md:table-header-group">
+            <thead className="hidden border-b border-zinc-100 bg-zinc-50/80 text-zinc-500 [@container(min-width:900px)]:table-header-group">
               <tr>
                 {["Request / Date", "Status", "Materials", "Remarks", "Documents", "Actions"].map((label) => (
                   <th key={label} scope="col" className="whitespace-nowrap px-5 py-3 text-[10px] font-semibold uppercase tracking-wider">{label}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="block divide-y divide-zinc-100 md:table-row-group">
+            <tbody className="block divide-y divide-zinc-100 [@container(min-width:900px)]:table-row-group">
               {receipts.map((receipt, index) => {
                 const date = receipt.receiptDate || receipt.createdAt;
                 const parsedDate = date ? new Date(date) : null;
@@ -87,20 +88,20 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                 const rejected = status === "rejected";
                 const StatusIcon = pending ? Clock3 : approved ? CheckCircle2 : rejected ? XCircle : ClipboardCheck;
                 return (
-                  <tr key={receipt._id || index} className="grid grid-cols-2 gap-x-3 gap-y-4 p-5 align-top transition-colors hover:bg-zinc-50/50 md:table-row md:p-0">
-                    <td className="md:px-5 md:py-5">
+                  <tr key={receipt._id || index} className="grid grid-cols-[minmax(0,1fr),auto] gap-x-3 gap-y-4 p-5 align-top transition-colors hover:bg-zinc-50/50 [@container(min-width:900px)]:table-row [@container(min-width:900px)]:p-0">
+                    <td className="[@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
                       <span className="font-bold tabular-nums text-zinc-800">REQ-{String(index + 1).padStart(3, "0")}</span>
                       <span className="mt-1.5 block whitespace-nowrap text-[11px] text-zinc-500">
                         {parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date unavailable"}
                       </span>
                     </td>
-                    <td className="text-right md:px-5 md:py-5 md:text-left">
+                    <td className="text-right [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5 [@container(min-width:900px)]:text-left">
                       <Badge variant="outline" className={cn("gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold shadow-none", pending ? "border-amber-200 bg-amber-50 text-amber-700" : approved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : rejected ? "border-rose-200 bg-rose-50 text-rose-700" : "border-zinc-200 bg-zinc-50 text-zinc-600")}>
                         <StatusIcon className="h-3 w-3" />{pending ? "Pending" : receipt.verificationStatus || "Unknown"}
                       </Badge>
                     </td>
-                    <td className="col-span-2 md:px-5 md:py-5">
-                      <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 md:hidden">Materials</span>
+                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
+                      <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 [@container(min-width:900px)]:hidden">Materials</span>
                       {receipt.items?.length ? (
                         <ul className="space-y-3">
                           {receipt.items.map((material, materialIndex) => {
@@ -111,7 +112,7 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                               <li key={materialIndex} className="flex items-start gap-2">
                                 <Package className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
                                 <div className="min-w-0">
-                                  <span className="block break-words font-semibold text-zinc-800">{itemName(material) || itemName(orderedItem) || id || "Material"}</span>
+                                  <span className="block [overflow-wrap:anywhere] font-semibold text-zinc-800">{itemName(material) || itemName(orderedItem) || id || "Material"}</span>
                                   <span className="mt-1 inline-block rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-zinc-600">{material.suppliedQuantity ?? material.receivedQuantity ?? "N/A"}{unit ? ` ${unit}` : ""}</span>
                                 </div>
                               </li>
@@ -120,12 +121,12 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                         </ul>
                       ) : <span className="text-zinc-400">No materials</span>}
                     </td>
-                    <td className="col-span-2 md:px-5 md:py-5">
-                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 md:hidden">Remarks</span>
-                      <p className="min-w-[100px] whitespace-pre-wrap break-words leading-5 text-zinc-500 md:max-w-[180px]">{receipt.remark || "—"}</p>
+                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
+                      <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-zinc-400 [@container(min-width:900px)]:hidden">Remarks</span>
+                      <p className="whitespace-pre-wrap [overflow-wrap:anywhere] leading-5 text-zinc-500 [@container(min-width:900px)]:max-w-[180px]">{receipt.remark || "—"}</p>
                     </td>
-                    <td className="col-span-2 md:px-5 md:py-5">
-                      <div className="flex flex-wrap gap-2 md:flex-col md:items-start">
+                    <td className="col-span-2 min-w-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
+                      <div className="flex flex-wrap gap-2 [@container(min-width:900px)]:flex-col [@container(min-width:900px)]:items-start">
                         {[
                           { path: receipt.billPhoto, label: "Bill", Icon: FileText },
                           { path: receipt.materialPhoto, label: "Photo", Icon: ImageIcon },
@@ -137,8 +138,8 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                         {!receipt.billPhoto && !receipt.materialPhoto && <span className="text-[11px] text-zinc-400">No documents</span>}
                       </div>
                     </td>
-                    <td className="col-span-2 border-t border-zinc-100 pt-3 md:border-0 md:px-5 md:py-5">
-                      <div className="flex gap-2 md:flex-col">
+                    <td className="col-span-2 min-w-0 border-t border-zinc-100 pt-3 [@container(min-width:900px)]:border-0 [@container(min-width:900px)]:px-5 [@container(min-width:900px)]:py-5">
+                      <div className="flex flex-wrap gap-2 [@container(min-width:900px)]:flex-col">
                         <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => onViewReceipt(index)} aria-label={`View receipt for request ${index + 1}`}>
                           <FileText className="h-3.5 w-3.5" />Receipt
                         </Button>
