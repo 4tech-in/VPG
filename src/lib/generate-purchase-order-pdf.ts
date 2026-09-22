@@ -63,7 +63,9 @@ export async function generateReceiptPdf(po: any): Promise<File> {
   const cleanVendor = String(
     po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.name || "Vendor"
   ).replace(/[^a-zA-Z0-9_-]/g, "_");
-  const filename = `Receipt_${po?.poNo || "Slip"}_${cleanVendor}.pdf`;
+  const slipNo = po?.latestSlipNo || (po?.receipts && po.receipts[po.receipts.length - 1]?.slipNo);
+  const slipIdent = slipNo ? String(slipNo).replace(/[^a-zA-Z0-9_-]/g, "-") : (po?.poNo || "Slip");
+  const filename = `Receipt_${slipIdent}_${cleanVendor}.pdf`;
 
   const targetNode = typeof document !== "undefined" ? document.getElementById("material-receipt-print-area") : null;
   if (targetNode) {

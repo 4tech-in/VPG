@@ -103,8 +103,10 @@ export function SendWhatsAppDialog({
   const vendorName = po.vendorName || po.vendorId?.name || "Vendor";
   const poNo = po.poNo || "N/A";
   const cleanVendor = String(vendorName).replace(/[^a-zA-Z0-9_-]/g, "_");
+  const latestSlip = po?.latestSlipNo || (po?.receipts && po.receipts[po.receipts.length - 1]?.slipNo);
+  const slipIdent = latestSlip ? String(latestSlip).replace(/[^a-zA-Z0-9_-]/g, "-") : poNo;
   const pdfFilename = isReceipt
-    ? `Receipt_${poNo}_${cleanVendor}.pdf`
+    ? `Receipt_${slipIdent}_${cleanVendor}.pdf`
     : purchaseOrderPdfFilename(po);
   const amount = po.totalAmount
     ? `₹${Number(po.totalAmount).toLocaleString("en-IN")}`
@@ -131,7 +133,7 @@ export function SendWhatsAppDialog({
         return;
       }
       const defaultMessage = isReceipt
-        ? `Receipt Slip for ${poNo} - ${vendorName}`
+        ? `Receipt Slip${latestSlip ? ` #${latestSlip}` : ""} for ${poNo} - ${vendorName}`
         : undefined;
 
       const res = await purchaseOrderService.sendPurchaseOrderWhatsApp(poId, {
