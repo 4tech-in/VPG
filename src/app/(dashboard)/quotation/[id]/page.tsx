@@ -19,6 +19,7 @@ import {
 import { indentService } from "@/service/indents.api";
 import { WhatsAppIcon } from "@/components/purchase-order/send-whatsapp-dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   AlignmentType,
   BorderStyle,
@@ -44,6 +45,7 @@ export default function RFQDetailPage() {
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [vendorMobile, setVendorMobile] = useState("");
   const [customMessage, setCustomMessage] = useState("");
+  const [attachFormat, setAttachFormat] = useState<"docx" | "pdf">("docx");
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
@@ -155,49 +157,94 @@ export default function RFQDetailPage() {
     }
   };
 
-  const sendToVendorDocx = async () => {
-    const border = { style: BorderStyle.SINGLE, size: 6, color: "D1D5DB" };
-    const borders = { top: border, bottom: border, left: border, right: border };
+  const generateRfqDocxBlob = async (): Promise<Blob> => {
+    const borderGray = { style: BorderStyle.SINGLE, size: 6, color: "CBD5E1" };
+    const tableBorders = {
+      top: borderGray,
+      bottom: borderGray,
+      left: borderGray,
+      right: borderGray,
+      insideHorizontal: borderGray,
+      insideVertical: borderGray,
+    };
+    const borderNone = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    const noBorders = {
+      top: borderNone,
+      bottom: borderNone,
+      left: borderNone,
+      right: borderNone,
+      insideHorizontal: borderNone,
+      insideVertical: borderNone,
+    };
+
     const cell = (
       text: string,
       width: number,
-      options?: { header?: boolean; align?: (typeof AlignmentType)[keyof typeof AlignmentType] }
+      options?: {
+        bold?: boolean;
+        header?: boolean;
+        align?: (typeof AlignmentType)[keyof typeof AlignmentType];
+        shading?: any;
+        borders?: any;
+        size?: number;
+        color?: string;
+      }
     ) =>
       new TableCell({
         width: { size: width, type: WidthType.DXA },
         verticalAlign: VerticalAlign.CENTER,
-        margins: { top: 140, bottom: 140, left: 140, right: 140 },
-        borders,
-        shading: options?.header ? { fill: "1B1B42", type: ShadingType.CLEAR, color: "auto" } : undefined,
+        margins: { top: 120, bottom: 120, left: 140, right: 140 },
+        borders: options?.borders || tableBorders,
+        shading:
+          options?.shading ||
+          (options?.header
+            ? { fill: "1B1B42", type: ShadingType.CLEAR, color: "auto" }
+            : undefined),
         children: [
           new Paragraph({
             alignment: options?.align || AlignmentType.LEFT,
-            spacing: { before: 0, after: 0, line: 280 },
+            spacing: { before: 0, after: 0, line: 260 },
             children: [
               new TextRun({
-                text,
-                bold: Boolean(options?.header),
-                color: options?.header ? "FFFFFF" : "1F2937",
+                text: text || "",
+                bold: Boolean(options?.bold ?? options?.header),
+                color: options?.color || (options?.header ? "FFFFFF" : "1F2937"),
                 font: "Arial",
-                size: options?.header ? 20 : 21,
+                size: options?.size || 20,
               }),
             ],
           }),
         ],
       });
 
-    const itemRows = items.map(
-      (item: any, index: number) =>
+    const itemRows = items.map((item: any, index: number) =>
+      new TableRow({
+        cantSplit: true,
+        children: [
+          cell(String(index + 1), 600, { align: AlignmentType.CENTER, bold: true }),
+          cell(`${item.name}${item.specification ? ` (${item.specification})` : ""}`, 3900),
+          cell(item.code || "—", 1200, { align: AlignmentType.CENTER }),
+          cell(item.unit || "Units", 1000, { align: AlignmentType.CENTER }),
+          cell(String(item.quantity), 1000, { align: AlignmentType.CENTER, bold: true }),
+          cell("", 1300, { align: AlignmentType.RIGHT }),
+          cell("", 1400, { align: AlignmentType.RIGHT }),
+        ],
+      })
+    );
+
+    const emptyRowsCount = Math.max(0, 3 - items.length);
+    const emptyRows = Array.from({ length: emptyRowsCount }).map(
+      () =>
         new TableRow({
           cantSplit: true,
           children: [
-            cell(String(index + 1), 600, { align: AlignmentType.CENTER }),
-            cell(`${item.name}${item.specification ? ` (${item.specification})` : ""}`, 3900),
-            cell(item.code, 1200, { align: AlignmentType.CENTER }),
-            cell(item.unit, 1000, { align: AlignmentType.CENTER }),
-            cell(String(item.quantity), 1000, { align: AlignmentType.CENTER }),
+            cell("", 600),
+            cell("", 3900),
+            cell("", 1200),
+            cell("", 1000),
+            cell("", 1000),
             cell("", 1300),
-            cell("", 1360),
+            cell("", 1400),
           ],
         })
     );
@@ -205,44 +252,410 @@ export default function RFQDetailPage() {
     const doc = new Document({
       sections: [
         {
+          properties: {
+            page: {
+              margin: { top: 720, bottom: 720, left: 720, right: 720 },
+            },
+          },
           children: [
-            new Paragraph({
-              children: [
-                new TextRun({
-                  text: "VPG CONSTRUCTION PRIVATE LIMITED",
-                  bold: true,
-                  color: "1B1B42",
-                  size: 24,
+            // Company Header
+            new Table({
+              width: { size: 10400, type: WidthType.DXA },
+              borders: noBorders,
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      width: { size: 5200, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Paragraph({
+                          spacing: { before: 0, after: 60 },
+                          children: [
+                            new TextRun({
+                              text: "VPG CONSTRUCTION PVT. LTD.",
+                              bold: true,
+                              size: 26,
+                              color: "1B1B42",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 0 },
+                          children: [
+                            new TextRun({
+                              text: "Quality • Integrity • Excellence",
+                              italics: true,
+                              size: 18,
+                              color: "64748B",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      width: { size: 5200, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: { before: 0, after: 40 },
+                          children: [
+                            new TextRun({
+                              text: "+91 9888889139, +91 9872307900",
+                              bold: true,
+                              size: 18,
+                              color: "1F2937",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: { before: 0, after: 40 },
+                          children: [
+                            new TextRun({
+                              text: "admin@vpgconstruction.co.in",
+                              size: 18,
+                              color: "1F2937",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: { before: 0, after: 40 },
+                          children: [
+                            new TextRun({
+                              text: "SCO 27, Kalgidhar Enclave, Baltana, Zirakpur",
+                              size: 18,
+                              color: "1F2937",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: { before: 0, after: 0 },
+                          children: [
+                            new TextRun({
+                              text: "www.vpgconstruction.co.in",
+                              size: 18,
+                              color: "0077B6",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
                 }),
               ],
             }),
+
+            // Top Divider Line
             new Paragraph({
+              spacing: { before: 140, after: 200 },
+              border: {
+                bottom: { style: BorderStyle.SINGLE, size: 16, color: "1B1B42" },
+              },
+              children: [],
+            }),
+
+            // Title
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 100, after: 220 },
               children: [
                 new TextRun({
                   text: "REQUEST FOR QUOTATION",
                   bold: true,
-                  size: 28,
+                  size: 30,
                   color: "1B1B42",
+                  font: "Arial",
                 }),
               ],
             }),
-            new Paragraph({ text: `RFQ Ref: ${rfqRef} | Project: ${projectName}` }),
+
+            // RFQ Meta Info 2-column grid
             new Table({
-              width: { size: 10360, type: WidthType.DXA },
+              width: { size: 10400, type: WidthType.DXA },
+              borders: noBorders,
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      width: { size: 5200, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Paragraph({
+                          spacing: { before: 0, after: 80 },
+                          children: [
+                            new TextRun({ text: "RFQ Ref No: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({ text: String(rfqRef), bold: true, size: 20, color: "0F172A", font: "Arial" }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 80 },
+                          children: [
+                            new TextRun({ text: "Dated: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({ text: formatDate(indent?.createdAt), size: 20, color: "0F172A", font: "Arial" }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 120 },
+                          children: [
+                            new TextRun({ text: "Storage Location: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({ text: String(indent?.storageLocation || "Site"), size: 20, color: "0F172A", font: "Arial" }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      width: { size: 5200, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Paragraph({
+                          spacing: { before: 0, after: 80 },
+                          children: [
+                            new TextRun({ text: "Est. Delivery Date: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({
+                              text: formatDate(indent?.estimateDeliveryDate || indent?.expectedDeliveryDate),
+                              size: 20,
+                              color: "0F172A",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 80 },
+                          children: [
+                            new TextRun({ text: "Project: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({ text: String(projectName), bold: true, size: 20, color: "0F172A", font: "Arial" }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 120 },
+                          children: [
+                            new TextRun({ text: "Priority: ", bold: true, size: 20, color: "475569", font: "Arial" }),
+                            new TextRun({ text: String(indent?.priority || "Medium"), size: 20, color: "0F172A", font: "Arial" }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+
+            // Issued By / Vendor Supplier Details Table
+            new Table({
+              width: { size: 10400, type: WidthType.DXA },
               rows: [
                 new TableRow({
                   tableHeader: true,
                   children: [
-                    cell("SR", 600, { header: true, align: AlignmentType.CENTER }),
-                    cell("DESCRIPTION", 3900, { header: true }),
-                    cell("CODE", 1200, { header: true, align: AlignmentType.CENTER }),
-                    cell("UNIT", 1000, { header: true, align: AlignmentType.CENTER }),
-                    cell("QTY", 1000, { header: true, align: AlignmentType.CENTER }),
-                    cell("RATE", 1300, { header: true, align: AlignmentType.CENTER }),
-                    cell("TOTAL", 1360, { header: true, align: AlignmentType.CENTER }),
+                    cell("ISSUED BY", 5200, {
+                      header: true,
+                      bold: true,
+                      color: "FFFFFF",
+                      size: 20,
+                    }),
+                    cell("VENDOR / SUPPLIER (To be filled by Vendor)", 5200, {
+                      header: true,
+                      bold: true,
+                      color: "FFFFFF",
+                      size: 20,
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    cell("COMPANY NAME: VPG CONSTRUCTION PVT. LTD.", 5200, { size: 20 }),
+                    cell("COMPANY NAME:", 5200, { size: 20 }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    cell("ADDRESS: SCO 27, Kalgidhar Enclave, Baltana, Zirakpur", 5200, { size: 20 }),
+                    cell("ADDRESS:", 5200, { size: 20 }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    cell("GST NO: 03AAWCS2873A1ZB", 5200, { bold: true, size: 20 }),
+                    cell("GST NO:", 5200, { size: 20 }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    cell("CONTACT DETAILS: +91 9888889139, +91 9872307900", 5200, { size: 20 }),
+                    cell("VENDOR QUOTATION REF: Quot Ref No: ________", 5200, { size: 20 }),
+                  ],
+                }),
+              ],
+            }),
+
+            new Paragraph({ spacing: { before: 200, after: 80 }, children: [] }),
+
+            // Items Table
+            new Table({
+              width: { size: 10400, type: WidthType.DXA },
+              rows: [
+                new TableRow({
+                  tableHeader: true,
+                  children: [
+                    cell("SR", 600, { header: true, align: AlignmentType.CENTER, bold: true }),
+                    cell("DESCRIPTION", 3900, { header: true, align: AlignmentType.LEFT, bold: true }),
+                    cell("CODE", 1200, { header: true, align: AlignmentType.CENTER, bold: true }),
+                    cell("UNIT", 1000, { header: true, align: AlignmentType.CENTER, bold: true }),
+                    cell("QTY", 1000, { header: true, align: AlignmentType.CENTER, bold: true }),
+                    cell("RATE (₹)", 1300, { header: true, align: AlignmentType.CENTER, bold: true }),
+                    cell("TOTAL (₹)", 1400, { header: true, align: AlignmentType.CENTER, bold: true }),
                   ],
                 }),
                 ...itemRows,
+                ...emptyRows,
+              ],
+            }),
+
+            new Paragraph({ spacing: { before: 200, after: 80 }, children: [] }),
+
+            // Totals and Terms Section
+            new Table({
+              width: { size: 10400, type: WidthType.DXA },
+              borders: noBorders,
+              rows: [
+                new TableRow({
+                  children: [
+                    // Terms & Signature (Left)
+                    new TableCell({
+                      width: { size: 5800, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Paragraph({
+                          spacing: { before: 0, after: 80 },
+                          children: [
+                            new TextRun({
+                              text: "Terms & Instructions:",
+                              bold: true,
+                              size: 21,
+                              color: "1B1B42",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 40 },
+                          children: [
+                            new TextRun({
+                              text: "1. Please quote your lowest competitive rates including GST, freight & delivery charges.",
+                              size: 19,
+                              color: "334155",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 40 },
+                          children: [
+                            new TextRun({
+                              text: "2. Mention validity period of quotation and payment terms clearly.",
+                              size: 19,
+                              color: "334155",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 0, after: 160 },
+                          children: [
+                            new TextRun({
+                              text: "3. Specify delivery schedule & transport mode for the requested site.",
+                              size: 19,
+                              color: "334155",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 140, after: 60 },
+                          children: [
+                            new TextRun({
+                              text: "For VPG Construction Private Limited",
+                              bold: true,
+                              size: 21,
+                              color: "1B1B42",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: { before: 160, after: 0 },
+                          children: [
+                            new TextRun({
+                              text: "Authorized Signatory",
+                              bold: true,
+                              size: 19,
+                              color: "475569",
+                              font: "Arial",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    // Totals Table (Right)
+                    new TableCell({
+                      width: { size: 4600, type: WidthType.DXA },
+                      borders: noBorders,
+                      children: [
+                        new Table({
+                          width: { size: 4600, type: WidthType.DXA },
+                          rows: [
+                            new TableRow({
+                              children: [
+                                cell("Subtotal Amount", 2600, { bold: true }),
+                                cell("", 2000),
+                              ],
+                            }),
+                            new TableRow({
+                              children: [
+                                cell("Freight Charges", 2600, { bold: true }),
+                                cell("", 2000),
+                              ],
+                            }),
+                            new TableRow({
+                              children: [
+                                cell("Packaging / Other Charges", 2600, { bold: true }),
+                                cell("", 2000),
+                              ],
+                            }),
+                            new TableRow({
+                              children: [
+                                cell("GST (%) & Amount", 2600, { bold: true }),
+                                cell("", 2000),
+                              ],
+                            }),
+                            new TableRow({
+                              children: [
+                                cell("Grand Total Price", 2600, {
+                                  bold: true,
+                                  shading: { fill: "F1F5F9", type: ShadingType.CLEAR, color: "auto" },
+                                }),
+                                cell("", 2000, {
+                                  bold: true,
+                                  shading: { fill: "F1F5F9", type: ShadingType.CLEAR, color: "auto" },
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
               ],
             }),
           ],
@@ -250,8 +663,12 @@ export default function RFQDetailPage() {
       ],
     });
 
+    return await Packer.toBlob(doc);
+  };
+
+  const downloadDocx = async () => {
     try {
-      const blob = await Packer.toBlob(doc);
+      const blob = await generateRfqDocxBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -259,9 +676,11 @@ export default function RFQDetailPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success("Quotation DOCX downloaded.");
-    } catch {
-      toast.error("Unable to generate DOCX");
+      URL.revokeObjectURL(url);
+      toast.success("Quotation Word (DOCX) downloaded successfully!");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to generate Word (DOCX)");
     }
   };
 
@@ -274,17 +693,28 @@ export default function RFQDetailPage() {
 
     setIsSending(true);
     try {
-      // 1. Download PDF for easy sharing
-      await downloadPdf();
+      // 1. Download file in selected format (Word DOCX by default)
+      if (attachFormat === "docx") {
+        await downloadDocx();
+      } else {
+        await downloadPdf();
+      }
 
       // 2. Open WhatsApp Web / App with message
-      const defaultText = `Hello,\n\nPlease find Request for Quotation (RFQ Ref: ${rfqRef}) from VPG Construction Private Limited for Project: ${projectName}.\n\nItems Requested: ${items.length} item(s).\nPlease quote your best rates and delivery terms.`;
+      const defaultDocxMessage = `Hello,\n\nPlease find Request for Quotation (RFQ Ref: ${rfqRef}) in Word (.docx) format from VPG Construction Private Limited for Project: ${projectName}.\n\nItems Requested: ${items.length} item(s).\nPlease quote your best rates and delivery terms in the attached Word file.\n\nThank you.`;
+      const defaultPdfMessage = `Hello,\n\nPlease find Request for Quotation (RFQ Ref: ${rfqRef}) from VPG Construction Private Limited for Project: ${projectName}.\n\nItems Requested: ${items.length} item(s).\nPlease quote your best rates and delivery terms.\n\nThank you.`;
+
+      const defaultText = attachFormat === "docx" ? defaultDocxMessage : defaultPdfMessage;
       const msg = customMessage.trim() || defaultText;
       const phoneParam = cleanNumber.startsWith("91") && cleanNumber.length === 12 ? cleanNumber : `91${cleanNumber}`;
       const waUrl = `https://api.whatsapp.com/send?phone=${phoneParam}&text=${encodeURIComponent(msg)}`;
       window.open(waUrl, "_blank");
 
-      toast.success("Opening WhatsApp with RFQ details...");
+      toast.success(
+        attachFormat === "docx"
+          ? "Word (.docx) downloaded! WhatsApp opened to attach and send."
+          : "PDF downloaded! WhatsApp opened to attach and send."
+      );
       setIsSendOpen(false);
     } catch (error: any) {
       toast.error(error?.message || "Failed to initiate send");
@@ -365,16 +795,16 @@ export default function RFQDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={sendToVendorDocx}
-            className="h-9 gap-1.5 text-xs font-bold"
+            onClick={downloadDocx}
+            className="h-9 gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-200"
           >
-            <FileText className="h-4 w-4 text-zinc-600" /> DOCX
+            <FileText className="h-4 w-4 text-blue-600" /> Word (.docx)
           </Button>
           <Button
             onClick={() => setIsSendOpen(true)}
             className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm"
           >
-            <WhatsAppIcon className="h-4 w-4" /> Send to Vendor
+            <WhatsAppIcon className="h-4 w-4" /> Send on WhatsApp (Word)
           </Button>
         </div>
       </div>
@@ -629,6 +1059,56 @@ export default function RFQDetailPage() {
           </div>
 
           <div className="flex flex-col gap-4 py-2">
+            {/* Attachment Format Selector */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-black text-zinc-700">
+                Attachment Format <span className="text-rose-500">*</span>
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAttachFormat("docx")}
+                  className={cn(
+                    "flex flex-col items-start gap-1 p-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                    attachFormat === "docx"
+                      ? "border-blue-600 bg-blue-50/70 text-blue-900 ring-2 ring-blue-600/20"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-extrabold">Word (.docx)</span>
+                  </div>
+                  <span className="text-[10px] text-blue-700 font-bold bg-blue-100 px-1.5 py-0.5 rounded">
+                    Default / Vendor Rates
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttachFormat("pdf")}
+                  className={cn(
+                    "flex flex-col items-start gap-1 p-2.5 rounded-xl border text-left transition-all cursor-pointer",
+                    attachFormat === "pdf"
+                      ? "border-emerald-600 bg-emerald-50/70 text-emerald-900 ring-2 ring-emerald-600/20"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Download className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-extrabold">PDF (.pdf)</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-500 font-medium">
+                    Read-only copy
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] font-medium text-zinc-500 mt-0.5">
+                {attachFormat === "docx"
+                  ? "✓ Quotation Word (.docx) downloads automatically so you can attach it to the WhatsApp chat for vendor rate filling."
+                  : "✓ Quotation PDF downloads automatically so you can attach it to the WhatsApp chat."}
+              </p>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="rfqVendorMobile" className="text-xs font-black text-zinc-700 flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5 text-zinc-500" />
@@ -653,7 +1133,11 @@ export default function RFQDetailPage() {
               </Label>
               <Textarea
                 id="rfqCustomMessage"
-                placeholder="Leave empty to send default RFQ message..."
+                placeholder={
+                  attachFormat === "docx"
+                    ? "Leave empty to send default RFQ message with Word (.docx) instructions..."
+                    : "Leave empty to send default RFQ message..."
+                }
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
                 className="rounded-xl text-xs font-medium bg-white text-zinc-900 border-zinc-200 resize-none min-h-[75px] focus-visible:ring-emerald-500"

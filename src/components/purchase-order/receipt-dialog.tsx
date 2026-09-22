@@ -12,17 +12,66 @@ const date = (value: unknown) => value ? new Date(value as string).toLocaleDateS
 const time = (value: unknown) => value ? new Date(value as string).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
 const person = (value: any) => value?.name || value?.fullName || value?.employeeName || value?.userName || "";
 
+function getFinancialYearString(dateVal?: unknown): string {
+  const d = dateVal ? new Date(dateVal as string) : new Date();
+  const validDate = isNaN(d.getTime()) ? new Date() : d;
+
+  // Indian financial year runs from April 1 to March 31 (Asia/Kolkata timezone)
+  let year = validDate.getFullYear();
+  let month = validDate.getMonth() + 1; // 1-12
+
+  try {
+    const parts = new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "numeric",
+    }).formatToParts(validDate);
+
+    const yearPart = parts.find((p) => p.type === "year")?.value;
+    const monthPart = parts.find((p) => p.type === "month")?.value;
+    if (yearPart) year = parseInt(yearPart, 10);
+    if (monthPart) month = parseInt(monthPart, 10);
+  } catch {
+    // Fallback to local
+  }
+
+  const fyStart = month >= 4 ? year : year - 1;
+  const fyEnd = String((fyStart + 1) % 100).padStart(2, "0");
+  return `${fyStart}-${fyEnd}`;
+}
+
 export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: Props) {
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const receipts = po?.receipts || [];
   const receipt = receipts[receipts.length - 1] || {};
   const receiptItems = receipt.items || [];
   const receiptDate = receipt.receiptDate || receipt.createdAt || po?.createdAt;
-  const receiptYear = receiptDate ? new Date(receiptDate).getFullYear() : NaN;
-  const poSequence = String(po?.poNo || "").match(/(\d+)$/)?.[1];
-  const receiptNumber = Number.isFinite(receiptYear) && poSequence
-    ? `${String(receiptYear).slice(-2)}${poSequence.padStart(3, "0")}`
-    : "—";
+
+  // Financial Year slip number (format: YYYY-YY/01)
+  const getReceiptSlipNo = () => {
+    // 1. Direct slipNo on the active receipt
+    if (receipt?.slipNo && typeof receipt.slipNo === "string" && receipt.slipNo.trim()) {
+      return receipt.slipNo.trim();
+    }
+
+    // 2. PO latestSlipNo
+    if (po?.latestSlipNo && typeof po.latestSlipNo === "string" && po.latestSlipNo.trim()) {
+      return po.latestSlipNo.trim();
+    }
+
+    // 3. Check any receipt in receipts array
+    const foundWithSlip = [...receipts].reverse().find((r: any) => r?.slipNo);
+    if (foundWithSlip?.slipNo && typeof foundWithSlip.slipNo === "string" && foundWithSlip.slipNo.trim()) {
+      return foundWithSlip.slipNo.trim();
+    }
+
+    // 4. Financial Year calculation fallback: YYYY-YY/01
+    const fy = getFinancialYearString(receiptDate);
+    const count = String(receipts.length || 1).padStart(2, "0");
+    return `${fy}/${count}`;
+  };
+
+  const receiptNumber = getReceiptSlipNo();
 
   const quantityFor = (item: any) => {
     if (allReceived) return num(item.receivedQuantity);
@@ -48,7 +97,7 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
   const site = po?.projectId?.projectName || po?.projectId?.name || po?.locationAddress || po?.deliveryAddress || po?.projectId?.location || "";
   const vendorName = po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.companyName || po?.vendorId?.name || "";
   const vehicleNo = receipt?.vehicleNo || receipt?.vehicleNumber || po?.vehicleNo || po?.vehicleNumber || "";
-  const receivedBy = person(receipt.receivedBy) || receipt.receiverName || person(po?.requesterId) || person(po?.requestedBy);
+  const receivedBy = person(receipt.receivedBy) || receipt.receiverName || person(po?.receiverMaterial) || person(po?.requestedBy);
 
   const printReceipt = () => {
     const node = document.getElementById("material-receipt-print-area");
@@ -96,10 +145,10 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
             <table className="mt-3.5 w-full table-fixed border-collapse text-[12px] font-semibold">
               <tbody>
                 <tr>
-                  <td className="w-[104px] py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">PO No.</td>
+                  <td className="w-[85px] py-1.5 pr-2 align-top whitespace-nowrap text-zinc-800">PO No.</td>
                   <td className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{po?.poNo || ""}</td>
-                  <td className="w-10 text-right py-1 pr-2 text-zinc-800">No.</td>
-                  <td className="w-20 border-b border-zinc-700 px-2 py-1.5 font-semibold tabular-nums">{receiptNumber}</td>
+                  <td className="w-10 text-right py-1.5 pr-2 text-zinc-800 whitespace-nowrap">No.</td>
+                  <td className="w-28 border-b border-zinc-700 px-2 py-1.5 font-bold tabular-nums whitespace-nowrap text-zinc-900">{receiptNumber}</td>
                 </tr>
                
                 <tr>

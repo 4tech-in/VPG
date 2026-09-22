@@ -20,6 +20,7 @@ type Receipt = {
   remark?: string;
   billPhoto?: string;
   materialPhoto?: string;
+  slipNo?: string;
 };
 
 const itemId = (item: Material) =>
@@ -89,7 +90,14 @@ export function ReceiptHistory({ receipts = [], items = [], onViewReceipt, onApp
                 return (
                   <tr key={receipt._id || index} className="align-top transition-colors hover:bg-zinc-50/50">
                     <td className="px-2 py-3 sm:px-3 sm:py-5">
-                      <span className="font-bold tabular-nums text-zinc-800">REQ-{String(index + 1).padStart(3, "0")}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold tabular-nums text-zinc-800">REQ-{String(index + 1).padStart(3, "0")}</span>
+                        {receipt.slipNo && (
+                          <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-mono font-bold text-teal-700 border border-teal-100">
+                            {receipt.slipNo}
+                          </span>
+                        )}
+                      </div>
                       <span className="mt-1.5 block whitespace-nowrap text-[11px] text-zinc-500">
                         {parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "Date unavailable"}
                       </span>

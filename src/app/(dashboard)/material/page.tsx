@@ -1142,7 +1142,7 @@ export default function MaterialMasterPage() {
                         Requester / Project
                       </span>
                       <span className="text-sm font-black text-zinc-900 mt-1 truncate">
-                        {selectedPO.requesterId?.name || "Requester"} (
+                        {selectedPO.receiverMaterial?.name || "Requester"} (
                         {selectedPO.projectId?.projectName ||
                           selectedPO.projectId?.name ||
                           "N/A"}

@@ -630,7 +630,7 @@ export default function PODetailPage() {
                   {[
                     {
                       label: "Requested By",
-                      val: po.indentId?.requestedBy?.name || po.requesterId?.name || po.requesterId?.firstName || (typeof po.requesterId === "string" ? po.requesterId : "N/A")
+                      val: po.indentId?.requestedBy?.name || po.receiverMaterial?.name || po.receiverMaterial?.firstName || (typeof po.receiverMaterial === "string" ? po.receiverMaterial : "N/A")
                     },
                     {
                       label: "Approved By",

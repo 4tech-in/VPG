@@ -29,6 +29,7 @@ export type PurchaseOrder = {
   indentId?: any;
   projectId?: any;
   requesterId?: any;
+  receiverMaterial?:any;
   vendorName: string;
   vendorMobile?: string | null;
   vendorAddress?: string | null;
@@ -54,6 +55,7 @@ export type PurchaseOrder = {
     | "Issued"
     | "Cancelled";
   verificationStatus?: string;
+  latestSlipNo?: string;
   receipts?: any[];
   createdAt?: string;
 };
