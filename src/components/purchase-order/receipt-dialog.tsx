@@ -1,15 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { Printer } from "lucide-react";
+import { Printer, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SendWhatsAppDialog, WhatsAppIcon } from "@/components/purchase-order/send-whatsapp-dialog";
 
-type Props = { open: boolean; onOpenChange: (open: boolean) => void; po: any; allReceived?: boolean };
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  po: any;
+  allReceived?: boolean;
+  onApprove?: (receiptId: string) => void;
+  onReject?: (receiptId: string) => void;
+};
 const num = (value: unknown) => Number(value || 0);
-const date = (value: unknown) => value ? new Date(value as string).toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
-const time = (value: unknown) => value ? new Date(value as string).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
+const date = (value: unknown) => {
+  if (!value) return "";
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+const time = (value: unknown) => {
+  if (!value) return "";
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-US", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
 const person = (value: any) => value?.name || value?.fullName || value?.employeeName || value?.userName || "";
 
 function getFinancialYearString(dateVal?: unknown): string {
@@ -40,12 +67,17 @@ function getFinancialYearString(dateVal?: unknown): string {
   return `${fyStart}-${fyEnd}`;
 }
 
-export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: Props) {
+export function ReceiptDialog({ open, onOpenChange, po, allReceived = false, onApprove, onReject }: Props) {
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const receipts = po?.receipts || [];
   const receipt = receipts[receipts.length - 1] || {};
   const receiptItems = receipt.items || [];
   const receiptDate = receipt.receiptDate || receipt.createdAt || po?.createdAt;
+
+  const verificationStatus = String(receipt?.verificationStatus || receipt?.status || (!allReceived ? po?.verificationStatus : "") || "").toLowerCase();
+  const isRejected = verificationStatus === "rejected";
+  const isApproved = verificationStatus === "approved";
+  const isPending = ["pending", "pendingverification"].includes(verificationStatus);
 
   // Financial Year slip number (format: YYYY-YY/01)
   const getReceiptSlipNo = () => {
@@ -97,7 +129,12 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
   const site = po?.projectId?.projectName || po?.projectId?.name || po?.locationAddress || po?.deliveryAddress || po?.projectId?.location || "";
   const vendorName = po?.vendorName || po?.vendorId?.vendorName || po?.vendorId?.companyName || po?.vendorId?.name || "";
   const vehicleNo = receipt?.vehicleNo || receipt?.vehicleNumber || po?.vehicleNo || po?.vehicleNumber || "";
-  const receivedBy = person(receipt.receivedBy) || receipt.receiverName || person(po?.receiverMaterial) || person(po?.requestedBy);
+  const requestedBy = person(po?.requestedBy) || person(receipt.receivedBy) || receipt.receiverName || person(po?.receiverMaterial) || "";
+  const timeSource = (receipt?.createdAt && !isNaN(new Date(receipt.createdAt).getTime()))
+    ? receipt.createdAt
+    : receiptDate;
+  const formattedDate = date(receiptDate);
+  const formattedTime = time(timeSource);
 
   const printReceipt = () => {
     const node = document.getElementById("material-receipt-print-area");
@@ -105,7 +142,7 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
     const popup = window.open("", "_blank", "width=700,height=900");
     if (!popup) return;
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((item) => item.outerHTML).join("");
-    popup.document.write(`<!doctype html><html><head><title>Receipt Slip - ${po?.poNo || "PO"}</title>${styles}<style>@page{size:A5 portrait;margin:8mm}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body{margin:0;background:#fff!important}#material-receipt-print-area{width:100%!important;max-width:none!important;box-shadow:none!important}.receipt-slip{min-height:190mm!important;padding:8mm!important}</style></head><body>${node.outerHTML}</body></html>`);
+    popup.document.write(`<!doctype html><html><head><title>Receipt Slip - ${po?.poNo || "PO"}</title>${styles}<style>@page{size:A5 portrait;margin:8mm}*{print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}body{margin:0;background:#fff!important}#material-receipt-print-area{width:100%!important;max-width:none!important;box-shadow:none!important;position:relative!important}.receipt-slip{min-height:190mm!important;padding:8mm!important;position:relative!important;overflow:hidden!important}</style></head><body>${node.outerHTML}</body></html>`);
     popup.document.close();
     popup.focus();
     const imgs = Array.from(popup.document.images);
@@ -121,19 +158,75 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[95vh] overflow-y-auto bg-stone-200 p-0 sm:max-w-[640px]">
+      <DialogContent className="max-h-[92vh] overflow-y-auto bg-zinc-100/90 p-0 sm:max-w-[620px] rounded-2xl shadow-2xl border border-zinc-200/80">
         <DialogHeader className="sr-only">
           <DialogTitle>Receipt Slip</DialogTitle>
           <DialogDescription>Material receipt for {po?.poNo}</DialogDescription>
         </DialogHeader>
 
-        <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-5 py-3 shadow-sm">
-          <div><p className="text-sm font-extrabold text-zinc-900">Receipt Slip Preview</p><p className="text-[11px] text-zinc-500">A5 printable material receipt</p></div>
-          <Button onClick={printReceipt} className="h-9 gap-2 bg-zinc-900 px-4 text-xs font-bold text-white"><Printer className="h-4 w-4" /> Print</Button>
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white/95 backdrop-blur-md px-5 sm:px-6 py-3.5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-xs">
+              <Printer className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-black text-zinc-900 tracking-tight">Receipt Slip Preview</p>
+                {isRejected && (
+                  <span className="rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-rose-700 shadow-2xs">
+                    Rejected
+                  </span>
+                )}
+                {isApproved && (
+                  <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-700 shadow-2xs">
+                    Approved
+                  </span>
+                )}
+                {isPending && (
+                  <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 shadow-2xs">
+                    Pending
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] font-medium text-zinc-500">Official A5 printable material receipt</p>
+            </div>
+          </div>
+          <Button onClick={printReceipt} className="h-8.5 gap-2 bg-zinc-900 hover:bg-zinc-800 px-4 text-xs font-bold text-white shadow-xs rounded-lg active:scale-98 transition-all">
+            <Printer className="h-3.5 w-3.5" /> Print
+          </Button>
         </div>
 
-        <div id="material-receipt-print-area" className="mx-auto my-5 w-[520px] max-w-[calc(100%-24px)] bg-[#fffefa] shadow-xl">
-          <main className="receipt-slip min-h-[640px] border border-zinc-400 px-7 py-6 font-sans text-zinc-900">
+        <div id="material-receipt-print-area" className="relative mx-auto my-6 w-[510px] max-w-[calc(100%-28px)] bg-[#fffefa] shadow-xl rounded-sm border border-zinc-300/80 ring-1 ring-black/5">
+          <main className="receipt-slip relative min-h-[640px] border border-zinc-400 px-7 py-6 font-sans text-zinc-900 overflow-hidden">
+            {isRejected && (
+              <div
+                className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center select-none overflow-hidden"
+                aria-hidden="true"
+              >
+                <div
+                  className="transform -rotate-[30deg] border-4 sm:border-[5px] rounded-2xl px-10 py-4 text-center shadow-lg"
+                  style={{
+                    borderColor: "rgba(225, 29, 72, 0.42)",
+                    backgroundColor: "rgba(255, 241, 242, 0.32)",
+                  }}
+                >
+                  <span
+                    className="block text-5xl sm:text-6xl font-black uppercase tracking-[0.25em] font-mono select-none"
+                    style={{ color: "rgba(225, 29, 72, 0.45)" }}
+                  >
+                    REJECTED
+                  </span>
+                  {receipt?.remark && (
+                    <span
+                      className="mt-1.5 block max-w-[280px] truncate text-xs font-bold uppercase tracking-wider text-center"
+                      style={{ color: "rgba(190, 18, 60, 0.72)" }}
+                    >
+                      Reason: {receipt.remark}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             <header className="grid grid-cols-[92px_1fr_138px] items-start gap-2">
               <img src="/vpg.jpeg" alt="VPG logo" className="h-[76px] w-[86px] object-contain grayscale" />
               <p className="pt-3 text-center text-[17px] font-bold uppercase tracking-wide">Receipt Slip</p>
@@ -142,30 +235,39 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
 
             <h1 className="-mt-1 whitespace-nowrap text-center font-serif text-[25px] font-black leading-tight tracking-tight">VPG Construction Private Limited</h1>
 
-            <table className="mt-3.5 w-full table-fixed border-collapse text-[12px] font-semibold">
+            <table className="mt-3.5 w-full border-collapse text-[12px]">
               <tbody>
                 <tr>
-                  <td className="w-[85px] py-1.5 pr-2 align-top whitespace-nowrap text-zinc-800">PO No.</td>
-                  <td className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{po?.poNo || ""}</td>
-                  <td className="w-10 text-right py-1.5 pr-2 text-zinc-800 whitespace-nowrap">No.</td>
-                  <td className="w-28 border-b border-zinc-700 px-2 py-1.5 font-bold tabular-nums whitespace-nowrap text-zinc-900">{receiptNumber}</td>
-                </tr>
-               
-                <tr>
-                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Vehicle No.</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{vehicleNo || "-"}</td>
+                  <td className="w-[110px] py-1 font-bold text-zinc-900 whitespace-nowrap align-top">PO No.</td>
+                  <td className="py-1 font-normal text-zinc-900 align-top">{po?.poNo || ""}</td>
+                  <td className="w-12 text-right py-1 font-bold text-zinc-900 whitespace-nowrap align-top pr-2">No.</td>
+                  <td className="w-32 py-1 text-center align-top border-b border-zinc-700 font-bold tabular-nums whitespace-nowrap text-zinc-900">
+                    {receiptNumber}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Site</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{site}</td>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Date</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top">{formattedDate}</td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Vendor Name</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{vendorName}</td>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Time</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top">{formattedTime}</td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 pr-3 align-top whitespace-nowrap text-zinc-800">Received By</td>
-                  <td colSpan={3} className="border-b border-zinc-700 px-2 py-1.5 align-top break-words font-normal text-zinc-900">{receivedBy}</td>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Site</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top break-words">{site}</td>
+                </tr>
+                <tr>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Vendor Name</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top break-words">{vendorName}</td>
+                </tr>
+                <tr>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Vehicle No.</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top break-words">{vehicleNo || "-"}</td>
+                </tr>
+                <tr>
+                  <td className="py-1 font-bold text-zinc-900 whitespace-nowrap align-top">Requested By</td>
+                  <td colSpan={3} className="py-1 font-normal text-zinc-900 align-top break-words">{requestedBy}</td>
                 </tr>
               </tbody>
             </table>
@@ -212,14 +314,59 @@ export function ReceiptDialog({ open, onOpenChange, po, allReceived = false }: P
           </main>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-white px-5 py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="h-9 text-xs font-bold">Close</Button>
-          <Button
-            onClick={() => setIsWhatsAppOpen(true)}
-            className="h-9 gap-2 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-sm"
-          >
-            <WhatsAppIcon className="h-4 w-4" /> Send to Vendor
-          </Button>
+        <div className="sticky bottom-0 z-30 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200/80 bg-white/95 backdrop-blur-md px-5 sm:px-6 py-3.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            {isRejected && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200 shadow-2xs">
+                <XCircle className="h-3.5 w-3.5 text-rose-600" /> Rejected Receipt
+              </span>
+            )}
+            {isApproved && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200 shadow-2xs">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Approved Receipt
+              </span>
+            )}
+            {isPending && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 border border-amber-200 shadow-2xs">
+                <Clock className="h-3.5 w-3.5 text-amber-600" /> Pending Verification
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="h-9 px-4 text-xs font-bold text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 border-zinc-200 shadow-2xs rounded-lg active:scale-98 transition-all"
+            >
+              Close
+            </Button>
+            {isPending && receipt?._id && onReject && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onReject(receipt._id)}
+                className="h-9 gap-1.5 border-rose-200 bg-rose-50 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 shadow-2xs rounded-lg active:scale-98 transition-all"
+              >
+                <XCircle className="h-4 w-4" /> Reject
+              </Button>
+            )}
+            {isPending && receipt?._id && onApprove && (
+              <Button
+                type="button"
+                onClick={() => onApprove(receipt._id)}
+                className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-xs rounded-lg active:scale-98 transition-all"
+              >
+                <CheckCircle2 className="h-4 w-4" /> Approve
+              </Button>
+            )}
+            <Button
+              onClick={() => setIsWhatsAppOpen(true)}
+              className="h-9 gap-2 bg-[#25D366] hover:bg-[#20ba59] text-xs font-bold text-white shadow-xs rounded-lg active:scale-98 transition-all"
+            >
+              <WhatsAppIcon className="h-4 w-4" /> Send to Vendor
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

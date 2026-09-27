@@ -2,12 +2,12 @@
 
 import { getImageUrl } from "@/lib/image-url";
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { 
   Sheet, 
   SheetContent, 
   SheetHeader, 
-  SheetTitle,
+  SheetTitle, 
   SheetDescription
 } from "@/components/ui/sheet"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
@@ -20,14 +20,42 @@ import { purchaseOrderService } from "@/service/purchaseOrderService"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-export function VerificationSheet({ po, receiptId, isOpen, onClose, onSuccess }: { po: any, receiptId?: string, isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
+export function VerificationSheet({
+  po,
+  receiptId,
+  isOpen,
+  onClose,
+  onSuccess,
+  initialAction = null,
+}: {
+  po: any;
+  receiptId?: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  initialAction?: "approve" | "remaining" | "reject" | null;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeDialog, setActiveDialog] = useState<"approve" | "remaining" | "reject" | null>(null)
   const [remark, setRemark] = useState("")
 
+  useEffect(() => {
+    if (isOpen && initialAction) {
+      setActiveDialog(initialAction);
+    } else if (!isOpen) {
+      setActiveDialog(null);
+      setRemark("");
+    }
+  }, [isOpen, initialAction]);
+
   if (!po) return null
-  
-  const pendingReceipt = po.receipts?.find((r: any) => r.verificationStatus === "Pending" && (!receiptId || String(r._id) === receiptId))
+
+  const pendingReceipt = po.receipts?.find((r: any) => {
+    const isTarget = !receiptId || String(r._id) === receiptId;
+    const status = String(r.verificationStatus || "").toLowerCase();
+    return isTarget && (["pending", "pendingverification"].includes(status) || receiptId);
+  }) || po.receipts?.find((r: any) => ["pending", "pendingverification"].includes(String(r.verificationStatus || "").toLowerCase()));
+
   if (!pendingReceipt) return null
 
   const handleAction = async (action: "APPROVED" | "REMAINING" | "REJECTED") => {

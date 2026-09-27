@@ -62,6 +62,7 @@ export default function PODetailPage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [selectedReceiptIndex, setSelectedReceiptIndex] = useState<number | null>(null);
   const [verificationReceiptId, setVerificationReceiptId] = useState<string | undefined>();
+  const [verificationInitialAction, setVerificationInitialAction] = useState<"approve" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(0);
@@ -313,7 +314,24 @@ export default function PODetailPage() {
           </div>
         </div>
 
-        <ReceiptDialog allReceived={selectedReceiptIndex === null} open={isReceiptOpen} onOpenChange={setIsReceiptOpen} po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }} />
+        <ReceiptDialog
+          allReceived={selectedReceiptIndex === null}
+          open={isReceiptOpen}
+          onOpenChange={setIsReceiptOpen}
+          po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }}
+          onApprove={(receiptId) => {
+            setIsReceiptOpen(false);
+            setVerificationReceiptId(receiptId);
+            setVerificationInitialAction("approve");
+            setIsVerificationSheetOpen(true);
+          }}
+          onReject={(receiptId) => {
+            setIsReceiptOpen(false);
+            setVerificationReceiptId(receiptId);
+            setVerificationInitialAction("reject");
+            setIsVerificationSheetOpen(true);
+          }}
+        />
 
         {/* 5-Column Core Dashboard Summary Info Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -567,6 +585,12 @@ export default function PODetailPage() {
               }}
               onApprove={(receiptId) => {
                 setVerificationReceiptId(receiptId);
+                setVerificationInitialAction("approve");
+                setIsVerificationSheetOpen(true);
+              }}
+              onReject={(receiptId) => {
+                setVerificationReceiptId(receiptId);
+                setVerificationInitialAction("reject");
                 setIsVerificationSheetOpen(true);
               }}
             />
@@ -836,7 +860,11 @@ export default function PODetailPage() {
                 {isPendingVerification && (
                   <Button
                     className="w-full justify-start gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold"
-                    onClick={() => { setVerificationReceiptId(undefined); setIsVerificationSheetOpen(true); }}
+                    onClick={() => {
+                      setVerificationReceiptId(undefined);
+                      setVerificationInitialAction(null);
+                      setIsVerificationSheetOpen(true);
+                    }}
                   >
                     <ClipboardCheck className="h-4 w-4" /> Verify Receipt
                   </Button>
@@ -856,8 +884,12 @@ export default function PODetailPage() {
         key={verificationReceiptId || "pending-receipt"}
         po={po}
         receiptId={verificationReceiptId}
+        initialAction={verificationInitialAction}
         isOpen={isVerificationSheetOpen}
-        onClose={() => setIsVerificationSheetOpen(false)}
+        onClose={() => {
+          setIsVerificationSheetOpen(false);
+          setVerificationInitialAction(null);
+        }}
         onSuccess={() => {
           fetchPO();
         }}

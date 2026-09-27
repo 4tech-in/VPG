@@ -50,6 +50,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VerificationSheet } from "@/components/purchase-order/verification-sheet";
+import { ReceiptHistory } from "@/components/purchase-order/receipt-history";
+import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { materialIssueService } from "@/service/materialIssue.api";
 
 export default function MaterialDetailPage() {
@@ -60,6 +62,8 @@ export default function MaterialDetailPage() {
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [selectedReceiptIndex, setSelectedReceiptIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receiveData, setReceiveData] = useState<
     {
@@ -346,8 +350,8 @@ export default function MaterialDetailPage() {
   return (
     <ContentLayout title={`Material Receipt Ledger`}>
       <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-[1500px] mx-auto min-h-screen bg-slate-50/50">
-        {/* Top Sticky Bar */}
-        <div className="sticky top-0 z-20 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-slate-200/60 shadow-sm">
+        {/* Page Header Card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <Button
@@ -429,19 +433,6 @@ export default function MaterialDetailPage() {
             </Button>
           </div>
         </div>
-
-        {/* Alerts */}
-        {isPendingVerification && (
-          <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-xl p-4 flex flex-col gap-1 shadow-sm">
-            <h3 className="text-orange-800 font-black text-sm flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Pending Admin Verification
-            </h3>
-            <p className="text-orange-700 font-semibold text-xs max-w-3xl">
-              Goods receipt submitted. Waiting for verification before updating
-              stock.
-            </p>
-          </div>
-        )}
 
         {/* Quick Stats Horizontal Row */}
         <div className="bg-white rounded-xl border border-slate-200/70 p-1 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-1">
@@ -536,54 +527,6 @@ export default function MaterialDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content Area (Left 2 columns) */}
           <div className="col-span-1 lg:col-span-2 space-y-6">
-            {/* Inventory Progress Overview */}
-            <div className="bg-white rounded-xl border border-slate-200/70 p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                  <Check className="h-5 w-5 text-teal-500" /> Fulfillment
-                  Progress
-                </h4>
-                <span className="text-2xl font-black text-slate-900 tracking-tighter">
-                  {Math.round(
-                    (items.reduce(
-                      (acc: number, item: any) => acc + (item.receivedQuantity || 0),
-                      0
-                    ) /
-                      Math.max(
-                        items.reduce(
-                          (acc: number, item: any) => acc + (item.orderQuantity || 0),
-                          0
-                        ),
-                        1
-                      )) *
-                      100
-                  )}
-                  %
-                </span>
-              </div>
-              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-teal-500 rounded-full"
-                  style={{
-                    width: `${Math.round(
-                      (items.reduce(
-                        (acc: number, item: any) => acc + (item.receivedQuantity || 0),
-                        0
-                      ) /
-                        Math.max(
-                          items.reduce(
-                            (acc: number, item: any) => acc + (item.orderQuantity || 0),
-                            0
-                          ),
-                          1
-                        )) *
-                        100
-                    )}%`
-                  }}
-                />
-              </div>
-            </div>
-
             {/* Material Manifest List */}
             <div className="bg-white rounded-xl border border-slate-200/70 overflow-hidden shadow-sm">
               <div className="bg-slate-50 border-b border-slate-200/70 p-4 flex items-center justify-between">
@@ -662,6 +605,19 @@ export default function MaterialDetailPage() {
                 })}
               </div>
             </div>
+
+            {/* Approved Receipt Requests */}
+            <ReceiptHistory
+              title="Approved Receipts"
+              subtitle="Verified and inwarded delivery records"
+              receipts={po.receipts ?? []}
+              items={items}
+              approvedOnly={true}
+              onViewReceipt={(index) => {
+                setSelectedReceiptIndex(index);
+                setIsReceiptOpen(true);
+              }}
+            />
           </div>
 
           {/* Sidebar Panel (Right Column) */}
@@ -880,6 +836,17 @@ export default function MaterialDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ReceiptDialog
+        allReceived={selectedReceiptIndex === null}
+        open={isReceiptOpen}
+        onOpenChange={setIsReceiptOpen}
+        po={
+          selectedReceiptIndex === null
+            ? po
+            : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }
+        }
+      />
 
       {/* Admin Verification Sheet */}
       <VerificationSheet
