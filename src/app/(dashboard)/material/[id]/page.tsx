@@ -591,14 +591,6 @@ export default function MaterialDetailPage() {
                             />
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-0.5">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Available
-                          </span>
-                          <span className="text-lg font-black text-amber-600">
-                            {Math.max(received - issued, 0)}
-                          </span>
-                        </div>
                       </div>
                     </div>
                   );
