@@ -1142,7 +1142,7 @@ export function CreateIndentDialog({
     try {
       const res = await assetService.getAssets({
         page: pageToFetch,
-        limit: 10
+        limit: 1000
       });
       const newAssets = res.data || [];
       setAvailableAssets((prev) =>
@@ -1150,7 +1150,7 @@ export function CreateIndentDialog({
       );
       setAssetsPage(pageToFetch);
       const total = res.pagination?.total || 0;
-      const totalPages = Math.ceil(total / 10) || 1;
+      const totalPages = Math.ceil(total / 1000) || 1;
       setHasMoreAssets(pageToFetch < totalPages);
     } catch (err) {
       console.error("Failed to fetch assets:", err);
@@ -1799,7 +1799,6 @@ export function CreateIndentDialog({
                           : "Select Asset"}
                       </Label>
                       <Popover
-                        modal={true}
                         open={item.isDropdownOpen}
                         onOpenChange={(open) => {
                           setItems(prev => prev.map((i, iIdx) => iIdx === idx ? { ...i, isDropdownOpen: open } : i));
@@ -1829,7 +1828,7 @@ export function CreateIndentDialog({
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white" align="start">
+                        <PopoverContent portal={false} className="w-[--radix-popover-trigger-width] p-0 rounded-xl border-zinc-100 shadow-xl bg-white z-[9999]" align="start">
                           <Command>
                             <CommandInput placeholder={indentType === "material" ? "Search item..." : "Search asset..."} className="h-11" />
                             <CommandList
@@ -1848,6 +1847,7 @@ export function CreateIndentDialog({
                               <CommandGroup>
                                 {indentType === "material" ? (
                                   <CommandItem
+                                    forceMount
                                     value="CREATE_NEW_ITEM"
                                     onSelect={() => {
                                       setIsCreateItemOpen(true);
@@ -1859,6 +1859,7 @@ export function CreateIndentDialog({
                                   </CommandItem>
                                 ) : (
                                   <CommandItem
+                                    forceMount
                                     value="CREATE_NEW_ASSET"
                                     onSelect={() => {
                                       setIsCreateAssetOpen(true);
@@ -1873,7 +1874,7 @@ export function CreateIndentDialog({
                                   ? availableItems.map((i) => (
                                       <CommandItem
                                         key={i._id}
-                                        value={`${i.itemCode || i.newItemCode || ""} ${i.itemName}`.trim()}
+                                        value={`${i.itemCode || i.newItemCode || ""} ${i.itemName || ""} ${getItemSelectLabel(i)}`.trim()}
                                         onSelect={() => {
                                           const selectedItem = availableItems.find(itemObj => itemObj._id === i._id);
                                           handleItemSelect(item.id, i._id, selectedItem?.unitId);
@@ -1893,7 +1894,7 @@ export function CreateIndentDialog({
                                   : availableAssets.map((a) => (
                                       <CommandItem
                                         key={a._id}
-                                        value={a.name}
+                                        value={`${a.name || ""} ${a.serialNumber || ""} ${a.type || ""}`.trim()}
                                         onSelect={() => {
                                           handleItemSelect(item.id, a._id, undefined);
                                           setItems(prev => prev.map((itemObj, iIdx) => iIdx === idx ? { ...itemObj, isDropdownOpen: false } : itemObj));

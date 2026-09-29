@@ -29,8 +29,9 @@ export const indentService = {
     return apiRequest<any>(`indents${queryString ? `?${queryString}` : ""}`);
   },
 
-  async getIndentById(id: string): Promise<ApiIndent> {
-    return apiRequest<ApiIndent>(`indents/${id}`);
+  async getIndentById(id: string): Promise<any> {
+    const res = await apiRequest<any>(`indents/${id}`);
+    return res?.data?.indent || res?.indent || res?.data || res;
   },
 
   async createIndent(payload: any): Promise<ApiIndent> {

@@ -42,6 +42,7 @@ export type PurchaseOrder = {
   materialUsed?: number;
   pending?: number;
   totalCount?: number;
+  totalQuantity?: number;
   status:
     | "Draft"
     | "PendingApproval"

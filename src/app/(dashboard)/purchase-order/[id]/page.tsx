@@ -1,6 +1,7 @@
 "use client";
 
 import { getImageUrl } from "@/lib/image-url";
+import { getMaterialPending } from "@/lib/material-totals";
 
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -60,12 +61,20 @@ export default function PODetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [selectedReceiptIndex, setSelectedReceiptIndex] = useState<number | null>(null);
-  const [verificationReceiptId, setVerificationReceiptId] = useState<string | undefined>();
-  const [verificationInitialAction, setVerificationInitialAction] = useState<"approve" | "reject" | null>(null);
+  const [selectedReceiptIndex, setSelectedReceiptIndex] = useState<
+    number | null
+  >(null);
+  const [verificationReceiptId, setVerificationReceiptId] = useState<
+    string | undefined
+  >();
+  const [verificationInitialAction, setVerificationInitialAction] = useState<
+    "approve" | "reject" | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConditions, setShowConditions] = useState(true);
-  const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(0);
+  const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(
+    0
+  );
 
   const fetchPO = async () => {
     try {
@@ -114,6 +123,33 @@ export default function PODetailPage() {
   }
 
   const items = po.items || [];
+
+  const totalOrderedQuantity = items.reduce(
+    (acc: number, item: any) =>
+      acc + Number(item.orderQuantity || item.indentQuantity || 0),
+    0
+  );
+
+  const totalReceivedQuantity = items.reduce(
+    (acc: number, item: any) => acc + Number(item.receivedQuantity || 0),
+    0
+  );
+
+  const totalRemainingQuantity = Math.max(
+    totalOrderedQuantity - totalReceivedQuantity,
+    0
+  );
+
+  const pendingFromPo = getMaterialPending(po);
+  const remainingItemsValue =
+    totalOrderedQuantity > 0 ? totalRemainingQuantity : (pendingFromPo ?? 0);
+
+  const totalQuantityValue =
+    po.totalQuantity ??
+    (totalOrderedQuantity > 0 ? totalOrderedQuantity : (po.totalCount ?? 0));
+
+  const totalCountValue = po.totalCount ?? items.length;
+  const materialUsedValue = po.materialUsed ?? totalReceivedQuantity;
 
   // Calculations
   const calculatedSubtotal = items.reduce((acc: number, item: any) => {
@@ -264,7 +300,11 @@ export default function PODetailPage() {
                 <span>
                   Drop Location:{" "}
                   <strong className="text-zinc-600">
-                    {po.locationAddress || po.deliveryAddress || po.storageLocation || po.indentId?.storageLocation || "N/A"}
+                    {po.locationAddress ||
+                      po.deliveryAddress ||
+                      po.storageLocation ||
+                      po.indentId?.storageLocation ||
+                      "N/A"}
                   </strong>
                 </span>
               </div>
@@ -304,13 +344,21 @@ export default function PODetailPage() {
               <Printer className="h-3.5 w-3.5 text-zinc-500" /> Print
             </Button>
             <Button
-              onClick={() => { setSelectedReceiptIndex(null); setIsReceiptOpen(true); }}
+              onClick={() => {
+                setSelectedReceiptIndex(null);
+                setIsReceiptOpen(true);
+              }}
               variant="outline"
               className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
             >
-              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" /> Receipt
+              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />{" "}
+              Receipt
             </Button>
-            <WhatsAppShareButton po={po} variant="button" label="Send WhatsApp" />
+            <WhatsAppShareButton
+              po={po}
+              variant="button"
+              label="Send WhatsApp"
+            />
           </div>
         </div>
 
@@ -318,7 +366,11 @@ export default function PODetailPage() {
           allReceived={selectedReceiptIndex === null}
           open={isReceiptOpen}
           onOpenChange={setIsReceiptOpen}
-          po={selectedReceiptIndex === null ? po : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }}
+          po={
+            selectedReceiptIndex === null
+              ? po
+              : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }
+          }
           onApprove={(receiptId) => {
             setIsReceiptOpen(false);
             setVerificationReceiptId(receiptId);
@@ -436,6 +488,84 @@ export default function PODetailPage() {
           ))}
         </div>
 
+        {/* Material Summary / Quantities Section */}
+        <section
+          className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm sm:p-6"
+          aria-label="Material summary"
+        >
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-teal-50 p-2.5 text-teal-600 border border-teal-100">
+                <Box className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-900">
+                  Material Summary
+                </h3>
+                <p className="text-xs text-zinc-500">
+                  Usage and quantities for this purchase order
+                </p>
+              </div>
+            </div>
+            {remainingItemsValue > 0 ? (
+              <Badge className="w-fit bg-amber-50 text-amber-700 border-amber-200 font-bold text-xs px-3 py-1">
+                {remainingItemsValue.toLocaleString("en-IN")} Units Available
+              </Badge>
+            ) : (
+              <Badge className="w-fit bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-xs px-3 py-1">
+                Fully Received
+              </Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              {
+                label: "Material Used",
+                value: materialUsedValue,
+                icon: Check,
+                theme: "border-teal-100 bg-teal-50/60",
+                accent: "text-teal-700",
+                iconBackground: "bg-teal-100"
+              },
+              {
+                label: "Available Material",
+                value: remainingItemsValue,
+                icon: Clock,
+                theme: "border-amber-100 bg-amber-50/60",
+                accent: "text-amber-700",
+                iconBackground: "bg-amber-100"
+              }
+            ].map(
+              ({ label, value, icon: Icon, theme, accent, iconBackground }) => (
+                <div key={label} className={cn("rounded-xl border p-4", theme)}>
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-zinc-600">
+                      {label}
+                    </p>
+                    <span
+                      className={cn("rounded-lg p-2", iconBackground, accent)}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <p
+                    className={cn(
+                      "break-words text-3xl font-bold tabular-nums tracking-tight",
+                      accent
+                    )}
+                  >
+                    {value != null && Number.isFinite(Number(value))
+                      ? Number(value).toLocaleString("en-IN", {
+                          maximumFractionDigits: 2
+                        })
+                      : "—"}
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+
         {/* Dashboard Panels Grid */}
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1fr),330px]">
           {/* LEFT AREA: Material, Remarks, Governance, Approval Timeline */}
@@ -524,7 +654,7 @@ export default function PODetailPage() {
                                   </strong>
                                 </span>
                                 <span className="text-[9px] text-zinc-400 font-semibold">
-                                  Remaining:{" "}
+                                  Pending:{" "}
                                   <strong className="text-amber-600 font-bold">
                                     {Math.max(
                                       (item.orderQuantity ||
@@ -654,11 +784,22 @@ export default function PODetailPage() {
                   {[
                     {
                       label: "Requested By",
-                      val: po.indentId?.requestedBy?.name || po.receiverMaterial?.name || po.receiverMaterial?.firstName || (typeof po.receiverMaterial === "string" ? po.receiverMaterial : "N/A")
+                      val:
+                        po.indentId?.requestedBy?.name ||
+                        po.receiverMaterial?.name ||
+                        po.receiverMaterial?.firstName ||
+                        (typeof po.receiverMaterial === "string"
+                          ? po.receiverMaterial
+                          : "N/A")
                     },
                     {
                       label: "Approved By",
-                      val: po.approvedBy?.name || po.approvedBy?.firstName || (typeof po.approvedBy === "string" ? po.approvedBy : "N/A")
+                      val:
+                        po.approvedBy?.name ||
+                        po.approvedBy?.firstName ||
+                        (typeof po.approvedBy === "string"
+                          ? po.approvedBy
+                          : "N/A")
                     },
                     {
                       label: "Approved At",

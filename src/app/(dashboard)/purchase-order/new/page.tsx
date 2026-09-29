@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  Suspense,
+  useMemo,
+  useCallback
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Dialog,
@@ -31,8 +38,19 @@ import {
   Plus,
   Calculator,
   ShieldCheck,
-  Trash2
+  Trash2,
+  Building2,
+  Search,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  ListOrdered,
+  ExternalLink
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
@@ -65,12 +83,49 @@ import { motion, AnimatePresence } from "framer-motion";
 import { indentService } from "@/service/indents.api";
 import { vendorService } from "@/service/vendorService";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
+import { projectService } from "@/service/projectService";
 
 const getLocalDateInputValue = () => {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60_000;
   return new Date(now.getTime() - offset).toISOString().split("T")[0];
 };
+
+export interface ProjectRemainingItem {
+  id: string;
+  indentDbId: string;
+  indentId: string;
+  indentDate: string;
+  requestedBy: string;
+  itemId: string;
+  itemName: string;
+  unit: string;
+  requestedQty: number;
+  orderedQty: number;
+  remainingQty: number;
+  price: number;
+  isCurrentIndent: boolean;
+}
+
+export interface ProjectPOItem {
+  id: string;
+  poDbId: string;
+  poNo: string;
+  poDate: string;
+  vendorName: string;
+  vendorMobile?: string;
+  status: string;
+  itemId: string;
+  itemName: string;
+  unit: string;
+  orderQuantity: number;
+  totalQuantity: number;
+  materialUsed: number;
+  pending: number;
+  rate: number;
+  amount: number;
+  indentId?: string;
+}
 
 function CreatePOContent() {
   const router = useRouter();
@@ -80,6 +135,8 @@ function CreatePOContent() {
   const [activeTab, setActiveTab] = useState<"remarks" | "notes" | "files">(
     "remarks"
   );
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [selectedIndentId, setSelectedIndentId] = useState<string>("");
   const [selectedVendorIds, setSelectedVendorIds] = useState<string[]>([]);
 
@@ -88,6 +145,22 @@ function CreatePOContent() {
   const [activeIndent, setActiveIndent] = useState<any | null>(null);
   const [items, setItems] = useState<any[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
+
+  // Remaining Items state
+  const [projectRemainingItems, setProjectRemainingItems] = useState<
+    ProjectRemainingItem[]
+  >([]);
+  const [isLoadingProjectItems, setIsLoadingProjectItems] = useState(false);
+  const [isRemainingItemsOpen, setIsRemainingItemsOpen] = useState(true);
+  const [remainingSearchTerm, setRemainingSearchTerm] = useState("");
+  const [remainingFilterTab, setRemainingFilterTab] = useState<
+    "same" | "all" | "current" | "other"
+  >("same");
+
+  // Already Created PO Materials state
+  const [projectPOItems, setProjectPOItems] = useState<ProjectPOItem[]>([]);
+  const [isPOItemsOpen, setIsPOItemsOpen] = useState(true);
+  const [poSearchTerm, setPoSearchTerm] = useState("");
 
   // Form inputs state
   const [dropLocation, setDropLocation] = useState("");
@@ -106,6 +179,405 @@ function CreatePOContent() {
 
   const calledRef = useRef(false);
 
+  const fetchProjectRemainingItems = async (
+    targetProjectId: string,
+    currentIndentId?: string,
+    currentIndentData?: any
+  ) => {
+    if (!targetProjectId || targetProjectId === "ALL") {
+      setProjectRemainingItems([]);
+      return;
+    }
+    setIsLoadingProjectItems(true);
+    try {
+      let projIndents: any[] = [];
+      try {
+        const indRes = await indentService.getIndents({
+          projectId: targetProjectId,
+          status: "Approved",
+          limit: 300
+        });
+        projIndents = indRes.data || indRes || [];
+      } catch (e) {
+        projIndents = indents.filter(
+          (i) => (i.projectId?._id || i.projectId) === targetProjectId
+        );
+      }
+
+      indents.forEach((ind) => {
+        const pId = ind.projectId?._id || ind.projectId;
+        if (
+          pId === targetProjectId &&
+          !projIndents.some((pi) => String(pi._id) === String(ind._id))
+        ) {
+          projIndents.push(ind);
+        }
+      });
+
+      // If currentIndentData was provided, ensure it's in projIndents with full items
+      if (currentIndentData && currentIndentId) {
+        const curIdx = projIndents.findIndex(
+          (pi) => String(pi._id) === String(currentIndentId)
+        );
+        if (curIdx >= 0) {
+          projIndents[curIdx] = {
+            ...projIndents[curIdx],
+            ...currentIndentData
+          };
+        } else {
+          projIndents.push(currentIndentData);
+        }
+      }
+
+      let projPOs: any[] = [];
+      try {
+        const poRes = await purchaseOrderService.getPurchaseOrders({
+          projectId: targetProjectId,
+          limit: 1000
+        });
+        projPOs = (poRes.data || []).filter(
+          (po: any) => po.status !== "Cancelled"
+        );
+      } catch (poErr) {
+        console.error("Failed to fetch POs for project", poErr);
+      }
+
+      if (
+        currentIndentId &&
+        !projPOs.some(
+          (po) =>
+            String(po.indentId?._id || po.indentId) === String(currentIndentId)
+        )
+      ) {
+        try {
+          const singlePoRes = await purchaseOrderService.getPurchaseOrders({
+            indentId: currentIndentId,
+            limit: 500
+          });
+          const extraPOs = (singlePoRes.data || []).filter(
+            (po: any) => po.status !== "Cancelled"
+          );
+          extraPOs.forEach((po) => {
+            if (!projPOs.some((p) => p._id === po._id)) {
+              projPOs.push(po);
+            }
+          });
+        } catch (e) {}
+      }
+
+      // Enrich projPOs with material totals (materialUsed, pending, totalCount)
+      const missingTotals = projPOs
+        .map((po, index) => ({ po, index }))
+        .filter(({ po }) => po.materialUsed == null || po.pending == null);
+
+      if (missingTotals.length > 0) {
+        let nextIndex = 0;
+        await Promise.all(
+          Array.from(
+            { length: Math.min(6, missingTotals.length) },
+            async () => {
+              while (nextIndex < missingTotals.length) {
+                const { po, index } = missingTotals[nextIndex++];
+                const id = po._id || po.id;
+                if (!id) continue;
+                try {
+                  const details =
+                    await purchaseOrderService.getPurchaseOrderById(id);
+                  projPOs[index] = {
+                    ...po,
+                    ...details,
+                    materialUsed: details.materialUsed ?? po.materialUsed,
+                    totalCount: details.totalCount ?? po.totalCount,
+                    pending: details.pending ?? po.pending
+                  };
+                } catch (e) {}
+              }
+            }
+          )
+        );
+      }
+
+      const calculatedItems: ProjectRemainingItem[] = [];
+
+      for (const ind of projIndents) {
+        let indItems = ind.items || [];
+        if (currentIndentId && String(ind._id) === String(currentIndentId)) {
+          if (
+            currentIndentData?.items &&
+            Array.isArray(currentIndentData.items) &&
+            currentIndentData.items.length > 0
+          ) {
+            indItems = currentIndentData.items;
+          } else if (
+            activeIndent?._id === currentIndentId &&
+            activeIndent?.items?.length
+          ) {
+            indItems = activeIndent.items;
+          }
+        }
+
+        const indentPOs = projPOs.filter(
+          (po) =>
+            String(po.indentId?._id || po.indentId || "") === String(ind._id)
+        );
+
+        indItems.forEach((item: any) => {
+          const itemIdStr = String(
+            item.itemId?._id ||
+              item.itemId?.id ||
+              (typeof item.itemId === "string" ? item.itemId : "") ||
+              item._id ||
+              item.id ||
+              ""
+          );
+          const itemName =
+            item.itemId?.name ||
+            item.itemId?.itemName ||
+            item.itemId?.materialName ||
+            item.name ||
+            item.itemName ||
+            item.materialName ||
+            (itemIdStr
+              ? `Material ${itemIdStr.slice(-6).toUpperCase()}`
+              : "Material Item");
+          const unit =
+            item.unitId?.name ||
+            item.unitId?.unitName ||
+            item.unitId?.label ||
+            item.unit ||
+            "Pcs";
+          const requestedQty = Number(
+            item.quantity ?? item.indentQuantity ?? item.indentQty ?? 0
+          );
+
+          const orderedQty = indentPOs.reduce((sum: number, po: any) => {
+            const matchingItems = (po.items || []).filter((pi: any) => {
+              const piId = String(
+                pi.itemId?._id || pi.itemId?.id || pi.itemId || pi._id || ""
+              );
+              if (
+                piId &&
+                itemIdStr &&
+                (piId === itemIdStr ||
+                  itemIdStr.includes(piId) ||
+                  piId.includes(itemIdStr))
+              )
+                return true;
+              const piName = (
+                pi.itemId?.name ||
+                pi.itemId?.itemName ||
+                pi.name ||
+                ""
+              )
+                .trim()
+                .toLowerCase();
+              const curName = itemName.trim().toLowerCase();
+              return Boolean(
+                piName &&
+                curName &&
+                piName === curName &&
+                !piName.startsWith("material")
+              );
+            });
+            return (
+              sum +
+              matchingItems.reduce(
+                (pSum: number, pi: any) =>
+                  pSum + (Number(pi.orderQuantity ?? pi.indentQuantity) || 0),
+                0
+              )
+            );
+          }, 0);
+
+          const remainingQty = Math.max(0, requestedQty - orderedQty);
+
+          calculatedItems.push({
+            id: `${ind._id}-${itemIdStr || Math.random()}`,
+            indentDbId: ind._id,
+            indentId: ind.indentId || ind.indentNo || "Indent",
+            indentDate: ind.createdAt || "",
+            requestedBy: ind.requestedBy?.name || "Unknown",
+            itemId: itemIdStr,
+            itemName,
+            unit,
+            requestedQty,
+            orderedQty,
+            remainingQty,
+            price: Number(
+              item.rate ??
+                item.price ??
+                item.itemId?.price ??
+                item.itemId?.rate ??
+                0
+            ),
+            isCurrentIndent: Boolean(
+              currentIndentId && String(ind._id) === String(currentIndentId)
+            )
+          });
+        });
+      }
+
+      const extractedPOItems: ProjectPOItem[] = [];
+      projPOs.forEach((po: any) => {
+        const poDbId = String(po._id || po.id || "");
+        const poNo = po.poNo || "PO";
+        const poDate = po.createdAt || "";
+        const vendorName = po.vendorName || "Unknown Vendor";
+        const vendorMobile = po.vendorMobile || "";
+        const status = po.status || "Draft";
+        const indentId =
+          po.indentId?.indentId ||
+          po.indentId?.indentNo ||
+          (typeof po.indentId === "string" ? po.indentId : "");
+
+        (po.items || []).forEach((pi: any, idx: number) => {
+          const itemIdStr = String(
+            pi.itemId?._id ||
+              pi.itemId?.id ||
+              (typeof pi.itemId === "string" ? pi.itemId : "") ||
+              pi._id ||
+              idx
+          );
+          const itemName =
+            pi.itemId?.itemName ||
+            pi.itemId?.name ||
+            pi.name ||
+            pi.itemName ||
+            (itemIdStr
+              ? `Material ${itemIdStr.slice(-6).toUpperCase()}`
+              : "Material Item");
+          const unit =
+            pi.unitId?.name || pi.unitId?.unitName || pi.unit || "Pcs";
+          const orderQuantity = Number(pi.orderQuantity ?? pi.quantity ?? 0);
+          const totalQuantity = Number(
+            pi.totalQuantity ??
+              pi.totalCount ??
+              (po.items?.length === 1 && po.totalCount != null
+                ? po.totalCount
+                : null) ??
+              (po.items?.length === 1 && po.totalQuantity != null
+                ? po.totalQuantity
+                : null) ??
+              pi.indentQuantity ??
+              orderQuantity
+          );
+
+          // Calculate Material Used: total - pending == used
+          let materialUsed = 0;
+          if (
+            po.items?.length === 1 &&
+            po.materialUsed != null &&
+            Number.isFinite(Number(po.materialUsed))
+          ) {
+            materialUsed = Number(po.materialUsed);
+          } else if (
+            pi.materialUsed != null &&
+            Number.isFinite(Number(pi.materialUsed))
+          ) {
+            materialUsed = Number(pi.materialUsed);
+          } else if (
+            pi.issuedToRequesterQuantity != null &&
+            Number.isFinite(Number(pi.issuedToRequesterQuantity))
+          ) {
+            materialUsed = Number(pi.issuedToRequesterQuantity);
+          } else if (
+            po.items?.length === 1 &&
+            po.totalCount != null &&
+            po.pending != null
+          ) {
+            materialUsed = Math.max(
+              0,
+              Number(po.totalCount) - Number(po.pending)
+            );
+          } else if (
+            po.materialUsed != null &&
+            Number.isFinite(Number(po.materialUsed))
+          ) {
+            materialUsed = Number(po.materialUsed);
+          }
+
+          // Calculate Pending: total - used == pending
+          let pending = 0;
+          if (
+            po.items?.length === 1 &&
+            po.pending != null &&
+            Number.isFinite(Number(po.pending))
+          ) {
+            pending = Number(po.pending);
+          } else if (
+            pi.pending != null &&
+            Number.isFinite(Number(pi.pending))
+          ) {
+            pending = Number(pi.pending);
+          } else {
+            pending = Math.max(0, totalQuantity - materialUsed);
+          }
+
+          // Verify user formula: total - pending == used
+          if (materialUsed === 0 && pending > 0 && pending < totalQuantity) {
+            materialUsed = totalQuantity - pending;
+          }
+          if (
+            pending === 0 &&
+            materialUsed > 0 &&
+            materialUsed < totalQuantity
+          ) {
+            pending = totalQuantity - materialUsed;
+          }
+          const rate = Number(pi.rate ?? pi.price ?? 0);
+          const amount = Number(pi.amount ?? orderQuantity * rate ?? 0);
+
+          extractedPOItems.push({
+            id: `${poDbId}-${itemIdStr}-${idx}`,
+            poDbId,
+            poNo,
+            poDate,
+            vendorName,
+            vendorMobile,
+            status,
+            itemId: itemIdStr,
+            itemName,
+            unit,
+            orderQuantity,
+            totalQuantity,
+            materialUsed,
+            pending,
+            rate,
+            amount,
+            indentId: indentId || undefined
+          });
+        });
+      });
+
+      setProjectRemainingItems(calculatedItems);
+      setProjectPOItems(extractedPOItems);
+    } catch (err) {
+      console.error("Error computing project remaining items", err);
+    } finally {
+      setIsLoadingProjectItems(false);
+    }
+  };
+
+  const handleProjectSelect = (projId: string) => {
+    setSelectedProjectId(projId);
+    if (!projId || projId === "ALL") {
+      setProjectRemainingItems([]);
+      setProjectPOItems([]);
+      return;
+    }
+
+    if (selectedIndentId && activeIndent) {
+      const currentProjId =
+        activeIndent.projectId?._id || activeIndent.projectId;
+      if (currentProjId !== projId) {
+        setSelectedIndentId("");
+        setActiveIndent(null);
+        setItems([]);
+      }
+    }
+    fetchProjectRemainingItems(projId, selectedIndentId, activeIndent);
+  };
+
   const handleIndentSelect = async (val: string) => {
     setSelectedIndentId(val);
     setSelectedVendorIds([]);
@@ -113,9 +585,25 @@ function CreatePOContent() {
     setItems([]);
 
     try {
-      const fullIndent = await indentService.getIndentById(val);
+      const res = await indentService.getIndentById(val);
+      let fullIndent =
+        (res as any)?.data?.indent ||
+        (res as any)?.indent ||
+        (res as any)?.data ||
+        res;
+      if (!fullIndent || !Array.isArray(fullIndent.items)) {
+        const found = indents.find((i: any) => String(i._id) === String(val));
+        if (found) {
+          fullIndent = { ...found, ...(fullIndent || {}) };
+        }
+      }
       setActiveIndent(fullIndent);
-      
+
+      const projId = fullIndent?.projectId?._id || fullIndent?.projectId || "";
+      if (projId) {
+        setSelectedProjectId(projId);
+      }
+
       if (fullIndent?.storageLocation) {
         setDropLocation(fullIndent.storageLocation);
       } else if (fullIndent?.projectId?.address) {
@@ -126,20 +614,127 @@ function CreatePOContent() {
         setDropLocation("");
       }
 
-      if (fullIndent && Array.isArray(fullIndent.items)) {
-        setItems(
-          fullIndent.items.map((item: any) => ({
-            itemId: item.itemId?._id || item.itemId || "",
-            name: item.itemId?.name || item.itemId?.itemName || "Unknown Item",
-            qty: item.quantity,
-            unitId: item.unitId?._id || item.unitId || "",
-            unit: item.unitId?.name || item.unitId?.unitName || "Pcs",
-            price: item.itemId?.price || item.itemId?.rate || "",
-            originalPrice: item.itemId?.price || item.itemId?.rate || "",
-            description: "",
-            assignedVendorId: ""
-          }))
+      // Fetch active POs for this indent to compute already ordered quantities
+      let indentPOs: any[] = [];
+      try {
+        const poRes = await purchaseOrderService.getPurchaseOrders({
+          indentId: val,
+          limit: 1000
+        });
+        indentPOs = (poRes.data || []).filter(
+          (po: any) => po.status !== "Cancelled"
         );
+      } catch (err) {
+        console.error("Failed to fetch existing POs for indent", err);
+      }
+
+      const indentItems = Array.isArray(fullIndent?.items)
+        ? fullIndent.items
+        : [];
+      if (indentItems.length > 0) {
+        setItems(
+          indentItems.map((item: any) => {
+            const itemIdStr = String(
+              item.itemId?._id ||
+                item.itemId?.id ||
+                (typeof item.itemId === "string" ? item.itemId : "") ||
+                item._id ||
+                item.id ||
+                ""
+            );
+            const itemName =
+              item.itemId?.name ||
+              item.itemId?.itemName ||
+              item.itemId?.materialName ||
+              item.name ||
+              item.itemName ||
+              item.materialName ||
+              (itemIdStr
+                ? `Material ${itemIdStr.slice(-6).toUpperCase()}`
+                : "Material Item");
+            const indentQty = Number(
+              item.quantity ?? item.indentQuantity ?? item.indentQty ?? 0
+            );
+
+            const orderedQty = indentPOs.reduce((sum: number, po: any) => {
+              const matchingItems = (po.items || []).filter((pi: any) => {
+                const piId = String(
+                  pi.itemId?._id || pi.itemId?.id || pi.itemId || pi._id || ""
+                );
+                if (
+                  piId &&
+                  itemIdStr &&
+                  (piId === itemIdStr ||
+                    itemIdStr.includes(piId) ||
+                    piId.includes(itemIdStr))
+                )
+                  return true;
+                const piName = (
+                  pi.itemId?.name ||
+                  pi.itemId?.itemName ||
+                  pi.name ||
+                  ""
+                )
+                  .trim()
+                  .toLowerCase();
+                const curName = itemName.trim().toLowerCase();
+                return Boolean(
+                  piName &&
+                  curName &&
+                  piName === curName &&
+                  !piName.startsWith("material")
+                );
+              });
+              return (
+                sum +
+                matchingItems.reduce(
+                  (pSum: number, pi: any) =>
+                    pSum + (Number(pi.orderQuantity ?? pi.indentQuantity) || 0),
+                  0
+                )
+              );
+            }, 0);
+
+            const remainingQty = Math.max(0, indentQty - orderedQty);
+
+            return {
+              itemId: itemIdStr,
+              name: itemName,
+              indentQty,
+              orderedQty,
+              remainingQty,
+              qty: remainingQty > 0 ? remainingQty : 0,
+              unitId:
+                item.unitId?._id ||
+                item.unitId?.id ||
+                (typeof item.unitId === "string" ? item.unitId : ""),
+              unit:
+                item.unitId?.name ||
+                item.unitId?.unitName ||
+                item.unitId?.label ||
+                item.unit ||
+                "Pcs",
+              price:
+                item.rate ??
+                item.price ??
+                item.itemId?.price ??
+                item.itemId?.rate ??
+                "",
+              originalPrice:
+                item.rate ??
+                item.price ??
+                item.itemId?.price ??
+                item.itemId?.rate ??
+                "",
+              description: item.description || "",
+              assignedVendorId: ""
+            };
+          })
+        );
+      }
+
+      if (projId) {
+        fetchProjectRemainingItems(projId, val, fullIndent);
       }
     } catch (err) {
       toast.error("Failed to fetch indent details");
@@ -161,6 +756,15 @@ function CreatePOContent() {
 
         const vendorsRes = await vendorService.getVendors({ limit: 1000 });
         setVendors(vendorsRes.vendors || vendorsRes || []);
+
+        try {
+          const projectsRes = await projectService.getProjects({ limit: 1000 });
+          const loadedProjects =
+            projectsRes.projects || (projectsRes as any).data || [];
+          setProjects(loadedProjects);
+        } catch (e) {
+          console.error("Failed to load projects", e);
+        }
 
         if (urlIndentId) {
           const found = loadedIndents.find((i: any) => i._id === urlIndentId);
@@ -231,14 +835,131 @@ function CreatePOContent() {
       {
         itemId: `custom-${Date.now()}`,
         name: "New Item",
+        indentQty: 1,
+        orderedQty: 0,
+        remainingQty: 1,
         qty: 1,
         unitId: "",
         unit: "Pcs",
         price: 0,
+        originalPrice: 0,
         description: "",
         assignedVendorId: selectedVendorIds[0] || ""
       }
     ]);
+  };
+
+  const handleAddItemBack = (remItem: ProjectRemainingItem) => {
+    const isAlready = items.some((i) => {
+      const iId = String(i.itemId || i._id || "").trim();
+      const remId = String(remItem.itemId || remItem.id || "").trim();
+      if (
+        iId &&
+        remId &&
+        (iId === remId || remId.includes(iId) || iId.includes(remId))
+      ) {
+        return true;
+      }
+      const iName = (i.name || "").trim().toLowerCase();
+      const remName = (remItem.itemName || "").trim().toLowerCase();
+      return Boolean(
+        iName &&
+        remName &&
+        iName === remName &&
+        !iName.startsWith("material") &&
+        iName !== "unknown item"
+      );
+    });
+
+    if (isAlready) {
+      toast.info(`"${remItem.itemName}" is already in the order list`);
+      return;
+    }
+    setItems((prev) => [
+      ...prev,
+      {
+        itemId: remItem.itemId,
+        name: remItem.itemName,
+        indentQty: remItem.requestedQty,
+        orderedQty: remItem.orderedQty,
+        remainingQty: remItem.remainingQty,
+        qty: remItem.remainingQty > 0 ? remItem.remainingQty : 1,
+        unitId: "",
+        unit: remItem.unit,
+        price: remItem.price || 0,
+        originalPrice: remItem.price || 0,
+        description: "",
+        assignedVendorId: selectedVendorIds[0] || ""
+      }
+    ]);
+    toast.success(`Added "${remItem.itemName}" to order list`);
+  };
+
+  const handleAddAllToPO = (itemsToAdd?: ProjectRemainingItem[]) => {
+    const targets =
+      itemsToAdd || projectRemainingItems.filter((i) => i.remainingQty > 0);
+    let addedCount = 0;
+    setItems((prev) => {
+      const updated = [...prev];
+      targets.forEach((remItem) => {
+        const exists = updated.some((i) => {
+          const iId = String(i.itemId || i._id || "").trim();
+          const remId = String(remItem.itemId || remItem.id || "").trim();
+          if (
+            iId &&
+            remId &&
+            (iId === remId || remId.includes(iId) || iId.includes(remId))
+          ) {
+            return true;
+          }
+          const iName = (i.name || "").trim().toLowerCase();
+          const remName = (remItem.itemName || "").trim().toLowerCase();
+          return Boolean(
+            iName &&
+            remName &&
+            iName === remName &&
+            !iName.startsWith("material") &&
+            iName !== "unknown item"
+          );
+        });
+        if (!exists) {
+          updated.push({
+            itemId: remItem.itemId,
+            name: remItem.itemName,
+            indentQty: remItem.requestedQty,
+            orderedQty: remItem.orderedQty,
+            remainingQty: remItem.remainingQty,
+            qty: remItem.remainingQty > 0 ? remItem.remainingQty : 1,
+            unitId: "",
+            unit: remItem.unit,
+            price: remItem.price || 0,
+            originalPrice: remItem.price || 0,
+            description: "",
+            assignedVendorId: selectedVendorIds[0] || ""
+          });
+          addedCount++;
+        }
+      });
+      return updated;
+    });
+    if (addedCount > 0) {
+      toast.success(`Added ${addedCount} item(s) to order list`);
+    } else {
+      toast.info("All items are already in the order list");
+    }
+  };
+
+  const handleRemoveFullyOrdered = () => {
+    const remainingOnly = items.filter(
+      (i) => (Number(i.remainingQty) || 0) > 0
+    );
+    const countRemoved = items.length - remainingOnly.length;
+    if (countRemoved > 0) {
+      setItems(remainingOnly);
+      toast.success(`Removed ${countRemoved} fully ordered item(s)`);
+    } else {
+      toast.info("No fully ordered items to remove");
+    }
   };
 
   const handleRemoveItem = (idx: number) => {
@@ -249,8 +970,15 @@ function CreatePOContent() {
     selectedVendorIds.includes(v._id || v.id)
   );
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.qty * (item.price || 0),
+  const isItemPoCreated = (item: any) =>
+    (Number(item.remainingQty) || 0) <= 0 ||
+    (Number(item.orderedQty) > 0 &&
+      Number(item.orderedQty) >= Number(item.indentQty));
+
+  const activeOrderItems = items.filter((item) => !isItemPoCreated(item));
+
+  const subtotal = activeOrderItems.reduce(
+    (sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0),
     0
   );
   const taxableAmount =
@@ -266,19 +994,34 @@ function CreatePOContent() {
       return;
     }
 
-    const unassignedItems = items.filter((item) => !item.assignedVendorId);
+    if (activeOrderItems.length === 0) {
+      toast.error(
+        "All items from this indent have already had their PO created."
+      );
+      return;
+    }
+
+    const unassignedItems = activeOrderItems.filter(
+      (item) => !item.assignedVendorId
+    );
     if (unassignedItems.length > 0) {
       toast.error("Please assign a vendor to all requested items");
       return;
     }
 
-    if (items.some((item) => (Number(item.qty) || 0) <= 0)) {
-      toast.error("All items must have a quantity greater than 0");
+    if (activeOrderItems.some((item) => (Number(item.qty) || 0) <= 0)) {
+      toast.error(
+        "All items being ordered must have a quantity greater than 0"
+      );
       return;
     }
 
     const today = getLocalDateInputValue();
-    if ([validFrom, validTo, expectedDeliveryDate].some((value) => value && value < today)) {
+    if (
+      [validFrom, validTo, expectedDeliveryDate].some(
+        (value) => value && value < today
+      )
+    ) {
       toast.error("Validity and delivery dates cannot be in the past");
       return;
     }
@@ -288,10 +1031,11 @@ function CreatePOContent() {
       return;
     }
 
-    const hasPriceChange = items.some((item) => 
-      item.originalPrice !== undefined && 
-      Number(item.price) !== Number(item.originalPrice) && 
-      Number(item.price) > 0
+    const hasPriceChange = activeOrderItems.some(
+      (item) =>
+        item.originalPrice !== undefined &&
+        Number(item.price) !== Number(item.originalPrice) &&
+        Number(item.price) > 0
     );
 
     if (hasPriceChange && !showPriceConfirm) {
@@ -305,7 +1049,7 @@ function CreatePOContent() {
   const submitPO = async () => {
     try {
       const groupedItems: Record<string, any[]> = {};
-      items.forEach((item) => {
+      activeOrderItems.forEach((item) => {
         if (!groupedItems[item.assignedVendorId])
           groupedItems[item.assignedVendorId] = [];
         groupedItems[item.assignedVendorId].push(item);
@@ -325,7 +1069,7 @@ function CreatePOContent() {
           items: groupedItems[vendorId].map((item) => ({
             itemId: item.itemId.startsWith("custom-") ? null : item.itemId,
             unitId: item.unitId || null,
-            indentQuantity: item.qty,
+            indentQuantity: item.indentQty ?? item.qty,
             orderQuantity: item.qty,
             rate: item.price,
             description: item.description || ""
@@ -341,13 +1085,180 @@ function CreatePOContent() {
           otherCharges: Number(otherCharges) || 0,
           gst: Number(gst) || 0
         });
-
       }
 
       toast.success("Purchase Order(s) created successfully");
       router.push("/purchase-order");
     } catch (err) {}
   };
+
+  const currentProjectName = useMemo(() => {
+    if (activeIndent?.projectId) {
+      return (
+        activeIndent.projectId.projectName ||
+        activeIndent.projectId.name ||
+        "Project"
+      );
+    }
+    if (selectedProjectId) {
+      const found = projects.find((p) => (p._id || p.id) === selectedProjectId);
+      if (found) return found.projectName || found.name;
+    }
+    return "Selected Project";
+  }, [activeIndent, selectedProjectId, projects]);
+
+  const filteredIndents = useMemo(() => {
+    return indents;
+  }, [indents]);
+
+  const projectRemainingOnly = useMemo(() => {
+    return projectRemainingItems.filter((item) => item.remainingQty > 0);
+  }, [projectRemainingItems]);
+
+  const currentIndentRemainingItems = useMemo(() => {
+    return projectRemainingItems.filter(
+      (item) => item.isCurrentIndent && item.remainingQty > 0
+    );
+  }, [projectRemainingItems]);
+
+  const otherIndentsRemainingItems = useMemo(() => {
+    return projectRemainingItems.filter(
+      (item) => !item.isCurrentIndent && item.remainingQty > 0
+    );
+  }, [projectRemainingItems]);
+
+  const currentItemKeys = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach((i) => {
+      if (i.itemId) set.add(String(i.itemId).trim().toLowerCase());
+      if (i.name) set.add(String(i.name).trim().toLowerCase());
+    });
+    if (activeIndent?.items) {
+      activeIndent.items.forEach((entry: any) => {
+        const id = String(
+          entry.itemId?._id ||
+            entry.itemId?.id ||
+            entry.itemId ||
+            entry._id ||
+            ""
+        )
+          .trim()
+          .toLowerCase();
+        if (id) set.add(id);
+        const name = String(
+          entry.itemId?.name || entry.itemId?.itemName || entry.name || ""
+        )
+          .trim()
+          .toLowerCase();
+        if (name) set.add(name);
+      });
+    }
+    return set;
+  }, [items, activeIndent]);
+
+  const isSameMaterial = useCallback(
+    (remItem: ProjectRemainingItem) => {
+      if (currentItemKeys.size === 0) return true;
+      const remId = String(remItem.itemId || "")
+        .trim()
+        .toLowerCase();
+      const remName = String(remItem.itemName || "")
+        .trim()
+        .toLowerCase();
+      if (remId && currentItemKeys.has(remId)) return true;
+      if (
+        remName &&
+        currentItemKeys.has(remName) &&
+        !remName.startsWith("material") &&
+        remName !== "unknown item"
+      )
+        return true;
+      return false;
+    },
+    [currentItemKeys]
+  );
+
+  const sameMaterialRemainingItems = useMemo(() => {
+    return projectRemainingItems.filter(
+      (item) => isSameMaterial(item) && item.remainingQty > 0
+    );
+  }, [projectRemainingItems, isSameMaterial]);
+
+  const displayedRemainingItems = useMemo(() => {
+    let list = projectRemainingItems;
+    if (remainingFilterTab === "same") {
+      list = list.filter((i) => isSameMaterial(i));
+    } else if (remainingFilterTab === "current") {
+      list = list.filter((i) => i.isCurrentIndent);
+    } else if (remainingFilterTab === "other") {
+      list = list.filter((i) => !i.isCurrentIndent);
+    }
+
+    if (remainingSearchTerm.trim()) {
+      const term = remainingSearchTerm.toLowerCase();
+      list = list.filter(
+        (i) =>
+          i.itemName.toLowerCase().includes(term) ||
+          i.indentId.toLowerCase().includes(term)
+      );
+    }
+    return list;
+  }, [
+    projectRemainingItems,
+    remainingFilterTab,
+    remainingSearchTerm,
+    isSameMaterial
+  ]);
+
+  const indentsWithRemainingCount = useMemo(() => {
+    const setOfIndents = new Set(projectRemainingOnly.map((i) => i.indentDbId));
+    return setOfIndents.size;
+  }, [projectRemainingOnly]);
+
+  const fullyOrderedCount = useMemo(() => {
+    return items.filter((i) => (Number(i.remainingQty) || 0) <= 0).length;
+  }, [items]);
+
+  const isSameMaterialPOItem = useCallback(
+    (poItem: ProjectPOItem) => {
+      if (currentItemKeys.size === 0) return true;
+      const pId = String(poItem.itemId || "")
+        .trim()
+        .toLowerCase();
+      const pName = String(poItem.itemName || "")
+        .trim()
+        .toLowerCase();
+      if (pId && currentItemKeys.has(pId)) return true;
+      if (
+        pName &&
+        currentItemKeys.has(pName) &&
+        !pName.startsWith("material") &&
+        pName !== "unknown item"
+      )
+        return true;
+      return false;
+    },
+    [currentItemKeys]
+  );
+
+  const sameMaterialPOItems = useMemo(() => {
+    return projectPOItems.filter((item) => isSameMaterialPOItem(item));
+  }, [projectPOItems, isSameMaterialPOItem]);
+
+  const displayedPOItems = useMemo(() => {
+    let list = sameMaterialPOItems;
+    if (poSearchTerm.trim()) {
+      const term = poSearchTerm.toLowerCase();
+      list = list.filter(
+        (i) =>
+          i.itemName.toLowerCase().includes(term) ||
+          i.poNo.toLowerCase().includes(term) ||
+          i.vendorName.toLowerCase().includes(term) ||
+          (i.indentId && i.indentId.toLowerCase().includes(term))
+      );
+    }
+    return list;
+  }, [sameMaterialPOItems, poSearchTerm]);
 
   if (isDataLoading) {
     return (
@@ -367,20 +1278,36 @@ function CreatePOContent() {
       <Dialog open={showPriceConfirm} onOpenChange={setShowPriceConfirm}>
         <DialogContent className="max-w-md rounded-2xl bg-white border-none shadow-2xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black text-zinc-900">Confirm Price Update</DialogTitle>
+            <DialogTitle className="text-xl font-black text-zinc-900">
+              Confirm Price Update
+            </DialogTitle>
             <DialogDescription className="text-zinc-500 font-medium">
-              You have modified the unit price of one or more items. 
-              <br /><br />
-              <strong className="text-rose-600">Are you sure you want to update the price?</strong> 
+              You have modified the unit price of one or more items.
               <br />
-              The current item price in the database will be overwritten with the new price.
+              <br />
+              <strong className="text-rose-600">
+                Are you sure you want to update the price?
+              </strong>
+              <br />
+              The current item price in the database will be overwritten with
+              the new price.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex items-center gap-3">
-            <Button variant="outline" onClick={() => setShowPriceConfirm(false)} className="rounded-xl font-bold flex-1">
+            <Button
+              variant="outline"
+              onClick={() => setShowPriceConfirm(false)}
+              className="rounded-xl font-bold flex-1"
+            >
               Cancel
             </Button>
-            <Button onClick={() => { setShowPriceConfirm(false); submitPO(); }} className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90">
+            <Button
+              onClick={() => {
+                setShowPriceConfirm(false);
+                submitPO();
+              }}
+              className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90"
+            >
               Confirm & Generate
             </Button>
           </DialogFooter>
@@ -429,18 +1356,35 @@ function CreatePOContent() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                    Indent
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                      Indent
+                    </Label>
+                    {activeIndent?.projectId && (
+                      <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-100 flex items-center gap-1">
+                        <Building className="h-3 w-3" />
+                        Project:{" "}
+                        {activeIndent.projectId?.projectName ||
+                          activeIndent.projectId?.name ||
+                          "N/A"}
+                      </span>
+                    )}
+                  </div>
                   <Select
                     value={selectedIndentId}
                     onValueChange={handleIndentSelect}
                   >
                     <SelectTrigger className="h-16 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary focus:bg-white transition-all shadow-sm">
-                      <SelectValue placeholder="Select Indent" />
+                      <SelectValue
+                        placeholder={
+                          filteredIndents.length === 0
+                            ? "No Indents available"
+                            : "Select Indent"
+                        }
+                      />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl p-1">
-                      {indents.map((ind) => (
+                    <SelectContent className="rounded-2xl p-1 max-h-64">
+                      {filteredIndents.map((ind) => (
                         <SelectItem
                           key={ind._id}
                           value={ind._id}
@@ -508,7 +1452,10 @@ function CreatePOContent() {
                           {vendors.map((vendor) => {
                             const vId = vendor._id || vendor.id;
                             const isSelected = selectedVendorIds.includes(vId);
-                            const vendorDisplayName = vendor.name || vendor.companyName || "Unnamed Vendor";
+                            const vendorDisplayName =
+                              vendor.name ||
+                              vendor.companyName ||
+                              "Unnamed Vendor";
                             return (
                               <CommandItem
                                 key={vId}
@@ -529,10 +1476,15 @@ function CreatePOContent() {
                                   )}
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="text-sm">{vendorDisplayName}</span>
-                                  {vendor.companyName && vendor.companyName !== vendor.name && (
-                                    <span className="text-[10px] text-zinc-400 font-normal">{vendor.companyName}</span>
-                                  )}
+                                  <span className="text-sm">
+                                    {vendorDisplayName}
+                                  </span>
+                                  {vendor.companyName &&
+                                    vendor.companyName !== vendor.name && (
+                                      <span className="text-[10px] text-zinc-400 font-normal">
+                                        {vendor.companyName}
+                                      </span>
+                                    )}
                                 </div>
                               </CommandItem>
                             );
@@ -545,6 +1497,224 @@ function CreatePOContent() {
               </div>
             </div>
 
+            {/* Already Created PO Materials Panel */}
+            {(selectedProjectId || activeIndent) && (
+              <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-5 relative overflow-hidden transition-all">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-11 w-11 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-200/70 shadow-sm">
+                      <Box className="h-5 w-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <h3 className="text-base font-black text-zinc-900 tracking-tight">
+                        Already Created PO Materials
+                      </h3>
+                      <p className="text-xs font-semibold text-zinc-400">
+                        Previously created purchase orders for this material
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        fetchProjectRemainingItems(
+                          selectedProjectId ||
+                            activeIndent?.projectId?._id ||
+                            activeIndent?.projectId,
+                          selectedIndentId,
+                          activeIndent
+                        )
+                      }
+                      className="h-9 w-9 rounded-xl border-zinc-200 hover:bg-zinc-50"
+                      title="Refresh created PO materials"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "h-4 w-4 text-zinc-600",
+                          isLoadingProjectItems && "animate-spin"
+                        )}
+                      />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsPOItemsOpen(!isPOItemsOpen)}
+                      className="h-9 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 px-3 gap-1"
+                    >
+                      {isPOItemsOpen ? (
+                        <>
+                          Hide <ChevronUp className="h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          Show <ChevronDown className="h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {isPOItemsOpen && (
+                  <div className="space-y-4 pt-1">
+                    {/* Search */}
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                      <Input
+                        placeholder="Filter by material name, PO ID, or vendor..."
+                        value={poSearchTerm}
+                        onChange={(e) => setPoSearchTerm(e.target.value)}
+                        className="h-10 pl-9 rounded-xl bg-zinc-50/70 border-zinc-200 text-xs font-bold placeholder:text-zinc-400 focus:bg-white"
+                      />
+                    </div>
+
+                    {/* Content State */}
+                    {isLoadingProjectItems ? (
+                      <div className="flex flex-col items-center justify-center p-8 gap-2 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/30">
+                        <Loader2 className="h-6 w-6 text-teal-600 animate-spin" />
+                        <span className="text-xs font-bold text-zinc-500">
+                          Loading created purchase orders & materials...
+                        </span>
+                      </div>
+                    ) : displayedPOItems.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-8 gap-2 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/40 text-center">
+                        <Box className="h-8 w-8 text-zinc-400" />
+                        <span className="text-xs font-black text-zinc-700">
+                          No previous POs created for this material yet!
+                        </span>
+                        <span className="text-[11px] font-semibold text-zinc-500">
+                          No prior purchase orders contain this material. Once
+                          ordered, previous PO items will be listed here.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-zinc-200/80 shadow-sm overflow-hidden bg-white">
+                        <div className="overflow-x-auto max-h-[340px] custom-scrollbar">
+                          <table className="w-full text-left border-collapse min-w-[750px]">
+                            <thead className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200">
+                              <tr>
+                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
+                                  Material Name & ID
+                                </th>
+                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
+                                  PO Number & Date
+                                </th>
+                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
+                                  Vendor
+                                </th>
+                                
+                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
+                                  Pending
+                                </th>
+                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
+                                  Total Quantity
+                                </th>
+                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
+                                  Status
+                                </th>
+                                
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100">
+                              {displayedPOItems.map((poItem) => (
+                                <tr
+                                  key={poItem.id}
+                                  className="hover:bg-zinc-50/70 transition-colors text-xs"
+                                >
+                                  <td className="px-4 py-3 align-middle font-bold text-zinc-900">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-7 w-7 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-500 shrink-0">
+                                        <Box className="h-3.5 w-3.5" />
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span>{poItem.itemName}</span>
+                                        <span className="text-[9px] font-semibold text-zinc-400">
+                                          ID:{" "}
+                                          {poItem.itemId
+                                            ? String(poItem.itemId)
+                                                .slice(-6)
+                                                .toUpperCase()
+                                            : "N/A"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 align-middle">
+                                    <div className="flex flex-col">
+                                      <span className="font-black text-zinc-800 text-xs font-mono">
+                                        {poItem.poNo || "N/A"}
+                                      </span>
+                                      <span className="text-[10px] text-zinc-400">
+                                        {poItem.poDate
+                                          ? new Date(
+                                              poItem.poDate
+                                            ).toLocaleDateString("en-IN", {
+                                              day: "numeric",
+                                              month: "short",
+                                              year: "numeric"
+                                            })
+                                          : "—"}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 align-middle">
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-zinc-800 text-xs">
+                                        {poItem.vendorName || "—"}
+                                      </span>
+                                      {poItem.vendorMobile && (
+                                        <span className="text-[10px] text-zinc-400">
+                                          {poItem.vendorMobile}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  
+                                  <td className="px-3 py-3 align-middle text-center">
+                                    <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 text-xs">
+                                      {poItem.pending} {poItem.unit}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-3 align-middle text-center">
+                                    <span className="font-bold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200 text-xs">
+                                      {poItem.totalQuantity} {poItem.unit}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-3 align-middle text-center">
+                                    <span
+                                      className={cn(
+                                        "px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase",
+                                        poItem.status?.toLowerCase() ===
+                                          "approved" ||
+                                          poItem.status?.toLowerCase() ===
+                                            "completed"
+                                          ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                          : poItem.status?.toLowerCase() ===
+                                              "sent"
+                                            ? "text-blue-700 bg-blue-50 border-blue-200"
+                                            : "text-zinc-600 bg-zinc-100 border-zinc-200"
+                                      )}
+                                    >
+                                      {poItem.status || "Draft"}
+                                    </span>
+                                  </td>
+                                 
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <AnimatePresence>
               {selectedIndentId && activeIndent && (
                 <motion.div
@@ -554,171 +1724,309 @@ function CreatePOContent() {
                 >
                   {/* Order Items Block */}
                   <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex flex-col">
                         <h3 className="text-lg font-black text-zinc-900 leading-tight">
                           Requested Items
                         </h3>
                         <p className="text-xs font-bold text-zinc-400">
-                          Materials requested to purchase
+                          Materials to purchase in this Purchase Order
                         </p>
                       </div>
-                      <Badge className="bg-[#EAF6F5] text-[#0A5C53] border-none rounded-full px-4 py-1.5 font-black text-xs">
-                        {items.length} {items.length === 1 ? "Item" : "Items"}
-                      </Badge>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-[#EAF6F5] text-[#0A5C53] border-none rounded-full px-4 py-1.5 font-black text-xs">
+                          {items.length} {items.length === 1 ? "Item" : "Items"}
+                        </Badge>
+                        {fullyOrderedCount > 0 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRemoveFullyOrdered}
+                            className="h-8 rounded-xl text-xs font-bold border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 gap-1.5"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Remove Fully
+                            Ordered ({fullyOrderedCount})
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddAnotherItem}
+                          className="h-8 rounded-xl text-xs font-bold border-zinc-200 hover:bg-zinc-50 gap-1.5"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add Custom Item
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="rounded-lg border border-zinc-200 shadow-sm overflow-x-auto">
-                      <table className="w-full text-left border-collapse min-w-[900px]">
+                      <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className="bg-zinc-50 border-b border-zinc-200">
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider min-w-[220px]">
+                            <th className="px-3 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider w-[220px]">
                               Item Information
                             </th>
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[130px] min-w-[120px]">
-                              Quantity
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[110px]">
+                              PO Order Qty
                             </th>
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[160px] min-w-[150px]">
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[110px]">
                               Unit Price (₹)
                             </th>
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center min-w-[240px]">
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-left min-w-[160px]">
                               Assign Vendor
                             </th>
-                            <th className="px-4 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-right w-[150px] min-w-[130px]">
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-right w-[110px]">
                               Total Amount
+                            </th>
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[44px]">
+                              Action
                             </th>
                           </tr>
                         </thead>
-                        {items.map((item, idx) => (
-                          <tbody key={idx} className="bg-white border-b border-zinc-200 last:border-b-0 group">
-                            <tr
-                              className="hover:bg-zinc-50/50 transition-colors"
+                        {items.map((item, idx) => {
+                          const isPoCreated = isItemPoCreated(item);
+                          return (
+                            <tbody
+                              key={idx}
+                              className="bg-white border-b border-zinc-200 last:border-b-0 group"
                             >
-                              {/* 1. Item Info */}
-                              <td className="px-4 py-3 align-middle min-w-[220px]">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-8 w-8 rounded-md bg-zinc-100 flex items-center justify-center text-zinc-600 border border-zinc-200 shrink-0">
-                                    <Box className="h-4 w-4" />
-                                  </div>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-semibold text-zinc-900 truncate">
-                                      {item.name}
-                                    </span>
-                                    <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mt-0.5">
-                                      ID: {item.itemId.slice(-6).toUpperCase()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* 3. Quantity */}
-                              <td className="px-4 py-3 align-middle text-center w-[130px] min-w-[120px]">
-                                <div className="relative flex items-center justify-center w-full min-w-[100px]">
-                                  <Input
-                                    type="number"
-                                    min="0.001"
-                                    step="any"
-                                    value={item.qty === 0 ? "" : item.qty}
-                                    onWheel={(e) => e.currentTarget.blur()}
-                                    onChange={(e) =>
-                                      handleQtyChange(
-                                        idx,
-                                        e.target.value === ""
-                                          ? 0
-                                          : Number(e.target.value)
-                                      )
-                                    }
-                                    className="h-10 w-full min-w-[100px] rounded-xl bg-white border-zinc-200 text-xs font-bold text-center pl-3 pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
-                                  />
-                                  <span className="absolute right-3 text-[10px] font-bold text-zinc-500 pointer-events-none">
-                                    {item.unit}
-                                  </span>
-                                </div>
-                              </td>
-
-                              {/* 4. Unit Price */}
-                              <td className="px-4 py-3 align-middle text-center w-[160px] min-w-[150px]">
-                                <div className="relative flex items-center justify-center w-full min-w-[140px]">
-                                  <div className="absolute left-3 text-xs font-bold text-zinc-500 pointer-events-none">
-                                    ₹
-                                  </div>
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    value={item.price === 0 ? "" : (item.price ?? "")}
-                                    placeholder="0.00"
-                                    onWheel={(e) => e.currentTarget.blur()}
-                                    onChange={(e) =>
-                                      handlePriceChange(
-                                        idx,
-                                        e.target.value === "" ? 0 : Number(e.target.value)
-                                      )
-                                    }
-                                    className="h-10 w-full min-w-[140px] rounded-xl bg-white border-zinc-200 text-xs font-bold text-left pl-7 pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
-                                  />
-                                </div>
-                              </td>
-
-                              {/* 5. Vendor */}
-                              <td className="px-4 py-3 align-middle text-center min-w-[240px]">
-                                <Select
-                                  value={item.assignedVendorId || ""}
-                                  onValueChange={(val) =>
-                                    handleVendorAssignmentChange(idx, val)
-                                  }
-                                >
-                                  <SelectTrigger className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-semibold focus:ring-2 focus:ring-[#0A5C53]/20 focus:border-[#0A5C53] transition-all shadow-sm">
-                                    <SelectValue placeholder="Select Vendor" />
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-lg border border-zinc-200 max-h-56">
-                                    {(activeVendors.length > 0 ? activeVendors : vendors).length > 0 ? (
-                                      (activeVendors.length > 0 ? activeVendors : vendors).map((vendor) => (
-                                        <SelectItem
-                                          key={vendor._id || vendor.id}
-                                          value={vendor._id || vendor.id}
-                                          className="text-xs font-semibold cursor-pointer py-2"
+                              <tr
+                                className={cn(
+                                  "transition-colors",
+                                  isPoCreated
+                                    ? "bg-zinc-50/70 opacity-60"
+                                    : "hover:bg-zinc-50/50"
+                                )}
+                              >
+                                {/* 1. Item Info */}
+                                <td className="px-3 py-3 align-middle w-[220px]">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-md bg-zinc-100 flex items-center justify-center text-zinc-600 border border-zinc-200 shrink-0">
+                                      <Box className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            "text-sm font-semibold truncate",
+                                            isPoCreated &&
+                                              "line-through text-zinc-400"
+                                          )}
                                         >
-                                          {vendor.name || vendor.companyName || "Vendor"}
-                                        </SelectItem>
-                                      ))
-                                    ) : (
-                                      <div className="p-3 text-xs text-zinc-500 text-center font-semibold">
-                                        No vendors found
+                                          {item.name}
+                                        </span>
+                                        {isPoCreated && (
+                                          <Badge className="bg-zinc-200 hover:bg-zinc-200 text-zinc-600 border-none text-[8px] font-black uppercase px-1.5 py-0 rounded tracking-wider">
+                                            PO Created
+                                          </Badge>
+                                        )}
                                       </div>
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </td>
-
-                              {/* 6. Total Amount */}
-                              <td className="px-4 py-3 align-middle text-right w-[150px] min-w-[130px]">
-                                <div className="flex items-center justify-end gap-3">
-                                  <div className="flex flex-col items-end">
-                                    <span className="text-sm font-black text-zinc-900 whitespace-nowrap">
-                                      ₹
-                                      {(
-                                        item.qty * (item.price || 0)
-                                      ).toLocaleString("en-IN")}
-                                    </span>
+                                      <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest mt-0.5">
+                                        ID:{" "}
+                                        {String(item.itemId || "")
+                                          .slice(-6)
+                                          .toUpperCase() || "N/A"}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                            </tr>
-                            <tr className="hover:bg-zinc-50/50 transition-colors">
-                              <td colSpan={5} className="px-4 pb-4 pt-1">
-                                <Input
-                                  placeholder="Add details, specifications, or notes for this item..."
-                                  value={item.description || ""}
-                                  onChange={(e) =>
-                                    handleDescriptionChange(idx, e.target.value)
-                                  }
-                                  className="h-10 rounded-xl bg-zinc-50/50 border-zinc-200 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
-                                />
-                              </td>
-                            </tr>
-                          </tbody>
-                        ))}
+                                </td>
+
+                                {/* 5. PO Order Quantity Input */}
+                                <td className="px-2 py-3 align-middle text-center w-[110px]">
+                                  <div className="flex flex-col items-center justify-center">
+                                    <div className="relative flex items-center justify-center w-full min-w-[100px]">
+                                      <Input
+                                        type="number"
+                                        min="0.001"
+                                        step="any"
+                                        disabled={isPoCreated}
+                                        value={
+                                          isPoCreated
+                                            ? 0
+                                            : item.qty === 0
+                                              ? ""
+                                              : item.qty
+                                        }
+                                        onWheel={(e) => e.currentTarget.blur()}
+                                        onChange={(e) =>
+                                          handleQtyChange(
+                                            idx,
+                                            e.target.value === ""
+                                              ? 0
+                                              : Number(e.target.value)
+                                          )
+                                        }
+                                        className={cn(
+                                          "h-10 w-full min-w-[100px] rounded-xl text-xs font-bold text-center pl-3 pr-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-sm transition-all",
+                                          isPoCreated
+                                            ? "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through"
+                                            : "bg-white border-zinc-200 focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53]",
+                                          !isPoCreated &&
+                                            item.remainingQty > 0 &&
+                                            item.qty > item.remainingQty &&
+                                            "border-rose-400 focus-visible:border-rose-500"
+                                        )}
+                                      />
+                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-500 pointer-events-none">
+                                        {item.unit}
+                                      </span>
+                                    </div>
+                                    {isPoCreated ? (
+                                      <span className="text-[9px] text-zinc-400 font-semibold block mt-1 leading-tight line-through">
+                                        PO already created
+                                      </span>
+                                    ) : item.remainingQty > 0 &&
+                                      item.qty > item.remainingQty ? (
+                                      <span className="text-[9px] text-rose-500 font-bold block mt-1 leading-tight">
+                                        Exceeds ({item.remainingQty})
+                                      </span>
+                                    ) : item.remainingQty === 0 ? (
+                                      <span className="text-[9px] text-zinc-400 font-semibold block mt-1 leading-tight">
+                                        Fully ordered
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </td>
+
+                                {/* 6. Unit Price */}
+                                <td className="px-2 py-3 align-middle text-center w-[110px]">
+                                  <div className="relative flex items-center justify-center w-full min-w-[90px]">
+                                    <div className="absolute left-3 text-xs font-bold text-zinc-500 pointer-events-none">
+                                      ₹
+                                    </div>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="any"
+                                      disabled={isPoCreated}
+                                      value={
+                                        isPoCreated
+                                          ? item.price || 0
+                                          : item.price === 0
+                                            ? ""
+                                            : (item.price ?? "")
+                                      }
+                                      placeholder="0.00"
+                                      onWheel={(e) => e.currentTarget.blur()}
+                                      onChange={(e) =>
+                                        handlePriceChange(
+                                          idx,
+                                          e.target.value === ""
+                                            ? 0
+                                            : Number(e.target.value)
+                                        )
+                                      }
+                                      className={cn(
+                                        "h-10 w-full min-w-[90px] rounded-xl text-xs font-bold text-left pl-7 pr-3 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none shadow-sm transition-all",
+                                        isPoCreated
+                                          ? "bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed line-through"
+                                          : "bg-white border-zinc-200 focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53]"
+                                      )}
+                                    />
+                                  </div>
+                                </td>
+
+                                {/* 7. Vendor */}
+                                <td className="px-2 py-3 align-middle text-left min-w-[160px]">
+                                  {isPoCreated ? (
+                                    <div className="h-10 rounded-xl bg-zinc-100 border border-zinc-200 text-xs font-semibold text-zinc-400 flex items-center justify-center cursor-not-allowed line-through">
+                                      Already Ordered
+                                    </div>
+                                  ) : (
+                                    <Select
+                                      value={item.assignedVendorId || ""}
+                                      onValueChange={(val) =>
+                                        handleVendorAssignmentChange(idx, val)
+                                      }
+                                    >
+                                      <SelectTrigger className="h-10 rounded-xl bg-white border-zinc-200 text-xs font-semibold focus:ring-2 focus:ring-[#0A5C53]/20 focus:border-[#0A5C53] transition-all shadow-sm">
+                                        <SelectValue placeholder="Select Vendor" />
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl shadow-lg border border-zinc-200 max-h-56">
+                                        {(activeVendors.length > 0
+                                          ? activeVendors
+                                          : vendors
+                                        ).length > 0 ? (
+                                          (activeVendors.length > 0
+                                            ? activeVendors
+                                            : vendors
+                                          ).map((vendor) => (
+                                            <SelectItem
+                                              key={vendor._id || vendor.id}
+                                              value={vendor._id || vendor.id}
+                                              className="text-xs font-semibold cursor-pointer py-2"
+                                            >
+                                              {vendor.name ||
+                                                vendor.companyName ||
+                                                "Vendor"}
+                                            </SelectItem>
+                                          ))
+                                        ) : (
+                                          <div className="p-3 text-xs text-zinc-500 text-center font-semibold">
+                                            No vendors found
+                                          </div>
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </td>
+
+                                {/* 8. Total Amount */}
+                                <td className="px-2 py-3 align-middle text-right w-[110px]">
+                                  <span
+                                    className={cn(
+                                      "text-sm font-black whitespace-nowrap",
+                                      isPoCreated
+                                        ? "line-through text-zinc-400"
+                                        : "text-zinc-900"
+                                    )}
+                                  >
+                                    ₹
+                                    {isPoCreated
+                                      ? "0.00"
+                                      : (
+                                          item.qty * (item.price || 0)
+                                        ).toLocaleString("en-IN", {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2
+                                        })}
+                                  </span>
+                                </td>
+
+                                {/* 9. Action */}
+                                <td className="px-2 py-3 align-middle text-center w-[44px]">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveItem(idx)}
+                                    className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Remove from PO"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                              <tr className="hover:bg-zinc-50/50 transition-colors">
+                                <td colSpan={6} className="px-3 pb-3 pt-1">
+                                  <Input
+                                    placeholder="Add details, specifications, or notes for this item..."
+                                    value={item.description || ""}
+                                    onChange={(e) =>
+                                      handleDescriptionChange(
+                                        idx,
+                                        e.target.value
+                                      )
+                                    }
+                                    className="h-10 rounded-xl bg-zinc-50/50 border-zinc-200 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-[#0A5C53]/20 focus-visible:border-[#0A5C53] transition-all shadow-sm"
+                                  />
+                                </td>
+                              </tr>
+                            </tbody>
+                          );
+                        })}
                       </table>
                     </div>
                   </div>
@@ -757,7 +2065,11 @@ function CreatePOContent() {
                               const value = e.target.value;
                               setValidFrom(value);
                               if (validTo && validTo < value) setValidTo("");
-                              if (expectedDeliveryDate && expectedDeliveryDate < value) setExpectedDeliveryDate("");
+                              if (
+                                expectedDeliveryDate &&
+                                expectedDeliveryDate < value
+                              )
+                                setExpectedDeliveryDate("");
                             }}
                             className="h-14 rounded-2xl bg-zinc-50/50 border-zinc-100 font-bold focus:ring-primary"
                           />
