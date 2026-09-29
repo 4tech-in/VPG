@@ -157,10 +157,8 @@ function CreatePOContent() {
     "same" | "all" | "current" | "other"
   >("same");
 
-  // Already Created PO Materials state
+  // PO Items for stock calculation
   const [projectPOItems, setProjectPOItems] = useState<ProjectPOItem[]>([]);
-  const [isPOItemsOpen, setIsPOItemsOpen] = useState(true);
-  const [poSearchTerm, setPoSearchTerm] = useState("");
 
   // Form inputs state
   const [dropLocation, setDropLocation] = useState("");
@@ -1219,46 +1217,57 @@ function CreatePOContent() {
     return items.filter((i) => (Number(i.remainingQty) || 0) <= 0).length;
   }, [items]);
 
-  const isSameMaterialPOItem = useCallback(
-    (poItem: ProjectPOItem) => {
-      if (currentItemKeys.size === 0) return true;
-      const pId = String(poItem.itemId || "")
-        .trim()
-        .toLowerCase();
-      const pName = String(poItem.itemName || "")
-        .trim()
-        .toLowerCase();
-      if (pId && currentItemKeys.has(pId)) return true;
-      if (
-        pName &&
-        currentItemKeys.has(pName) &&
-        !pName.startsWith("material") &&
-        pName !== "unknown item"
+
+  const getItemPendingStock = useCallback(
+    (item: any) => {
+      const currentItemId = String(
+        item.itemId?._id ||
+          item.itemId?.id ||
+          (typeof item.itemId === "string" ? item.itemId : "") ||
+          item._id ||
+          item.id ||
+          ""
       )
-        return true;
-      return false;
-    },
-    [currentItemKeys]
-  );
+        .trim()
+        .toLowerCase();
+      const currentItemName = (
+        item.name ||
+        item.itemName ||
+        item.itemId?.name ||
+        item.itemId?.itemName ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
 
-  const sameMaterialPOItems = useMemo(() => {
-    return projectPOItems.filter((item) => isSameMaterialPOItem(item));
-  }, [projectPOItems, isSameMaterialPOItem]);
+      const matchingPOItems = projectPOItems.filter((poItem) => {
+        const pId = String(poItem.itemId || "").trim().toLowerCase();
+        if (
+          currentItemId &&
+          pId &&
+          (pId === currentItemId ||
+            currentItemId.includes(pId) ||
+            pId.includes(currentItemId))
+        ) {
+          return true;
+        }
+        const pName = String(poItem.itemName || "").trim().toLowerCase();
+        return Boolean(
+          pName &&
+            currentItemName &&
+            pName === currentItemName &&
+            !pName.startsWith("material") &&
+            pName !== "unknown item"
+        );
+      });
 
-  const displayedPOItems = useMemo(() => {
-    let list = sameMaterialPOItems;
-    if (poSearchTerm.trim()) {
-      const term = poSearchTerm.toLowerCase();
-      list = list.filter(
-        (i) =>
-          i.itemName.toLowerCase().includes(term) ||
-          i.poNo.toLowerCase().includes(term) ||
-          i.vendorName.toLowerCase().includes(term) ||
-          (i.indentId && i.indentId.toLowerCase().includes(term))
+      return matchingPOItems.reduce(
+        (sum, poItem) => sum + (Number(poItem.pending) || 0),
+        0
       );
-    }
-    return list;
-  }, [sameMaterialPOItems, poSearchTerm]);
+    },
+    [projectPOItems]
+  );
 
   if (isDataLoading) {
     return (
@@ -1497,223 +1506,7 @@ function CreatePOContent() {
               </div>
             </div>
 
-            {/* Already Created PO Materials Panel */}
-            {(selectedProjectId || activeIndent) && (
-              <div className="bg-white p-6 rounded-[2rem] border border-zinc-200/60 shadow-sm space-y-5 relative overflow-hidden transition-all">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="h-11 w-11 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600 border border-teal-200/70 shadow-sm">
-                      <Box className="h-5 w-5" />
-                    </div>
-                    <div className="flex flex-col">
-                      <h3 className="text-base font-black text-zinc-900 tracking-tight">
-                        Already Created PO Materials
-                      </h3>
-                      <p className="text-xs font-semibold text-zinc-400">
-                        Previously created purchase orders for this material
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        fetchProjectRemainingItems(
-                          selectedProjectId ||
-                            activeIndent?.projectId?._id ||
-                            activeIndent?.projectId,
-                          selectedIndentId,
-                          activeIndent
-                        )
-                      }
-                      className="h-9 w-9 rounded-xl border-zinc-200 hover:bg-zinc-50"
-                      title="Refresh created PO materials"
-                    >
-                      <RefreshCw
-                        className={cn(
-                          "h-4 w-4 text-zinc-600",
-                          isLoadingProjectItems && "animate-spin"
-                        )}
-                      />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsPOItemsOpen(!isPOItemsOpen)}
-                      className="h-9 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 px-3 gap-1"
-                    >
-                      {isPOItemsOpen ? (
-                        <>
-                          Hide <ChevronUp className="h-4 w-4" />
-                        </>
-                      ) : (
-                        <>
-                          Show <ChevronDown className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {isPOItemsOpen && (
-                  <div className="space-y-4 pt-1">
-                    {/* Search */}
-                    <div className="relative max-w-md">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-                      <Input
-                        placeholder="Filter by material name, PO ID, or vendor..."
-                        value={poSearchTerm}
-                        onChange={(e) => setPoSearchTerm(e.target.value)}
-                        className="h-10 pl-9 rounded-xl bg-zinc-50/70 border-zinc-200 text-xs font-bold placeholder:text-zinc-400 focus:bg-white"
-                      />
-                    </div>
-
-                    {/* Content State */}
-                    {isLoadingProjectItems ? (
-                      <div className="flex flex-col items-center justify-center p-8 gap-2 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/30">
-                        <Loader2 className="h-6 w-6 text-teal-600 animate-spin" />
-                        <span className="text-xs font-bold text-zinc-500">
-                          Loading created purchase orders & materials...
-                        </span>
-                      </div>
-                    ) : displayedPOItems.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-8 gap-2 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/40 text-center">
-                        <Box className="h-8 w-8 text-zinc-400" />
-                        <span className="text-xs font-black text-zinc-700">
-                          No previous POs created for this material yet!
-                        </span>
-                        <span className="text-[11px] font-semibold text-zinc-500">
-                          No prior purchase orders contain this material. Once
-                          ordered, previous PO items will be listed here.
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-zinc-200/80 shadow-sm overflow-hidden bg-white">
-                        <div className="overflow-x-auto max-h-[340px] custom-scrollbar">
-                          <table className="w-full text-left border-collapse min-w-[750px]">
-                            <thead className="sticky top-0 bg-zinc-50 z-10 border-b border-zinc-200">
-                              <tr>
-                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
-                                  Material Name & ID
-                                </th>
-                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
-                                  PO Number & Date
-                                </th>
-                                <th className="px-4 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider">
-                                  Vendor
-                                </th>
-                                
-                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
-                                  Pending
-                                </th>
-                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
-                                  Total Quantity
-                                </th>
-                                <th className="px-3 py-2.5 text-[9px] font-black text-zinc-500 uppercase tracking-wider text-center">
-                                  Status
-                                </th>
-                                
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-100">
-                              {displayedPOItems.map((poItem) => (
-                                <tr
-                                  key={poItem.id}
-                                  className="hover:bg-zinc-50/70 transition-colors text-xs"
-                                >
-                                  <td className="px-4 py-3 align-middle font-bold text-zinc-900">
-                                    <div className="flex items-center gap-2.5">
-                                      <div className="h-7 w-7 rounded-lg bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-500 shrink-0">
-                                        <Box className="h-3.5 w-3.5" />
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span>{poItem.itemName}</span>
-                                        <span className="text-[9px] font-semibold text-zinc-400">
-                                          ID:{" "}
-                                          {poItem.itemId
-                                            ? String(poItem.itemId)
-                                                .slice(-6)
-                                                .toUpperCase()
-                                            : "N/A"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 align-middle">
-                                    <div className="flex flex-col">
-                                      <span className="font-black text-zinc-800 text-xs font-mono">
-                                        {poItem.poNo || "N/A"}
-                                      </span>
-                                      <span className="text-[10px] text-zinc-400">
-                                        {poItem.poDate
-                                          ? new Date(
-                                              poItem.poDate
-                                            ).toLocaleDateString("en-IN", {
-                                              day: "numeric",
-                                              month: "short",
-                                              year: "numeric"
-                                            })
-                                          : "—"}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 align-middle">
-                                    <div className="flex flex-col">
-                                      <span className="font-bold text-zinc-800 text-xs">
-                                        {poItem.vendorName || "—"}
-                                      </span>
-                                      {poItem.vendorMobile && (
-                                        <span className="text-[10px] text-zinc-400">
-                                          {poItem.vendorMobile}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </td>
-                                  
-                                  <td className="px-3 py-3 align-middle text-center">
-                                    <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100 text-xs">
-                                      {poItem.pending} {poItem.unit}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-3 align-middle text-center">
-                                    <span className="font-bold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200 text-xs">
-                                      {poItem.totalQuantity} {poItem.unit}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-3 align-middle text-center">
-                                    <span
-                                      className={cn(
-                                        "px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase",
-                                        poItem.status?.toLowerCase() ===
-                                          "approved" ||
-                                          poItem.status?.toLowerCase() ===
-                                            "completed"
-                                          ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                                          : poItem.status?.toLowerCase() ===
-                                              "sent"
-                                            ? "text-blue-700 bg-blue-50 border-blue-200"
-                                            : "text-zinc-600 bg-zinc-100 border-zinc-200"
-                                      )}
-                                    >
-                                      {poItem.status || "Draft"}
-                                    </span>
-                                  </td>
-                                 
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             <AnimatePresence>
               {selectedIndentId && activeIndent && (
@@ -1767,6 +1560,9 @@ function CreatePOContent() {
                           <tr className="bg-zinc-50 border-b border-zinc-200">
                             <th className="px-3 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider w-[220px]">
                               Item Information
+                            </th>
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[100px]">
+                              In Stock
                             </th>
                             <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[110px]">
                               PO Order Qty
@@ -1831,6 +1627,22 @@ function CreatePOContent() {
                                       </span>
                                     </div>
                                   </div>
+                                </td>
+
+                                {/* 2. In Stock: Addition of all pending quantities from previous POs */}
+                                <td className="px-2 py-3 align-middle text-center w-[100px]">
+                                  {(() => {
+                                    const inStockQty = getItemPendingStock(item);
+                                    return inStockQty > 0 ? (
+                                      <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs inline-block">
+                                        {inStockQty} {item.unit}
+                                      </span>
+                                    ) : (
+                                      <span className="text-zinc-400 text-xs font-semibold">
+                                        0 {item.unit}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
 
                                 {/* 5. PO Order Quantity Input */}
@@ -2010,7 +1822,7 @@ function CreatePOContent() {
                                 </td>
                               </tr>
                               <tr className="hover:bg-zinc-50/50 transition-colors">
-                                <td colSpan={6} className="px-3 pb-3 pt-1">
+                                <td colSpan={7} className="px-3 pb-3 pt-1">
                                   <Input
                                     placeholder="Add details, specifications, or notes for this item..."
                                     value={item.description || ""}
