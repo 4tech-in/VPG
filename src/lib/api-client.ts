@@ -15,8 +15,18 @@ export async function apiRequest<T>(
 ): Promise<T> {
   let token = options.token;
 
+  // Normalize path if starts with /api/, api/, or /
+  let normalizedPath = path;
+  if (normalizedPath.startsWith("/api/")) {
+    normalizedPath = normalizedPath.replace(/^\/api\//, "");
+  } else if (normalizedPath.startsWith("api/")) {
+    normalizedPath = normalizedPath.replace(/^api\//, "");
+  } else if (normalizedPath.startsWith("/")) {
+    normalizedPath = normalizedPath.slice(1);
+  }
+
   if (typeof window !== "undefined") {
-    if (path !== "auth/login") {
+    if (normalizedPath !== "auth/login" && normalizedPath !== "auth/logout") {
       validateSession()
     }
     if (!token) {
@@ -35,7 +45,7 @@ export async function apiRequest<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
       ...options,
       headers,
     });

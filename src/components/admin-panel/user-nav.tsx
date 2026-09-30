@@ -23,6 +23,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/use-auth-store";
+import { authService } from "@/service/auth.api";
 
 import { unregisterTokenOnLogout } from "@/lib/firebase";
 
@@ -32,9 +33,15 @@ export function UserNav() {
   const user = useAuthStore((state) => state.user);
 
   const handleSignOut = async () => {
-    await unregisterTokenOnLogout();
-    clearAuth();
-    router.push("/login");
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error("Error during logout API call:", error);
+    } finally {
+      await unregisterTokenOnLogout();
+      clearAuth();
+      router.push("/login");
+    }
   };
   return (
     <DropdownMenu>

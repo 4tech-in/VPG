@@ -26,6 +26,12 @@ export const authService = {
     })
   },
 
+  async logout(): Promise<any> {
+    return apiRequest<any>("auth/logout", {
+      method: "POST",
+    })
+  },
+
   async me(): Promise<any> {
     return apiRequest<any>("auth/me", {
       method: "GET",
