@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/api-client"
 
 export type ApiAsset = {
   _id: string
+  projectId?: string
   name: string
   type: string
   serialNumber?: string
@@ -14,7 +15,7 @@ export type ApiAsset = {
 export type CreateAssetPayload = Omit<ApiAsset, "_id">
 
 export const assetService = {
-  async getAssets(params?: { page?: number; limit?: number; search?: string; status?: string; type?: string; sortBy?: string; sortOrder?: string }): Promise<any> {
+  async getAssets(params?: { page?: number; limit?: number; search?: string; status?: string; type?: string; sortBy?: string; sortOrder?: string; projectId?: string }): Promise<any> {
     const query = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -60,6 +61,38 @@ export const assetService = {
     })
   },
 
+  async createMaintenanceRequest(payload: { assetId: string; assetType: string; maintenanceReason: string; notes?: string; startDate: string; endDate: string }): Promise<any> {
+    return apiRequest<any>("assets/maintenances", { method: "POST", body: JSON.stringify(payload) })
+  },
+
+  async updateMaintenanceStatus(id: string, status: string): Promise<any> {
+    return apiRequest<any>(`assets/maintenances/${id}`, { method: "PATCH", body: JSON.stringify({ status }) })
+  },
+
+  async getMaintenanceAssetsForReturn(): Promise<any> {
+    return apiRequest<any>("assets/returns/maintenance-assets")
+  },
+
+  async getAssetReturnRequests(params?: { projectId?: string; status?: string }): Promise<any> {
+    const query = new URLSearchParams()
+    if (params?.projectId) query.append("projectId", params.projectId)
+    if (params?.status) query.append("status", params.status)
+    const queryString = query.toString()
+    return apiRequest<any>(`assets/returns${queryString ? `?${queryString}` : ""}`)
+  },
+
+  async createAssetReturnRequest(payload: { projectId: string; assetId: string; notes?: string }): Promise<any> {
+    return apiRequest<any>("assets/returns", { method: "POST", body: JSON.stringify(payload) })
+  },
+
+  async approveAssetReturnRequest(id: string): Promise<any> {
+    return apiRequest<any>(`assets/returns/approve/${id}`, { method: "POST" })
+  },
+
+  async rejectAssetReturnRequest(id: string, rejectionReason: string): Promise<any> {
+    return apiRequest<any>(`assets/returns/reject/${id}`, { method: "POST", body: JSON.stringify({ rejectionReason }) })
+  },
+
   async getAssetById(id: string): Promise<ApiAsset> {
     return apiRequest<ApiAsset>(`assets/${id}`)
   },
@@ -82,7 +115,7 @@ export const assetService = {
     return apiRequest(`assets/${id}`, { method: "DELETE" })
   },
 
-  async deleteMultipleAssets(ids: string[]): Promise<void> {
+  async deleteMultipleAssets(ids: string[]): Promise<any> {
     return apiRequest("assets/delete-multiple", {
       method: "POST",
       body: JSON.stringify({ ids }),

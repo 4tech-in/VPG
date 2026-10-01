@@ -15,7 +15,7 @@ import {
   Package,
   Activity,
   ArrowUpRight,
-  Store
+  Store,
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -46,12 +46,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { assetService } from "@/service/assets.api"
+import { projectService, type ApiProject } from "@/service/projectService"
 
 export default function StoresPage() {
   const [data, setData] = useState<any[]>([])
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [projects, setProjects] = useState<ApiProject[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [newProjectId, setNewProjectId] = useState("")
   
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
@@ -59,6 +65,7 @@ export default function StoresPage() {
   
   // Transfer requests state
   const [transferRequests, setTransferRequests] = useState<any[]>([])
+  const [returnDatesByAssetId, setReturnDatesByAssetId] = useState<Record<string, string>>({})
   const [transferLoading, setTransferLoading] = useState(false)
   const [activeRequestTab, setActiveRequestTab] = useState("all")
 
@@ -84,10 +91,10 @@ export default function StoresPage() {
   const [editMaintenanceDate, setEditMaintenanceDate] = useState("")
   const [editExtraNote, setEditExtraNote] = useState("")
 
-  const fetchAssets = async (searchStr = searchTerm, p = page, l = limit) => {
+  const fetchAssets = async (searchStr = searchTerm, p = page, l = limit, projectId = selectedProjectId) => {
     try {
       setLoading(true)
-      const res = await assetService.getAssets({ search: searchStr, page: p, limit: l })
+      const res = await assetService.getAssets({ search: searchStr, page: p, limit: l, projectId: projectId || undefined })
       if (Array.isArray(res)) {
         setData(res)
       } else if (res && res.data) {
@@ -109,6 +116,12 @@ export default function StoresPage() {
   }
 
   useEffect(() => {
+    projectService.getProjects({ limit: 500 })
+      .then((response) => setProjects(response.projects || []))
+      .catch((err: any) => toast.error(err.message || "Failed to load projects"))
+  }, [])
+
+  useEffect(() => {
     const delayDebounce = setTimeout(() => {
       setPage(1)
       fetchAssets(searchTerm, 1, limit)
@@ -118,17 +131,41 @@ export default function StoresPage() {
 
   useEffect(() => {
     fetchAssets(searchTerm, page, limit)
-  }, [page, limit])
+  }, [page, limit, selectedProjectId])
 
   const fetchTransferRequests = async () => {
     try {
       setTransferLoading(true)
-      const res = await assetService.getAssetTransfers()
-      if (res && res.data) {
-        setTransferRequests(res.data)
-      } else {
-        setTransferRequests([])
-      }
+      const [transferResponse, returnResponse] = await Promise.all([
+        assetService.getAssetTransfers(),
+        assetService.getAssetReturnRequests(),
+      ])
+      const asList = (response: any): any[] => Array.isArray(response) ? response : Array.isArray(response?.data) ? response.data : []
+      const transfers = asList(transferResponse).map((request) => ({
+        ...request,
+        requestType: "transfer",
+        requestId: request._id || request.id,
+        _id: `transfer-${request._id || request.id}`,
+      }))
+      const returns = asList(returnResponse).map((request) => ({
+        ...request,
+        requestType: "return",
+        requestId: request._id || request.id,
+        _id: `return-${request._id || request.id}`,
+      }))
+      const returnDates = asList(returnResponse).reduce((dates: Record<string, string>, request: any) => {
+        if (request.status !== "Approved") return dates
+        const assetId = String(request.assetId?._id || request.assetId || "")
+        const date = request.returnDate || request.returnedAt || request.approvedAt || request.updatedAt
+        if (!assetId || !date) return dates
+        const currentDate = dates[assetId]
+        if (!currentDate || new Date(date).getTime() > new Date(currentDate).getTime()) dates[assetId] = date
+        return dates
+      }, {})
+      setReturnDatesByAssetId(returnDates)
+      setTransferRequests([...transfers, ...returns].sort((a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      ))
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch transfer requests")
     } finally {
@@ -140,22 +177,24 @@ export default function StoresPage() {
     fetchTransferRequests()
   }, [])
 
-  const handleApproveTransfer = async (id: string) => {
+  const handleApproveTransfer = async (request: any) => {
     try {
-      await assetService.approveAssetTransfer(id)
-      toast.success("Transfer request approved")
+      if (request.requestType === "return") await assetService.approveAssetReturnRequest(request.requestId)
+      else await assetService.approveAssetTransfer(request.requestId)
+      toast.success(request.requestType === "return" ? "Asset return approved" : "Transfer request approved")
       fetchTransferRequests()
     } catch (err: any) {
       toast.error(err.message || "Failed to approve transfer")
     }
   }
 
-  const handleRejectTransfer = async (id: string) => {
-    const reason = window.prompt("Enter rejection reason:")
+  const handleRejectTransfer = async (request: any) => {
+    const reason = window.prompt(request.requestType === "return" ? "Enter return rejection reason:" : "Enter rejection reason:")
     if (!reason || !reason.trim()) return
     try {
-      await assetService.rejectAssetTransfer(id, reason)
-      toast.success("Transfer request rejected")
+      if (request.requestType === "return") await assetService.rejectAssetReturnRequest(request.requestId, reason.trim())
+      else await assetService.rejectAssetTransfer(request.requestId, reason.trim())
+      toast.success(request.requestType === "return" ? "Asset return rejected" : "Transfer request rejected")
       fetchTransferRequests()
     } catch (err: any) {
       toast.error(err.message || "Failed to reject transfer")
@@ -176,8 +215,8 @@ export default function StoresPage() {
 
   const handleAddStore = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newName.trim() || !newType.trim()) {
-      toast.error("Asset Name and Type are required")
+    if (!newName.trim() || !newType.trim() || !newProjectId) {
+      toast.error("Project, asset name, and type are required")
       return
     }
 
@@ -185,6 +224,7 @@ export default function StoresPage() {
       await assetService.createAsset({
         name: newName,
         type: newType,
+        projectId: newProjectId,
         serialNumber: newSerialNumber,
         issuedDate: newIssuedDate || undefined,
         status: newStatus,
@@ -192,16 +232,19 @@ export default function StoresPage() {
         extraNote: newExtraNote
       })
       toast.success("New asset added successfully")
+      setSelectedProjectId(newProjectId)
+      setPage(1)
       setIsDialogOpen(false)
       // Reset form
       setNewName("")
+      setNewProjectId("")
       setNewType("Equipment")
       setNewSerialNumber("")
       setNewIssuedDate("")
       setNewStatus("Issued")
       setNewMaintenanceDate("")
       setNewExtraNote("")
-      fetchAssets(searchTerm)
+      await fetchAssets(searchTerm, 1, limit, newProjectId)
     } catch (err: any) {
       toast.error(err.message || "Failed to create asset")
     }
@@ -230,6 +273,35 @@ export default function StoresPage() {
     }
   }
 
+  const toggleAssetSelection = (id: string) => {
+    setSelectedAssetIds((current) => current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id])
+  }
+
+  const toggleCurrentPageSelection = () => {
+    const pageIds = data.map((asset) => asset._id).filter(Boolean)
+    const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedAssetIds.includes(id))
+    setSelectedAssetIds((current) => allSelected
+      ? current.filter((id) => !pageIds.includes(id))
+      : [...new Set([...current, ...pageIds])])
+  }
+
+  const handleBulkDeleteAssets = async () => {
+    if (selectedAssetIds.length === 0) return
+    if (!confirm(`Delete ${selectedAssetIds.length} selected asset${selectedAssetIds.length === 1 ? "" : "s"}? This cannot be undone.`)) return
+    setIsBulkDeleting(true)
+    try {
+      const response = await assetService.deleteMultipleAssets(selectedAssetIds)
+      const deletedCount = response?.deletedCount ?? selectedAssetIds.length
+      toast.success(`${deletedCount} asset${deletedCount === 1 ? "" : "s"} deleted successfully`)
+      setSelectedAssetIds([])
+      await fetchAssets(searchTerm, page, limit)
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete selected assets")
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
   const handleDeleteAsset = async (id: string) => {
     try {
       await assetService.deleteAsset(id)
@@ -240,7 +312,16 @@ export default function StoresPage() {
     }
   }
 
+  const currentPageIds = data.map((asset) => asset._id).filter(Boolean)
+  const allCurrentPageSelected = currentPageIds.length > 0 && currentPageIds.every((id) => selectedAssetIds.includes(id))
+
   const columns: ColumnDef<any>[] = [
+    {
+      id: "selection",
+      header: () => <input aria-label="Select all assets on this page" type="checkbox" checked={allCurrentPageSelected} onChange={toggleCurrentPageSelection} className="h-4 w-4 accent-primary" />,
+      cell: ({ row }) => <input aria-label={`Select ${row.original.name}`} type="checkbox" checked={selectedAssetIds.includes(row.original._id)} onChange={() => toggleAssetSelection(row.original._id)} className="h-4 w-4 accent-primary" />,
+      enableSorting: false,
+    },
     {
       accessorKey: "name",
       header: "Asset Name",
@@ -293,6 +374,14 @@ export default function StoresPage() {
       },
     },
     {
+      id: "returnDate",
+      header: "Return Date",
+      cell: ({ row }) => {
+        const value = row.original.returnDate || row.original.returnedAt || row.original.lastReturnDate || returnDatesByAssetId[String(row.original._id)]
+        return <span className="text-zinc-600 font-medium text-xs">{value ? new Date(value).toLocaleDateString("en-IN") : "—"}</span>
+      },
+    },
+    {
       id: "actions",
       header: () => <div className="w-full text-center">Operations</div>,
       cell: ({ row }) => (
@@ -331,7 +420,7 @@ export default function StoresPage() {
       header: "Asset",
       cell: ({ row }) => (
         <div className="flex flex-col">
-          <span className="font-bold text-zinc-900">{row.original.assetId?.name || "Unknown Asset"}</span>
+          <span className="font-bold text-zinc-900">{row.original.assetId?.name || row.original.assetId?.assetName || "Unknown Asset"}</span>
           <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">SN: {row.original.assetId?.serialNumber || "N/A"}</span>
         </div>
       ),
@@ -340,14 +429,14 @@ export default function StoresPage() {
       accessorKey: "sourceProjectId.projectName",
       header: "From Project",
       cell: ({ row }) => (
-        <span className="text-zinc-600 font-medium text-xs">{row.original.sourceProjectId?.projectName || "—"}</span>
+        <span className="text-zinc-600 font-medium text-xs">{row.original.requestType === "return" ? row.original.assetId?.projectId?.projectName || row.original.assetId?.projectId?.name || "—" : row.original.sourceProjectId?.projectName || row.original.sourceProjectId?.name || "—"}</span>
       ),
     },
     {
       accessorKey: "destinationProjectId.projectName",
       header: "To Project",
       cell: ({ row }) => (
-        <span className="text-zinc-600 font-medium text-xs">{row.original.destinationProjectId?.projectName || "—"}</span>
+        <span className="text-zinc-600 font-medium text-xs">{row.original.requestType === "return" ? row.original.projectId?.projectName || row.original.projectId?.name || "—" : row.original.destinationProjectId?.projectName || row.original.destinationProjectId?.name || "—"}</span>
       ),
     },
     {
@@ -389,10 +478,10 @@ export default function StoresPage() {
         if (status !== "Pending") return <div className="text-center text-zinc-300 font-medium text-xs">—</div>
         return (
           <div className="flex justify-center gap-2">
-            <Button
+          <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleApproveTransfer(row.original._id)}
+              onClick={() => handleApproveTransfer(row.original)}
               className="h-8 px-3 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-bold text-[10px] uppercase tracking-wider transition-all border border-emerald-100 bg-emerald-50/50"
             >
               Approve
@@ -400,7 +489,7 @@ export default function StoresPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleRejectTransfer(row.original._id)}
+              onClick={() => handleRejectTransfer(row.original)}
               className="h-8 px-3 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold text-[10px] uppercase tracking-wider transition-all border border-rose-100 bg-rose-50/50"
             >
               Reject
@@ -451,6 +540,14 @@ export default function StoresPage() {
                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
               </div>
 
+              <div className="flex flex-wrap items-center gap-3">
+              <Select value={selectedProjectId || "all"} onValueChange={(value) => { setSelectedProjectId(value === "all" ? "" : value); setPage(1); setSelectedAssetIds([]) }}>
+                <SelectTrigger className="h-11 w-[220px] rounded-xl bg-white font-semibold"><SelectValue placeholder="All projects" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map((project) => <SelectItem key={project._id || project.id} value={String(project._id || project.id)}>{project.projectName}</SelectItem>)}</SelectContent>
+              </Select>
+              {selectedAssetIds.length > 0 && <Button variant="destructive" className="h-11 rounded-xl" disabled={isBulkDeleting} onClick={handleBulkDeleteAssets}>
+                {isBulkDeleting ? "Deleting..." : `Delete ${selectedAssetIds.length} Selected`}
+              </Button>}
               {/* Create Asset Dialog */}
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
@@ -476,6 +573,13 @@ export default function StoresPage() {
                     </div>
                   </DialogHeader>
                   <form onSubmit={handleAddStore} className="p-8 bg-zinc-50/30 space-y-6 overflow-y-auto">
+                    <div className="space-y-2.5">
+                      <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Project</Label>
+                      <Select value={newProjectId} onValueChange={setNewProjectId}>
+                        <SelectTrigger className="h-14 rounded-2xl bg-white border-zinc-100 font-bold text-sm"><SelectValue placeholder="Select project" /></SelectTrigger>
+                        <SelectContent>{projects.map((project) => <SelectItem key={project._id || project.id} value={String(project._id || project.id)}>{project.projectName}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2.5">
                         <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Name</Label>
@@ -568,6 +672,7 @@ export default function StoresPage() {
                 </DialogContent>
               </Dialog>
             </div>
+            </div>
             
             {/* Ledger Card */}
             {loading ? (
@@ -650,6 +755,7 @@ export default function StoresPage() {
             </Tabs>
           </TabsContent>
         </Tabs>
+
 
         {/* Edit Asset Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
