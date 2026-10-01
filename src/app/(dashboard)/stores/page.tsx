@@ -525,7 +525,7 @@ export default function StoresPage() {
         <Tabs defaultValue="list" className="w-full">
           <TabsList className="mb-8 h-14 bg-white border border-zinc-100 rounded-2xl p-1.5 shadow-sm inline-flex">
             <TabsTrigger value="list" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">All Assets List</TabsTrigger>
-            <TabsTrigger value="requests" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">Asset Transfer Request</TabsTrigger>
+            <TabsTrigger value="requests" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">Asset Return Request</TabsTrigger>
           </TabsList>
 
           <TabsContent value="list" className="space-y-8 outline-none">
