@@ -362,6 +362,13 @@ export function purchaseOrderReceiptHtml(
     po.totalAmount || taxableAmount + gstCalculatedAmount,
   );
 
+  const poRemark = String(po.remark || po.remarks || "").trim();
+  const poNotes = String(po.notes || "").trim();
+  const hasRemark = Boolean(poRemark);
+  const hasConditions = Boolean(showConditions && poNotes);
+  const formatReceiptText = (text: string) =>
+    text.replace(/\\r\\n|\\n|\\r/g, "<br/>").replace(/\r\n|\n|\r/g, "<br/>");
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -500,7 +507,7 @@ export function purchaseOrderReceiptHtml(
           
           .items-table-container {
             position: relative;
-            min-height: 250px;
+            min-height: auto;
           }
           
           .watermark {
@@ -539,7 +546,7 @@ export function purchaseOrderReceiptHtml(
             position: relative;
             z-index: 1;
             background: transparent;
-            margin-bottom: 20px;
+            margin-bottom: 0px;
           }
           .items-table th {
             background-color: #e6e6e6;
@@ -564,18 +571,22 @@ export function purchaseOrderReceiptHtml(
           }
           
           .conditions {
-            margin-top: 20px;
-            font-size: 12px;
+            margin-top: 8px;
+            font-size: 11px;
+            position: relative;
+            z-index: 1;
           }
           .conditions-title {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: bold;
           }
           .conditions-list {
             margin: 0;
-            padding-left: 20px;
+            padding-left: 16px;
           }
           .conditions-list li {
-            margin-bottom: 4px;
+            margin-bottom: 2px;
           }
 
           .print-btn {
@@ -765,15 +776,29 @@ export function purchaseOrderReceiptHtml(
         </div>
 
         ${
-          showConditions && po.notes
+          hasRemark || hasConditions
             ? `
-        <div class="conditions" style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: -90px;">
-          <div>
-            <div class="conditions-title" style="font-weight: bold;">Conditions:</div>
-            <div style="padding-left: 20px; white-space: pre-wrap; line-height: 1.6;">${po.notes.replace(/\\n/g, "<br/>")}</div>
-          </div>
+        <div class="conditions" style="margin-top: -40px; max-width: 70%;">
+          ${
+            hasRemark
+              ? `
+          <div class="remark-block" style="margin-bottom: 6px;">
+            <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Remark:</div>
+            <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poRemark)}</div>
+          </div>`
+              : ""
+          }
+          ${
+            hasConditions
+              ? `
+          <div class="conditions-block" style="margin-bottom: 6px;">
+            <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Conditions:</div>
+            <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poNotes)}</div>
+          </div>`
+              : ""
+          }
         </div>`
-            : `<div style="height: 140px;"></div>`
+            : `<div style="height: 60px;"></div>`
         }
 
         <div class="authorization-signature">
