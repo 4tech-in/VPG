@@ -291,8 +291,8 @@ function CreatePOContent() {
                     materialUsed: details.materialUsed ?? po.materialUsed,
                     totalCount: details.totalCount ?? po.totalCount,
                     pending: details.pending ?? po.pending,
-                    receivedQuantity: details.receivedQuantity ?? po.receivedQuantity,
-                    totalReceivedQuantity: details.totalReceivedQuantity ?? po.totalReceivedQuantity
+                    receivedQuantity: (details as any).receivedQuantity ?? po.receivedQuantity,
+                    totalReceivedQuantity: (details as any).totalReceivedQuantity ?? po.totalReceivedQuantity
                   };
                 } catch (e) {}
               }
