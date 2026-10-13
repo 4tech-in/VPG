@@ -120,8 +120,10 @@ export interface ProjectPOItem {
   unit: string;
   orderQuantity: number;
   totalQuantity: number;
+  totalReceived: number;
   materialUsed: number;
   pending: number;
+  inStock: number;
   rate: number;
   amount: number;
   indentId?: string;
@@ -263,19 +265,19 @@ function CreatePOContent() {
         } catch (e) {}
       }
 
-      // Enrich projPOs with material totals (materialUsed, pending, totalCount)
-      const missingTotals = projPOs
+      // Enrich projPOs with full details (items, materialUsed, pending, totalCount, receipts)
+      const needsDetails = projPOs
         .map((po, index) => ({ po, index }))
-        .filter(({ po }) => po.materialUsed == null || po.pending == null);
+        .filter(({ po }) => !po.items || !Array.isArray(po.items) || po.items.length === 0 || po.materialUsed == null || po.pending == null || !po.receipts);
 
-      if (missingTotals.length > 0) {
+      if (needsDetails.length > 0) {
         let nextIndex = 0;
         await Promise.all(
           Array.from(
-            { length: Math.min(6, missingTotals.length) },
+            { length: Math.min(6, needsDetails.length) },
             async () => {
-              while (nextIndex < missingTotals.length) {
-                const { po, index } = missingTotals[nextIndex++];
+              while (nextIndex < needsDetails.length) {
+                const { po, index } = needsDetails[nextIndex++];
                 const id = po._id || po.id;
                 if (!id) continue;
                 try {
@@ -284,9 +286,13 @@ function CreatePOContent() {
                   projPOs[index] = {
                     ...po,
                     ...details,
+                    items: details.items || po.items || [],
+                    receipts: details.receipts || po.receipts || [],
                     materialUsed: details.materialUsed ?? po.materialUsed,
                     totalCount: details.totalCount ?? po.totalCount,
-                    pending: details.pending ?? po.pending
+                    pending: details.pending ?? po.pending,
+                    receivedQuantity: details.receivedQuantity ?? po.receivedQuantity,
+                    totalReceivedQuantity: details.totalReceivedQuantity ?? po.totalReceivedQuantity
                   };
                 } catch (e) {}
               }
@@ -460,24 +466,69 @@ function CreatePOContent() {
               orderQuantity
           );
 
-          // Calculate Material Used: total - pending == used
+          // Calculate Total Received from direct fields or receipts array
+          let totalReceived = 0;
+          if (
+            pi.receivedQuantity != null &&
+            Number.isFinite(Number(pi.receivedQuantity)) &&
+            Number(pi.receivedQuantity) > 0
+          ) {
+            totalReceived = Number(pi.receivedQuantity);
+          }
+
+          // Check receipts array on PO
+          if (Array.isArray(po.receipts) && po.receipts.length > 0) {
+            const receiptSum = po.receipts.reduce((rAcc: number, r: any) => {
+              const rItems = r.items || [];
+              const matchedReceiptItem = rItems.find((ri: any) => {
+                const riId = String(ri.itemId?._id || ri.itemId?.id || ri.itemId || "").trim().toLowerCase();
+                if (riId && itemIdStr && (riId === itemIdStr.toLowerCase() || itemIdStr.toLowerCase().includes(riId))) return true;
+                const riName = String(ri.itemId?.itemName || ri.itemId?.name || ri.name || "").trim().toLowerCase();
+                const curName = itemName.trim().toLowerCase();
+                return Boolean(riName && curName && riName === curName);
+              });
+              const qty = Number(matchedReceiptItem?.receivedQuantity ?? matchedReceiptItem?.suppliedQuantity ?? 0);
+              return rAcc + (Number.isFinite(qty) ? qty : 0);
+            }, 0);
+            if (receiptSum > totalReceived) {
+              totalReceived = receiptSum;
+            }
+          }
+
+          if (
+            totalReceived === 0 &&
+            po.items?.length === 1 &&
+            po.receivedQuantity != null &&
+            Number.isFinite(Number(po.receivedQuantity))
+          ) {
+            totalReceived = Number(po.receivedQuantity);
+          } else if (
+            totalReceived === 0 &&
+            po.items?.length === 1 &&
+            po.totalReceivedQuantity != null &&
+            Number.isFinite(Number(po.totalReceivedQuantity))
+          ) {
+            totalReceived = Number(po.totalReceivedQuantity);
+          }
+
+          // Calculate Material Used: issued / consumed
           let materialUsed = 0;
           if (
-            po.items?.length === 1 &&
-            po.materialUsed != null &&
-            Number.isFinite(Number(po.materialUsed))
+            pi.issuedToRequesterQuantity != null &&
+            Number.isFinite(Number(pi.issuedToRequesterQuantity))
           ) {
-            materialUsed = Number(po.materialUsed);
+            materialUsed = Number(pi.issuedToRequesterQuantity);
           } else if (
             pi.materialUsed != null &&
             Number.isFinite(Number(pi.materialUsed))
           ) {
             materialUsed = Number(pi.materialUsed);
           } else if (
-            pi.issuedToRequesterQuantity != null &&
-            Number.isFinite(Number(pi.issuedToRequesterQuantity))
+            po.items?.length === 1 &&
+            po.materialUsed != null &&
+            Number.isFinite(Number(po.materialUsed))
           ) {
-            materialUsed = Number(pi.issuedToRequesterQuantity);
+            materialUsed = Number(po.materialUsed);
           } else if (
             po.items?.length === 1 &&
             po.totalCount != null &&
@@ -487,12 +538,11 @@ function CreatePOContent() {
               0,
               Number(po.totalCount) - Number(po.pending)
             );
-          } else if (
-            po.materialUsed != null &&
-            Number.isFinite(Number(po.materialUsed))
-          ) {
-            materialUsed = Number(po.materialUsed);
           }
+
+          // In Stock = total receive - used
+          // If totalReceived was not directly stored, fall back to material received or pending logic
+          const inStock = Math.max(0, totalReceived - materialUsed);
 
           // Calculate Pending: total - used == pending
           let pending = 0;
@@ -511,7 +561,7 @@ function CreatePOContent() {
             pending = Math.max(0, totalQuantity - materialUsed);
           }
 
-          // Verify user formula: total - pending == used
+          // Verify formula consistency
           if (materialUsed === 0 && pending > 0 && pending < totalQuantity) {
             materialUsed = totalQuantity - pending;
           }
@@ -538,8 +588,10 @@ function CreatePOContent() {
             unit,
             orderQuantity,
             totalQuantity,
+            totalReceived,
             materialUsed,
             pending,
+            inStock,
             rate,
             amount,
             indentId: indentId || undefined
@@ -1217,7 +1269,6 @@ function CreatePOContent() {
     return items.filter((i) => (Number(i.remainingQty) || 0) <= 0).length;
   }, [items]);
 
-
   const getItemPendingStock = useCallback(
     (item: any) => {
       const currentItemId = String(
@@ -1241,7 +1292,9 @@ function CreatePOContent() {
         .toLowerCase();
 
       const matchingPOItems = projectPOItems.filter((poItem) => {
-        const pId = String(poItem.itemId || "").trim().toLowerCase();
+        const pId = String(poItem.itemId || "")
+          .trim()
+          .toLowerCase();
         if (
           currentItemId &&
           pId &&
@@ -1251,18 +1304,20 @@ function CreatePOContent() {
         ) {
           return true;
         }
-        const pName = String(poItem.itemName || "").trim().toLowerCase();
+        const pName = String(poItem.itemName || "")
+          .trim()
+          .toLowerCase();
         return Boolean(
           pName &&
-            currentItemName &&
-            pName === currentItemName &&
-            !pName.startsWith("material") &&
-            pName !== "unknown item"
+          currentItemName &&
+          pName === currentItemName &&
+          !pName.startsWith("material") &&
+          pName !== "unknown item"
         );
       });
 
       return matchingPOItems.reduce(
-        (sum, poItem) => sum + (Number(poItem.pending) || 0),
+        (sum, poItem) => sum + (Number(poItem.inStock ?? (poItem.totalReceived - poItem.materialUsed)) || 0),
         0
       );
     },
@@ -1506,8 +1561,6 @@ function CreatePOContent() {
               </div>
             </div>
 
-
-
             <AnimatePresence>
               {selectedIndentId && activeIndent && (
                 <motion.div
@@ -1629,10 +1682,11 @@ function CreatePOContent() {
                                   </div>
                                 </td>
 
-                                {/* 2. In Stock: Addition of all pending quantities from previous POs */}
+                                {/* 2. In Stock: Project-wise (Total Received - Used/Issued) */}
                                 <td className="px-2 py-3 align-middle text-center w-[100px]">
                                   {(() => {
-                                    const inStockQty = getItemPendingStock(item);
+                                    const inStockQty =
+                                      getItemPendingStock(item);
                                     return inStockQty > 0 ? (
                                       <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs inline-block">
                                         {inStockQty} {item.unit}

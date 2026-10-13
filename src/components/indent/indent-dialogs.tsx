@@ -115,6 +115,7 @@ export function ViewIndentDialog({
           ...i,
           status: "Approved",
           workingQuantity: Number(i.quantity) || 1,
+          workingPrice: i.price ?? i.itemId?.price ?? "",
           isNew: false
         })));
         setStorageLocation(indent.storageLocation || "");
@@ -172,6 +173,7 @@ export function ViewIndentDialog({
           unitId: i.unitId?._id || i.unitId,
           quantity: i.workingQuantity || Number(i.quantity),
           description: i.description || "",
+          price: i.workingPrice === "" ? undefined : Number(i.workingPrice),
           images: i.images || []
         };
       }
@@ -652,7 +654,6 @@ export function ViewIndentDialog({
                           <Input
                             type="number"
                             min={1}
-                            max={item.isNew ? undefined : Number(item.quantity)}
                             value={item.workingQuantity || ""}
                             onChange={(e) => {
                               const val = Number(e.target.value);
@@ -670,23 +671,10 @@ export function ViewIndentDialog({
                                   copy[i].workingQuantity = 1;
                                   return copy;
                                 });
-                              } else if (!item.isNew && val > Number(item.quantity)) {
-                                setLocalItems((prev) => {
-                                  const copy = [...prev];
-                                  copy[i].workingQuantity = Number(item.quantity);
-                                  return copy;
-                                });
                               }
                             }}
                             className="h-7 w-20 text-xs font-bold px-2"
                           />
-                          {item.workingQuantity > 0 && !item.isNew &&
-                            item.workingQuantity < Number(item.quantity) && (
-                              <span className="text-[9px] text-amber-600 font-bold leading-tight">
-                                {Number(item.quantity) - item.workingQuantity} will
-                                automatically retry
-                              </span>
-                            )}
                         </div>
                       ) : (
                         <span className="text-xs font-bold text-zinc-900">
@@ -780,17 +768,32 @@ export function ViewIndentDialog({
                           </span>
                         </div>
                       )}
-                      {item.itemId?.price && (
+                      {(item.workingPrice || item.price || item.itemId?.price) && (
                         <div>
                           <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest block mb-0.5">
                             Est. Price & Total
                           </span>
-                          <span className="text-xs font-black text-zinc-900">
-                            ₹{item.itemId.price} / unit{" "}
-                            <span className="text-emerald-600 font-bold block text-sm">
-                              Total: ₹
-                              {Number(item.itemId.price) * item.quantity}
+                          {canTakeAction ? (
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.workingPrice}
+                              onChange={(e) => setLocalItems((prev) => {
+                                const copy = [...prev];
+                                copy[i].workingPrice = e.target.value;
+                                return copy;
+                              })}
+                              className="h-7 w-28 text-xs font-bold px-2 mb-1"
+                              aria-label="Unit price"
+                            />
+                          ) : (
+                            <span className="text-xs font-black text-zinc-900">
+                              ₹{item.price ?? item.itemId?.price} / unit{" "}
                             </span>
+                          )}
+                          <span className="text-emerald-600 font-bold block text-sm">
+                            Total: ₹
+                            {Number(item.workingPrice || item.price || item.itemId?.price) * Number(item.workingQuantity || item.quantity)}
                           </span>
                         </div>
                       )}

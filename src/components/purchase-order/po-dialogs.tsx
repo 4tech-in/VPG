@@ -241,10 +241,11 @@ export function CreatePODialog({
       return;
     }
 
-    const hasPriceChange = selectedItems.some((item) => 
-      item.originalPrice !== undefined && 
-      Number(item.price) !== Number(item.originalPrice) && 
-      Number(item.price) > 0
+    const hasPriceChange = selectedItems.some(
+      (item) =>
+        item.originalPrice !== undefined &&
+        Number(item.price) !== Number(item.originalPrice) &&
+        Number(item.price) > 0
     );
 
     if (hasPriceChange && !showPriceConfirm) {
@@ -312,19 +313,35 @@ export function CreatePODialog({
         {showPriceConfirm && (
           <div className="absolute inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-6 rounded-[2.5rem]">
             <div className="bg-white border border-zinc-100 shadow-2xl rounded-2xl p-6 max-w-md w-full">
-              <h3 className="text-xl font-black text-zinc-900 mb-2">Confirm Price Update</h3>
+              <h3 className="text-xl font-black text-zinc-900 mb-2">
+                Confirm Price Update
+              </h3>
               <p className="text-zinc-500 font-medium text-sm mb-6">
-                You have modified the unit price of one or more items. 
-                <br /><br />
-                <strong className="text-rose-600">Are you sure you want to update the price?</strong> 
+                You have modified the unit price of one or more items.
                 <br />
-                The current item price in the database will be overwritten with the new price.
+                <br />
+                <strong className="text-rose-600">
+                  Are you sure you want to update the price?
+                </strong>
+                <br />
+                The current item price in the database will be overwritten with
+                the new price.
               </p>
               <div className="flex items-center gap-3">
-                <Button variant="outline" onClick={() => setShowPriceConfirm(false)} className="rounded-xl font-bold flex-1">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPriceConfirm(false)}
+                  className="rounded-xl font-bold flex-1"
+                >
                   Cancel
                 </Button>
-                <Button onClick={() => { setShowPriceConfirm(false); submitPO(items.filter(item => item.selected)); }} className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90">
+                <Button
+                  onClick={() => {
+                    setShowPriceConfirm(false);
+                    submitPO(items.filter((item) => item.selected));
+                  }}
+                  className="rounded-xl font-bold flex-1 bg-primary text-white hover:bg-primary/90"
+                >
                   Confirm & Generate
                 </Button>
               </div>

@@ -37,9 +37,12 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { useAuthStore } from "@/store/use-auth-store";
 
 export default function PurchaseOrderPage() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.roleId?.name?.toLowerCase() === "admin";
   const {
     purchaseOrders,
     isLoading,
@@ -217,49 +220,53 @@ export default function PurchaseOrderPage() {
                 </TooltipTrigger>
                 <TooltipContent>Print PO</TooltipContent>
               </Tooltip>
-              <WhatsAppShareButton po={po} variant="icon" />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openReceipt(po)}
-                    disabled={receiptLoadingId === (po._id || po.id)}
-                    className="h-8 w-8 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 transition-all hover:bg-cyan-100"
-                    aria-label="Open material receipt"
-                  >
-                    {receiptLoadingId === (po._id || po.id) ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ClipboardCheck className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Material receipt</TooltipContent>
-              </Tooltip>
-              {isCancellable && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Are you sure you want to cancel purchase order ${po.poNo}?`
-                          )
-                        ) {
-                          cancelPO(po._id || po.id || "");
-                        }
-                      }}
-                      className="h-8 w-8 rounded-lg bg-rose-50/50 hover:bg-rose-100/80 text-rose-600 transition-all border border-rose-200/50"
-                      aria-label="Cancel purchase order"
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Cancel order</TooltipContent>
-                </Tooltip>
+              {isAdmin && (
+                <>
+                  <WhatsAppShareButton po={po} variant="icon" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openReceipt(po)}
+                        disabled={receiptLoadingId === (po._id || po.id)}
+                        className="h-8 w-8 rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 transition-all hover:bg-cyan-100"
+                        aria-label="Open material receipt"
+                      >
+                        {receiptLoadingId === (po._id || po.id) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ClipboardCheck className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Material receipt</TooltipContent>
+                  </Tooltip>
+                  {isCancellable && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Are you sure you want to cancel purchase order ${po.poNo}?`
+                              )
+                            ) {
+                              cancelPO(po._id || po.id || "");
+                            }
+                          }}
+                          className="h-8 w-8 rounded-lg bg-rose-50/50 hover:bg-rose-100/80 text-rose-600 transition-all border border-rose-200/50"
+                          aria-label="Cancel purchase order"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Cancel order</TooltipContent>
+                    </Tooltip>
+                  )}
+                </>
               )}
             </div>
           </TooltipProvider>
@@ -317,12 +324,14 @@ export default function PurchaseOrderPage() {
               {showConditions ? "Conditions: ON" : "Conditions: OFF"}
             </Button>
 
-            <Button
-              onClick={() => router.push("/purchase-order/new")}
-              className="h-11 px-6 rounded-xl bg-primary font-black shadow-lg shadow-primary/20 gap-2 text-white"
-            >
-              <Plus className="h-4 w-4" /> Create New Order
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => router.push("/purchase-order/new")}
+                className="h-11 px-6 rounded-xl bg-primary font-black shadow-lg shadow-primary/20 gap-2 text-white"
+              >
+                <Plus className="h-4 w-4" /> Create New Order
+              </Button>
+            )}
           </div>
         </div>
         {/* Board */}

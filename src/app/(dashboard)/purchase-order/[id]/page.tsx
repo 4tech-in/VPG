@@ -53,10 +53,13 @@ import { VerificationSheet } from "@/components/purchase-order/verification-shee
 import { ReceiptHistory } from "@/components/purchase-order/receipt-history";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog";
+import { useAuthStore } from "@/store/use-auth-store";
 
 export default function PODetailPage() {
   const params = useParams();
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.roleId?.name?.toLowerCase() === "admin";
   const [po, setPo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
@@ -343,22 +346,26 @@ export default function PODetailPage() {
             >
               <Printer className="h-3.5 w-3.5 text-zinc-500" /> Print
             </Button>
-            <Button
-              onClick={() => {
-                setSelectedReceiptIndex(null);
-                setIsReceiptOpen(true);
-              }}
-              variant="outline"
-              className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
-            >
-              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />{" "}
-              Receipt
-            </Button>
-            <WhatsAppShareButton
-              po={po}
-              variant="button"
-              label="Send WhatsApp"
-            />
+            {isAdmin && (
+              <>
+                <Button
+                  onClick={() => {
+                    setSelectedReceiptIndex(null);
+                    setIsReceiptOpen(true);
+                  }}
+                  variant="outline"
+                  className="h-9 rounded-lg border-zinc-200 font-bold text-[11px] gap-1.5 px-4 shadow-sm bg-white hover:bg-zinc-50"
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5 text-emerald-600" />{" "}
+                  Receipt
+                </Button>
+                <WhatsAppShareButton
+                  po={po}
+                  variant="button"
+                  label="Send WhatsApp"
+                />
+              </>
+            )}
           </div>
         </div>
 

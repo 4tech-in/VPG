@@ -6,37 +6,37 @@ This document details the exact computation, business rules, and UI rendering lo
 
 ## 1. Overview & Concept
 
-In the Purchase Order module, the **IN STOCK** badge does **not** represent a static warehouse inventory count. Instead, it dynamically calculates:
+In the Purchase Order module, the **IN STOCK** badge dynamically calculates project-wise available physical stock:
 
-> **The sum of all pending (unconsumed / remaining on site) quantities of that material across all previous active Purchase Orders for the selected project.**
+> **The sum of (Total Received − Used) across all previous active Purchase Orders for the selected project.**
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│  IN STOCK = Σ (Pending Quantity from Previous Project POs)  │
+│  IN STOCK = Σ (Total Received Quantity − Material Used) │
 └────────────────────────────────────────────────────────┘
 ```
 
-* **Purpose:** Allows the purchasing manager to immediately see how much of the requested material is already procured/on-site before raising another PO for the same item.
+* **Purpose:** Shows how much physical stock has actually been received on site for this project and remains unused (not yet issued/consumed) before raising another PO.
 
 ---
 
 ## 2. Core Business Formulas
 
-For any line item inside a Purchase Order:
+For any material line item inside the project's Purchase Orders:
 
-$$\text{Total Quantity} = \text{Material Used} + \text{Pending}$$
+$$\text{In Stock} = \max(0, \text{Total Received} - \text{Material Used})$$
 
-Therefore:
+Where:
+* **Total Received:** The quantity delivered/received to date (`receivedQuantity` / `totalReceivedQuantity`).
+* **Material Used:** The quantity issued/consumed to requesters on site (`issuedToRequesterQuantity` / `materialUsed`).
 
-$$\text{Pending Quantity} = \max(0, \text{Total Quantity} - \text{Material Used})$$
+And for any requested item $I$ across the project:
 
-And for a requested item $I$:
-
-$$\text{In Stock Qty}(I) = \sum_{P \in \text{Project POs}} \sum_{i \in P.\text{items},\, i \approx I} i.\text{pending}$$
+$$\text{Project In Stock Qty}(I) = \sum_{P \in \text{Project POs}} \sum_{i \in P.\text{items},\, i \approx I} \max(0, i.\text{receivedQuantity} - i.\text{materialUsed})$$
 
 Where:
 * $P.\text{status} \neq \text{"Cancelled"}$
-* $i \approx I$ indicates that the item matches by ID or normalized name.
+* $i \approx I$ indicates that the item matches by item ID or normalized material name.
 
 ---
 
