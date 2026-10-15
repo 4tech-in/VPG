@@ -511,14 +511,9 @@ function CreatePOContent() {
             totalReceived = Number(po.totalReceivedQuantity);
           }
 
-          // Calculate Material Used: issued / consumed
+          // Calculate Material Used: consumed / used quantity
           let materialUsed = 0;
           if (
-            pi.issuedToRequesterQuantity != null &&
-            Number.isFinite(Number(pi.issuedToRequesterQuantity))
-          ) {
-            materialUsed = Number(pi.issuedToRequesterQuantity);
-          } else if (
             pi.materialUsed != null &&
             Number.isFinite(Number(pi.materialUsed))
           ) {
@@ -530,6 +525,11 @@ function CreatePOContent() {
           ) {
             materialUsed = Number(po.materialUsed);
           } else if (
+            pi.issuedToRequesterQuantity != null &&
+            Number.isFinite(Number(pi.issuedToRequesterQuantity))
+          ) {
+            materialUsed = Number(pi.issuedToRequesterQuantity);
+          } else if (
             po.items?.length === 1 &&
             po.totalCount != null &&
             po.pending != null
@@ -540,8 +540,7 @@ function CreatePOContent() {
             );
           }
 
-          // In Stock = total receive - used
-          // If totalReceived was not directly stored, fall back to material received or pending logic
+          // In Stock = received quantity - used quantity (e.g. 200 - 50 = 150)
           const inStock = Math.max(0, totalReceived - materialUsed);
 
           // Calculate Pending: total - used == pending
@@ -561,17 +560,6 @@ function CreatePOContent() {
             pending = Math.max(0, totalQuantity - materialUsed);
           }
 
-          // Verify formula consistency
-          if (materialUsed === 0 && pending > 0 && pending < totalQuantity) {
-            materialUsed = totalQuantity - pending;
-          }
-          if (
-            pending === 0 &&
-            materialUsed > 0 &&
-            materialUsed < totalQuantity
-          ) {
-            pending = totalQuantity - materialUsed;
-          }
           const rate = Number(pi.rate ?? pi.price ?? 0);
           const amount = Number(pi.amount ?? orderQuantity * rate ?? 0);
 
@@ -1614,8 +1602,8 @@ function CreatePOContent() {
                             <th className="px-3 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider w-[220px]">
                               Item Information
                             </th>
-                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[100px]">
-                              In Stock
+                            <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[110px]" title="Project-wise In Stock: Total Received - Used across all POs in this project">
+                              Project Stock
                             </th>
                             <th className="px-2 py-3 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider text-center w-[110px]">
                               PO Order Qty
@@ -1688,11 +1676,17 @@ function CreatePOContent() {
                                     const inStockQty =
                                       getItemPendingStock(item);
                                     return inStockQty > 0 ? (
-                                      <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs inline-block">
+                                      <span
+                                        title={`Project Available Stock: ${inStockQty} ${item.unit} (Received − Used across project POs)`}
+                                        className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs inline-block cursor-help"
+                                      >
                                         {inStockQty} {item.unit}
                                       </span>
                                     ) : (
-                                      <span className="text-zinc-400 text-xs font-semibold">
+                                      <span
+                                        title="Project Available Stock: 0 (No unconsumed received stock on site)"
+                                        className="text-zinc-400 text-xs font-semibold cursor-help"
+                                      >
                                         0 {item.unit}
                                       </span>
                                     );

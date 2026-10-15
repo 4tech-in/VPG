@@ -435,58 +435,75 @@ export default function MaterialDetailPage() {
         </div>
 
         {/* Quick Stats Horizontal Row */}
-        <div className="bg-white rounded-xl border border-slate-200/70 p-1 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-1">
-          {[
-            {
-              label: "Ordered",
-              val: items.reduce(
-                (acc: number, item: any) => acc + (item.orderQuantity || 0),
-                0
-              ),
-              color: "text-slate-700"
-            },
-            {
-              label: "Received",
-              val: items.reduce(
-                (acc: number, item: any) => acc + (item.receivedQuantity || 0),
-                0
-              ),
-              color: "text-teal-600"
-            },
-            {
-              label: "Pending",
-              val: items.reduce(
-                (acc: number, item: any) =>
-                  acc +
-                  Math.max(
-                    (item.orderQuantity || 0) - (item.receivedQuantity || 0),
-                    0
-                  ),
-                0
-              ),
-              color: "text-amber-500"
-            },
-            {
-              label: "Issued",
-              val: items.reduce(
-                (acc: number, item: any) => acc + (item.issuedToRequesterQuantity || 0),
-                0
-              ),
-              color: "text-indigo-500"
-            }
-          ].map((stat, i) => (
-            <div
-              key={i}
-              className="bg-slate-50 p-4 rounded-xl flex flex-col items-center justify-center gap-1 border border-slate-100"
-            >
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-                {stat.label}
-              </span>
-              <span className={cn("text-2xl font-black", stat.color)}>
-                {stat.val}
-              </span>
-            </div>
-          ))}
+        <div className="bg-white rounded-xl border border-slate-200/70 p-1 shadow-sm grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+          {(() => {
+            const totalOrdered = items.reduce(
+              (acc: number, item: any) => acc + (item.orderQuantity || 0),
+              0
+            );
+            const totalReceived = items.reduce(
+              (acc: number, item: any) => acc + (item.receivedQuantity || 0),
+              0
+            );
+            const totalPendingOrder = items.reduce(
+              (acc: number, item: any) =>
+                acc +
+                Math.max(
+                  (item.orderQuantity || 0) - (item.receivedQuantity || 0),
+                  0
+                ),
+              0
+            );
+            const totalIssued = items.reduce(
+              (acc: number, item: any) => acc + (item.issuedToRequesterQuantity || 0),
+              0
+            );
+            const usedVal =
+              po.materialUsed != null && Number.isFinite(Number(po.materialUsed))
+                ? Number(po.materialUsed)
+                : totalIssued;
+            const inStockVal = Math.max(0, totalReceived - usedVal);
+
+            return [
+              {
+                label: "Ordered",
+                val: totalOrdered,
+                color: "text-slate-700"
+              },
+              {
+                label: "Received",
+                val: totalReceived,
+                color: "text-teal-600"
+              },
+              {
+                label: "In Stock",
+                val: inStockVal,
+                color: "text-emerald-600"
+              },
+              {
+                label: "Pending",
+                val: totalPendingOrder,
+                color: "text-amber-500"
+              },
+              {
+                label: "Issued",
+                val: totalIssued,
+                color: "text-indigo-500"
+              }
+            ].map((stat, i) => (
+              <div
+                key={i}
+                className="bg-slate-50 p-4 rounded-xl flex flex-col items-center justify-center gap-1 border border-slate-100"
+              >
+                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                  {stat.label}
+                </span>
+                <span className={cn("text-2xl font-black", stat.color)}>
+                  {stat.val}
+                </span>
+              </div>
+            ));
+          })()}
         </div>
 
         <section className="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-sm sm:p-6" aria-label="Material summary">
