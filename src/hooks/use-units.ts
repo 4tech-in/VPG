@@ -20,13 +20,13 @@ const mapApiUnitToUnit = (apiUnit: ApiUnit): Unit => {
   }
 }
 
-export function useUnits(autoFetch = true) {
+export function useUnits(autoFetch = true, initialLimit = 10) {
   const [units, setUnits] = useState<Unit[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(10)
+  const [limit, setLimit] = useState(initialLimit)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [pagination, setPagination] = useState({

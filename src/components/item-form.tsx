@@ -22,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Check, ChevronsUpDown, Search } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { AppleSwitch } from "@/components/unlumen-ui/apple-switch"
 import { useGroups } from "@/hooks/use-groups"
 import { useSubGroups } from "@/hooks/use-sub-groups"
@@ -66,9 +73,11 @@ export function ItemForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: I
   // Fetch dynamic categories dropdown from backend APIs
   const { groups } = useGroups(true)
   const { subGroups } = useSubGroups()
-  const { units } = useUnits(true)
+  const { units } = useUnits(true, 1000)
   
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUnitOpen, setIsUnitOpen] = useState(false)
+  const [unitSearch, setUnitSearch] = useState("")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -121,6 +130,16 @@ export function ItemForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: I
 
   const groupName = form.watch("groupName")
   const subGroup = form.watch("subGroup")
+
+  const filteredUnits = useMemo(() => {
+    if (!unitSearch.trim()) return units
+    const q = unitSearch.toLowerCase().trim()
+    return units.filter(
+      (u) =>
+        (u.label && u.label.toLowerCase().includes(q)) ||
+        (u.value && u.value.toLowerCase().includes(q))
+    )
+  }, [units, unitSearch])
 
   // Filter subGroups locally to match selected Group dynamically
   const filteredSubGroups = useMemo(() => {
@@ -294,27 +313,98 @@ export function ItemForm({ onSuccess, initialValues, onSubmit: onSubmitProp }: I
                 )}
               />
               <FormField
-              control={form.control}
-              name="unit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit <span className="text-destructive">*</span></FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Unit" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {units.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{u.label} ({u.value})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                control={form.control}
+                name="unit"
+                render={({ field }) => {
+                  const selectedUnit = units.find((u) => u.id === field.value)
+                  return (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Unit <span className="text-destructive">*</span></FormLabel>
+                      <Popover
+                        open={isUnitOpen}
+                        onOpenChange={(open) => {
+                          setIsUnitOpen(open)
+                          if (!open) setUnitSearch("")
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={isUnitOpen}
+                              className={cn(
+                                "w-full justify-between font-normal h-9 px-3",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <span className="truncate">
+                                {selectedUnit
+                                  ? `${selectedUnit.label} (${selectedUnit.value})`
+                                  : "Select Unit"}
+                              </span>
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[--radix-popover-trigger-width] p-0 z-[9999]"
+                          align="start"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex flex-col w-full bg-popover rounded-md">
+                            <div className="flex items-center border-b px-3 py-2 gap-2">
+                              <Search className="h-4 w-4 shrink-0 opacity-50" />
+                              <input
+                                autoFocus
+                                value={unitSearch}
+                                onChange={(e) => setUnitSearch(e.target.value)}
+                                placeholder="Search unit..."
+                                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                              />
+                            </div>
+                            <div className="max-h-[220px] overflow-y-auto p-1 divide-y divide-transparent">
+                              {filteredUnits.length === 0 ? (
+                                <p className="py-4 text-center text-xs text-muted-foreground">
+                                  No unit found.
+                                </p>
+                              ) : (
+                                filteredUnits.map((u) => {
+                                  const isSelected = field.value === u.id
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={u.id}
+                                      onClick={() => {
+                                        field.onChange(u.id)
+                                        setIsUnitOpen(false)
+                                        setUnitSearch("")
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center justify-between text-left px-2.5 py-2 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                                        isSelected && "bg-accent/60 font-medium"
+                                      )}
+                                    >
+                                      <span className="truncate">
+                                        {u.label} ({u.value})
+                                      </span>
+                                      {isSelected && (
+                                        <Check className="ml-2 h-4 w-4 shrink-0 opacity-100 text-primary" />
+                                      )}
+                                    </button>
+                                  )
+                                })
+                              )}
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
             </div>
 
         </div>
