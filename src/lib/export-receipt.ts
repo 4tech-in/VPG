@@ -388,21 +388,43 @@ export function purchaseOrderReceiptHtml(
             color: #000;
             background: #ffffff;
             margin: 0;
-            padding: 40px 40px 20px 40px;
+            padding: 35px 40px 140px 40px;
             font-size: 12px;
             line-height: 1.4;
             width: 210mm;
-            height: 297mm;
+            min-height: 297mm;
+            box-sizing: border-box;
             position: relative;
-            overflow: hidden;
           }
           @media print {
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+              width: 100%;
+              min-height: 100%;
+              padding: 35px 40px 140px 40px;
             }
             .no-print {
               display: none;
+            }
+            .page-break {
+              page-break-before: always;
+              break-before: page;
+            }
+            .avoid-break {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .bottom-wave {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+            }
+            .authorization-signature {
+              position: fixed;
+              bottom: 50px;
+              left: 40px;
             }
           }
           .header-container {
@@ -480,6 +502,8 @@ export function purchaseOrderReceiptHtml(
             position: relative;
             z-index: 1;
             background-color: #ffffff;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .vendor-table th {
             background-color: #000;
@@ -551,17 +575,21 @@ export function purchaseOrderReceiptHtml(
           .items-table th {
             background-color: #e6e6e6;
             color: #000;
-            padding: 6px 8px;
+            padding: 5px 8px;
             font-size: 11px;
             font-weight: bold;
             border: 1px solid #000;
             text-align: center;
           }
           .items-table td {
-            padding: 6px 8px;
+            padding: 5px 8px;
             border: 1px solid #000;
             font-size: 11px;
             text-align: center;
+          }
+          .items-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .items-table td:nth-child(2) {
             text-align: left;
@@ -570,11 +598,17 @@ export function purchaseOrderReceiptHtml(
             text-align: center;
           }
           
-          .conditions {
-            margin-top: 8px;
-            font-size: 11px;
+          .footer-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
             position: relative;
             z-index: 1;
+            margin-top: 10px;
+          }
+          .conditions {
+            margin-top: 4px;
+            font-size: 11px;
+            max-width: 65%;
           }
           .conditions-title {
             margin-bottom: 4px;
@@ -608,16 +642,18 @@ export function purchaseOrderReceiptHtml(
             bottom: 0;
             right: 0;
             width: 100%;
-            height: 150px;
+            height: 140px;
             z-index: -1;
             overflow: hidden;
+            pointer-events: none;
           }
           .authorization-signature {
             position: absolute;
             left: 40px;
-            bottom: 58px;
+            bottom: 50px;
             z-index: 10;
-            width: 285px;
+            width: 270px;
+            pointer-events: none;
           }
           .authorization-signature img {
             display: block;
@@ -778,27 +814,29 @@ export function purchaseOrderReceiptHtml(
         ${
           hasRemark || hasConditions
             ? `
-        <div class="conditions" style="margin-top: -40px; max-width: 70%;">
-          ${
-            hasRemark
-              ? `
-          <div class="remark-block" style="margin-bottom: 6px;">
-            <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Remark:</div>
-            <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poRemark)}</div>
-          </div>`
-              : ""
-          }
-          ${
-            hasConditions
-              ? `
-          <div class="conditions-block" style="margin-bottom: 6px;">
-            <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Conditions:</div>
-            <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poNotes)}</div>
-          </div>`
-              : ""
-          }
+        <div class="footer-section">
+          <div class="conditions">
+            ${
+              hasRemark
+                ? `
+            <div class="remark-block" style="margin-bottom: 6px;">
+              <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Remark:</div>
+              <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poRemark)}</div>
+            </div>`
+                : ""
+            }
+            ${
+              hasConditions
+                ? `
+            <div class="conditions-block" style="margin-bottom: 6px;">
+              <div class="conditions-title" style="font-weight: bold; margin-bottom: 2px;">Conditions:</div>
+              <div style="padding-left: 14px; white-space: pre-wrap; line-height: 1.35; font-size: 11px;">${formatReceiptText(poNotes)}</div>
+            </div>`
+                : ""
+            }
+          </div>
         </div>`
-            : `<div style="height: 60px;"></div>`
+            : `<div style="height: 30px;"></div>`
         }
 
         <div class="authorization-signature">
