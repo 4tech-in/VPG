@@ -181,6 +181,11 @@ export function getMenuList(
               permission: "material:view"
             },
             {
+              href: "/material/inward-register",
+              label: "Inward Register",
+              permission: "material:view"
+            },
+            {
               href: "/material-site-transfers",
               label: "Site Transfers",
               permission: "material-site-transfer:view"

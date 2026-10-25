@@ -918,13 +918,27 @@ export default function MaterialMasterPage() {
 
         {/* Table Board */}
         <div className="bg-white rounded-[2rem] border border-zinc-200/60 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
-              <Scale className="h-5 w-5" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
+                <Scale className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-zinc-900 tracking-tight">
+                  Ledger Inward Registry
+                </h3>
+                <p className="text-xs text-zinc-400 font-medium">
+                  Material lifecycle & inward tracking overview
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-black text-zinc-900 tracking-tight">
-              Ledger Inward Registry
-            </h3>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/material/inward-register")}
+              className="h-9 rounded-xl px-4 gap-2 text-xs font-bold border-teal-200 text-teal-700 hover:bg-teal-50"
+            >
+              Open Inward Register Page
+            </Button>
           </div>
 
           {isLoading ? (
