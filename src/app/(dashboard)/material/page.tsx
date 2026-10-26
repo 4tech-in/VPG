@@ -51,6 +51,7 @@ import { purchaseOrderService } from "@/service/purchaseOrderService";
 import { useProjects } from "@/hooks/use-projects";
 import { useVendors } from "@/hooks/use-vendors";
 import { useItems } from "@/hooks/use-items";
+import { useUnits } from "@/hooks/use-units";
 import { useGroups } from "@/hooks/use-groups";
 import { useSubGroups } from "@/hooks/use-sub-groups";
 import { assetService } from "@/service/assets.api";
@@ -87,9 +88,60 @@ export default function MaterialMasterPage() {
   const { projects } = useProjects();
   const { vendors } = useVendors();
   const { items } = useItems(true, 1000);
+  const { units } = useUnits(true, 1000);
   const { groups } = useGroups();
   const { subGroups } = useSubGroups();
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
+
+  const unitsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    units.forEach((u) => {
+      if (u.id) map.set(String(u.id), u.label || u.value);
+      if (u.value) map.set(String(u.value), u.label || u.value);
+    });
+    return map;
+  }, [units]);
+
+  const getItemUnit = useCallback((item: any) => {
+    // 1. Direct unit object populated on item
+    if (item.unitId && typeof item.unitId === "object") {
+      const name = item.unitId.name || item.unitId.unitName || item.unitId.label || item.unitId.value;
+      if (name) return name;
+    }
+    // 2. Unit ID string mapped from units list
+    if (item.unitId && typeof item.unitId === "string") {
+      const matched = unitsMap.get(item.unitId);
+      if (matched) return matched;
+    }
+    // 3. Nested in populated itemId
+    if (item.itemId && typeof item.itemId === "object") {
+      if (item.itemId.unitId) {
+        if (typeof item.itemId.unitId === "object") {
+          const name = item.itemId.unitId.name || item.itemId.unitId.unitName || item.itemId.unitId.label || item.itemId.unitId.value;
+          if (name) return name;
+        } else if (typeof item.itemId.unitId === "string") {
+          const matched = unitsMap.get(item.itemId.unitId);
+          if (matched) return matched;
+        }
+      }
+      if (item.itemId.unit) return item.itemId.unit;
+    }
+    // 4. Matched from items hook if itemId is an id string
+    const rawItemId = typeof item.itemId === "string" ? item.itemId : item.itemId?._id || item.itemId?.id;
+    if (rawItemId) {
+      const foundItem = items.find((it) => it.id === rawItemId);
+      if (foundItem) {
+        if (foundItem.unit) return foundItem.unit;
+        if (foundItem.unitId && unitsMap.has(foundItem.unitId)) {
+          return unitsMap.get(foundItem.unitId);
+        }
+      }
+    }
+    // 5. Direct unit property
+    if (item.unit) return item.unit;
+
+    return "Nos";
+  }, [unitsMap, items]);
 
   const [assets, setAssets] = useState<any[]>([]);
 
@@ -464,7 +516,7 @@ export default function MaterialMasterPage() {
         return (
           <div className="flex flex-col gap-1 max-w-[150px]">
             {items.slice(0, 3).map((item: any, i: number) => {
-              const unit = item.unitId?.unitName || item.unitId?.name || "Nos";
+              const unit = getItemUnit(item);
               return (
                 <div
                   key={i}
@@ -1027,8 +1079,7 @@ export default function MaterialMasterPage() {
                             item.itemId?.itemName ||
                             item.itemId?.name ||
                             "Material";
-                          const unit =
-                            item.unitId?.unitName || item.unitId?.name || "Nos";
+                          const unit = getItemUnit(item);
                           const remaining =
                             (item.orderQuantity || 0) -
                             (item.receivedQuantity || 0);
@@ -1195,8 +1246,7 @@ export default function MaterialMasterPage() {
                             item.itemId?.itemName ||
                             item.itemId?.name ||
                             "Material";
-                          const unit =
-                            item.unitId?.unitName || item.unitId?.name || "Nos";
+                          const unit = getItemUnit(item);
                           const remainingToIssue =
                             (item.receivedQuantity || 0) -
                             (item.issuedToRequesterQuantity || 0);

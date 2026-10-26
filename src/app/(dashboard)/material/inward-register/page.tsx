@@ -15,6 +15,8 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
+import { useUnits } from "@/hooks/use-units";
+import { useItems } from "@/hooks/use-items";
 import { toast } from "sonner";
 import { DataTable } from "@/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
@@ -34,6 +36,7 @@ export interface InwardRegisterRow {
   projectName: string;
   itemDescription: string;
   qty: string;
+  items: Array<{ name: string; qty: number | string; unit: string }>;
   vehicleNo: string;
   actualCount: string | number;
   recdBy: string;
@@ -74,6 +77,50 @@ export default function LedgerInwardRegisterPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const printAreaRef = useRef<HTMLDivElement>(null);
+
+  const { units } = useUnits(true, 1000);
+  const { items: allItems } = useItems(true, 1000);
+
+  const unitsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    units.forEach((u) => {
+      if (u.id) map.set(String(u.id), u.label || u.value);
+      if (u.value) map.set(String(u.value), u.label || u.value);
+    });
+    return map;
+  }, [units]);
+
+  const resolveUnit = (unitRef: any, itemRef?: any): string => {
+    if (unitRef && typeof unitRef === "object") {
+      const u = unitRef.unitName || unitRef.name || unitRef.label || unitRef.value;
+      if (u) return u;
+    }
+    if (unitRef && typeof unitRef === "string") {
+      const matched = unitsMap.get(unitRef);
+      if (matched) return matched;
+    }
+    if (itemRef && typeof itemRef === "object") {
+      if (itemRef.unitId) {
+        if (typeof itemRef.unitId === "object") {
+          const u = itemRef.unitId.unitName || itemRef.unitId.name || itemRef.unitId.label || itemRef.unitId.value;
+          if (u) return u;
+        } else if (typeof itemRef.unitId === "string") {
+          const matched = unitsMap.get(itemRef.unitId);
+          if (matched) return matched;
+        }
+      }
+      if (itemRef.unit) return itemRef.unit;
+    }
+    const rawItemId = typeof itemRef === "string" ? itemRef : itemRef?._id || itemRef?.id;
+    if (rawItemId) {
+      const found = allItems.find((it) => it.id === rawItemId);
+      if (found) {
+        if (found.unit) return found.unit;
+        if (found.unitId && unitsMap.has(found.unitId)) return unitsMap.get(found.unitId)!;
+      }
+    }
+    return "";
+  };
 
   const fetchLedgerData = async () => {
     setIsLoading(true);
@@ -158,6 +205,7 @@ export default function LedgerInwardRegisterPage() {
           if (rItems.length > 0) {
             const itemDescs: string[] = [];
             const qtys: string[] = [];
+            const parsedItems: Array<{ name: string; qty: number | string; unit: string }> = [];
             let totalActualQty = 0;
 
             rItems.forEach((ri: any) => {
@@ -173,16 +221,19 @@ export default function LedgerInwardRegisterPage() {
                 matchedPOItem?.itemId?.name ||
                 "Material";
               const unit =
-                ri.unitId?.unitName ||
-                ri.unitId?.name ||
-                matchedPOItem?.unitId?.unitName ||
-                matchedPOItem?.unitId?.name ||
-                "";
+                resolveUnit(ri.unitId, ri.itemId) ||
+                resolveUnit(matchedPOItem?.unitId, matchedPOItem?.itemId) ||
+                "Nos";
               const qtyNum = Number(ri.suppliedQuantity ?? ri.receivedQuantity ?? 0);
               totalActualQty += qtyNum;
 
               itemDescs.push(name);
               qtys.push(`${qtyNum}${unit ? ` ${unit}` : ""}`);
+              parsedItems.push({
+                name,
+                qty: qtyNum,
+                unit,
+              });
             });
 
             rows.push({
@@ -196,6 +247,7 @@ export default function LedgerInwardRegisterPage() {
               projectName,
               itemDescription: itemDescs.join(", "),
               qty: qtys.join(", "),
+              items: parsedItems,
               vehicleNo,
               actualCount: totalActualQty || "—",
               recdBy,
@@ -212,6 +264,7 @@ export default function LedgerInwardRegisterPage() {
               projectName,
               itemDescription: "Goods Inward",
               qty: "—",
+              items: [],
               vehicleNo,
               actualCount: "—",
               recdBy,
@@ -238,12 +291,14 @@ export default function LedgerInwardRegisterPage() {
         const itemDescs = poItems.map(
           (pi: any) => pi.itemId?.itemName || pi.itemId?.name || "Material"
         );
-        const qtys = poItems.map(
-          (pi: any) =>
-            `${pi.receivedQuantity || pi.orderQuantity || 0} ${
-              pi.unitId?.unitName || pi.unitId?.name || ""
-            }`
-        );
+        const parsedItems: Array<{ name: string; qty: number | string; unit: string }> = [];
+        const qtys = poItems.map((pi: any) => {
+          const name = pi.itemId?.itemName || pi.itemId?.name || "Material";
+          const unit = resolveUnit(pi.unitId, pi.itemId) || "Nos";
+          const qty = Number(pi.receivedQuantity || pi.orderQuantity || 0);
+          parsedItems.push({ name, qty, unit });
+          return `${qty}${unit ? ` ${unit}` : ""}`;
+        });
         const totalCount = poItems.reduce(
           (acc: number, pi: any) =>
             acc + Number(pi.receivedQuantity || pi.orderQuantity || 0),
@@ -261,6 +316,7 @@ export default function LedgerInwardRegisterPage() {
           projectName,
           itemDescription: itemDescs.join(", ") || "Materials",
           qty: qtys.join(", ") || "—",
+          items: parsedItems,
           vehicleNo: po.vehicleNo || po.vehicleNumber || "—",
           actualCount: totalCount || "—",
           recdBy: person(po.receiverMaterial) || person(po.requestedBy) || "—",
@@ -274,7 +330,7 @@ export default function LedgerInwardRegisterPage() {
       ...r,
       srNo: idx + 1,
     }));
-  }, [purchaseOrders]);
+  }, [purchaseOrders, resolveUnit]);
 
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return registerRows;
@@ -301,19 +357,30 @@ export default function LedgerInwardRegisterPage() {
 
     const tableRowsHtml = filteredRows
       .map(
-        (row) => `
+        (row) => {
+          const itemNamesHtml = row.items && row.items.length > 0
+            ? row.items.map((i) => `<div style="margin-bottom: 2px; font-weight: 600;">${i.name}</div>`).join("")
+            : (row.itemDescription || "—");
+
+          const qtyHtml = row.items && row.items.length > 0
+            ? row.items.map((i) => `<div style="margin-bottom: 2px; font-weight: bold;">${i.qty} ${i.unit}</div>`).join("")
+            : row.qty;
+
+          return `
       <tr>
         <td style="text-align: center; font-weight: bold;">${row.srNo}</td>
         <td style="text-align: center; white-space: nowrap;">${row.date}</td>
         <td style="font-weight: 600;">${row.vendorName}</td>
         <td style="text-align: center; font-family: monospace; font-weight: bold;">${row.receiptNo}</td>
         <td>${row.projectName}</td>
-        <td>${row.qty}</td>
+        <td>${itemNamesHtml}</td>
+        <td>${qtyHtml}</td>
         <td style="text-align: center;">${row.vehicleNo}</td>
         <td style="text-align: center; font-weight: bold;">${row.actualCount}</td>
         <td>${row.recdBy}</td>
       </tr>
-    `
+    `;
+        }
       )
       .join("");
 
@@ -421,6 +488,7 @@ export default function LedgerInwardRegisterPage() {
                 <th>Vendor Name</th>
                 <th style="width: 110px;">Receipt No. / Slip No.</th>
                 <th>Project Name</th>
+                <th>Item Name</th>
                 <th style="width: 100px;">Qty.</th>
                 <th style="width: 90px;">Vehicle No</th>
                 <th style="width: 75px;">Actual Count</th>
@@ -428,7 +496,7 @@ export default function LedgerInwardRegisterPage() {
               </tr>
             </thead>
             <tbody>
-              ${tableRowsHtml || '<tr><td colspan="9" class="no-records">No inward entries found</td></tr>'}
+              ${tableRowsHtml || '<tr><td colspan="10" class="no-records">No inward entries found</td></tr>'}
             </tbody>
           </table>
 
@@ -458,24 +526,36 @@ export default function LedgerInwardRegisterPage() {
       "Receipt No. / Slip No.",
       "PO Number",
       "Project Name",
+      "Item Name",
       "Qty",
       "Vehicle No",
       "Actual Count",
       "Recd By",
     ];
 
-    const rowsData = filteredRows.map((r) => [
-      r.srNo,
-      `"${r.date}"`,
-      `"${r.vendorName.replace(/"/g, '""')}"`,
-      `"${r.receiptNo.replace(/"/g, '""')}"`,
-      `"${r.poNo.replace(/"/g, '""')}"`,
-      `"${r.projectName.replace(/"/g, '""')}"`,
-      `"${r.qty.replace(/"/g, '""')}"`,
-      `"${r.vehicleNo.replace(/"/g, '""')}"`,
-      `"${String(r.actualCount).replace(/"/g, '""')}"`,
-      `"${r.recdBy.replace(/"/g, '""')}"`,
-    ]);
+    const rowsData = filteredRows.map((r) => {
+      const itemNames = r.items && r.items.length > 0
+        ? r.items.map((i) => i.name).join("; ")
+        : r.itemDescription;
+
+      const qtys = r.items && r.items.length > 0
+        ? r.items.map((i) => `${i.qty} ${i.unit}`).join("; ")
+        : r.qty;
+
+      return [
+        r.srNo,
+        `"${r.date}"`,
+        `"${r.vendorName.replace(/"/g, '""')}"`,
+        `"${r.receiptNo.replace(/"/g, '""')}"`,
+        `"${r.poNo.replace(/"/g, '""')}"`,
+        `"${r.projectName.replace(/"/g, '""')}"`,
+        `"${itemNames.replace(/"/g, '""')}"`,
+        `"${qtys.replace(/"/g, '""')}"`,
+        `"${r.vehicleNo.replace(/"/g, '""')}"`,
+        `"${String(r.actualCount).replace(/"/g, '""')}"`,
+        `"${r.recdBy.replace(/"/g, '""')}"`,
+      ];
+    });
 
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -545,15 +625,60 @@ export default function LedgerInwardRegisterPage() {
       ),
     },
     {
+      accessorKey: "itemDescription",
+      header: "Item Name",
+      cell: ({ row }) => {
+        const items = row.original.items || [];
+        if (items.length > 0) {
+          return (
+            <div className="flex flex-col gap-1 max-w-[220px]">
+              {items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="font-bold text-zinc-900 text-xs truncate border-b border-zinc-100 pb-0.5 last:border-none last:pb-0"
+                  title={item.name}
+                >
+                  {item.name}
+                </div>
+              ))}
+            </div>
+          );
+        }
+        return (
+          <span className="font-bold text-zinc-900 text-xs truncate max-w-[200px]" title={row.original.itemDescription}>
+            {row.original.itemDescription}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "qty",
       header: "Qty.",
-      cell: ({ row }) => (
-        <div className="flex flex-col gap-0.5 max-w-[180px]">
-          <span className="font-bold text-zinc-900 text-xs">
-            {row.original.qty}
-          </span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const items = row.original.items || [];
+        if (items.length > 0) {
+          return (
+            <div className="flex flex-col gap-1 max-w-[150px]">
+              {items.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="font-extrabold text-zinc-900 text-xs tracking-tight border-b border-zinc-100 pb-0.5 last:border-none last:pb-0"
+                >
+                  {item.qty} {item.unit}
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex flex-col gap-0.5 max-w-[150px]">
+            <span className="font-bold text-zinc-900 text-xs">
+              {row.original.qty}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "vehicleNo",

@@ -583,7 +583,14 @@ export default function MaterialDetailPage() {
                           <span className="text-[10px] font-bold text-slate-400 uppercase">
                             Unit:{" "}
                             <span className="text-slate-600">
-                              {item.unitId?.name || "Nos"}
+                              {item.unitId?.name ||
+                                item.unitId?.unitName ||
+                                item.unitId?.label ||
+                                item.itemId?.unitId?.name ||
+                                item.itemId?.unitId?.unitName ||
+                                item.itemId?.unit ||
+                                item.unit ||
+                                "Nos"}
                             </span>{" "}
                             | Spec:{" "}
                             <span className="text-slate-600">
