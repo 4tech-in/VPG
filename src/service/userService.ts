@@ -33,6 +33,7 @@ export type ApiUser = {
   isActive: boolean
   profileImage?: string | null
   geofenceId?: any
+  geofenceIds?: any
   projectId?: any
   projectIds?: any
   attendancePolicyId?: any
@@ -81,6 +82,7 @@ export type CreateUserPayload = {
   reportsTo?: string | null
   profileImage?: File | string | null
   geofenceId?: string | null
+  geofenceIds?: string[] | string | null
   projectId?: string | null
   projectIds?: string[] | string | null
   attendancePolicyId?: string | null

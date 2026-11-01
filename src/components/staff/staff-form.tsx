@@ -175,7 +175,13 @@ export function StaffForm({
     }
   };
 
-  // No longer fetching on mount to prevent unnecessary API calls unless dropdowns are clicked
+  // Fetch initial page on mount so existing selections and list are immediately ready
+  useEffect(() => {
+    if (!hasFetchedGeofences.current && !isGeofenceFetchingRef.current) {
+      hasFetchedGeofences.current = true;
+      fetchGeofencesPage(1);
+    }
+  }, []);
 
   // Observers for infinite scrolling — deps do NOT include page to avoid re-trigger loops
   useEffect(() => {
@@ -263,8 +269,21 @@ export function StaffForm({
   const [primaryNodeId, setPrimaryNodeId] = useState(
     initialValues?.primaryNodeId || "",
   );
-  const [geofenceId, setGeofenceId] = useState(
-    initialValues?.geofenceId || "none",
+  const parseInitialGeofences = (vals?: any): string[] => {
+    if (!vals) return [];
+    if (Array.isArray(vals.geofenceIds) && vals.geofenceIds.length > 0) {
+      return vals.geofenceIds.map((g: any) =>
+        typeof g === "object" && g ? String(g._id || g.id || "") : String(g)
+      ).filter((id: string) => Boolean(id) && id !== "none");
+    }
+    const single = typeof vals.geofenceId === "object" && vals.geofenceId
+      ? String(vals.geofenceId._id || vals.geofenceId.id || "")
+      : String(vals.geofenceId || "");
+    return single && single !== "none" ? [single] : [];
+  };
+
+  const [selectedGeofences, setSelectedGeofences] = useState<string[]>(
+    parseInitialGeofences(initialValues),
   );
   const [selectedProjects, setSelectedProjects] = useState<string[]>(
     initialValues?.projectIds ||
@@ -312,7 +331,7 @@ export function StaffForm({
       setSelectedNodes(initialValues.nodeIds || []);
       setPreviewUrl(initialValues.avatarUrl || "");
       setProfileImageFile(null);
-      setGeofenceId(initialValues.geofenceId || "none");
+      setSelectedGeofences(parseInitialGeofences(initialValues));
       setSelectedProjects(
         initialValues.projectIds ||
           (initialValues.projectId && initialValues.projectId !== "none"
@@ -366,7 +385,8 @@ export function StaffForm({
         primaryNodeId: primaryNodeId || null,
         reportsTo:
           isSuperAdmin || reportsTo === "none" || !reportsTo ? null : reportsTo,
-        geofenceId: geofenceId === "none" || !geofenceId ? null : geofenceId,
+        geofenceId: selectedGeofences[0] || null,
+        geofenceIds: selectedGeofences.length > 0 ? selectedGeofences : undefined,
         projectIds: selectedProjects.length > 0 ? selectedProjects : undefined,
         attendancePolicyId:
           attendancePolicyId === "none" || !attendancePolicyId
@@ -869,11 +889,10 @@ export function StaffForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="space-y-2">
               <Label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-                Geofence Boundary
+                Geofence Boundaries
               </Label>
-              <Select
-                value={geofenceId}
-                onValueChange={setGeofenceId}
+              <Popover
+                modal={true}
                 onOpenChange={(open) => {
                   if (
                     open &&
@@ -885,35 +904,111 @@ export function StaffForm({
                   }
                 }}
               >
-                <SelectTrigger className="h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 focus:ring-primary font-medium transition-colors hover:bg-zinc-50">
-                  <SelectValue placeholder="Select geofence boundary" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto">
-                  <SelectItem value="none">None / No Geofence</SelectItem>
-                  {initialValues?.geofenceId &&
-                    initialValues.geofenceId !== "none" &&
-                    !geofencesList.some(
-                      (g) => g.id === initialValues.geofenceId,
-                    ) && (
-                      <SelectItem value={initialValues.geofenceId}>
-                        {initialValues.geofenceName || "Current Geofence"}
-                      </SelectItem>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full h-14 bg-zinc-50/50 border-zinc-100 rounded-2xl pl-4 justify-between font-medium transition-colors hover:bg-zinc-50"
+                  >
+                    {selectedGeofences.length > 0 ? (
+                      <div className="flex gap-1 flex-wrap overflow-hidden h-full items-center">
+                        {selectedGeofences.map((id) => {
+                          const gf = geofencesList.find((g) => g.id === id);
+                          const label = gf
+                            ? gf.name
+                            : initialValues?.geofenceNames?.[id] ||
+                              (initialValues?.geofenceId === id ? initialValues.geofenceName : null) ||
+                              "Geofence " + id.substring(0, 4);
+                          return (
+                            <Badge
+                              variant="secondary"
+                              key={id}
+                              className="rounded-sm px-1 font-normal text-[10px]"
+                            >
+                              {label}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-zinc-500 font-normal">
+                        Select geofence boundaries...
+                      </span>
                     )}
-                  {geofencesList.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                  {hasMoreGeofences && (
-                    <div
-                      ref={geofenceObserverRef}
-                      className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
-                    >
-                      {isGeofencesLoading ? "Loading..." : "Scroll for more"}
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[300px] p-0 rounded-xl border-zinc-100 shadow-xl max-h-[250px] overflow-y-auto"
+                  align="start"
+                >
+                  <div className="flex flex-col p-1">
+                    {geofencesList.length === 0 && !hasMoreGeofences && (
+                      <div className="p-2 text-center text-xs text-zinc-400">
+                        No geofences found.
+                      </div>
+                    )}
+                    {/* Render initial geofences if not yet in loaded page */}
+                    {selectedGeofences
+                      .filter((id) => !geofencesList.some((g) => g.id === id))
+                      .map((id) => (
+                        <div
+                          key={id}
+                          className={cn(
+                            "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
+                          )}
+                          onClick={() => {
+                            setSelectedGeofences((prev) =>
+                              prev.includes(id)
+                                ? prev.filter((item) => item !== id)
+                                : [...prev, id],
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedGeofences.includes(id)}
+                            className="mr-2 pointer-events-none"
+                          />
+                          {initialValues?.geofenceNames?.[id] ||
+                            (initialValues?.geofenceId === id ? initialValues.geofenceName : null) ||
+                            "Geofence " + id.substring(0, 4)}
+                        </div>
+                      ))}
+                    {geofencesList.map((g) => {
+                      const isSelected = selectedGeofences.includes(g.id);
+                      return (
+                        <div
+                          key={g.id}
+                          className={cn(
+                            "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 pl-2 pr-2 text-sm outline-none hover:bg-zinc-100",
+                          )}
+                          onClick={() => {
+                            setSelectedGeofences((prev) =>
+                              isSelected
+                                ? prev.filter((id) => id !== g.id)
+                                : [...prev, g.id],
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            className="mr-2 pointer-events-none"
+                          />
+                          {g.name}
+                        </div>
+                      );
+                    })}
+                    {hasMoreGeofences && (
+                      <div
+                        ref={geofenceObserverRef}
+                        className="p-2 text-center text-xs text-zinc-400 font-semibold bg-zinc-50/50"
+                      >
+                        {isGeofencesLoading ? "Loading..." : "Scroll for more"}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">

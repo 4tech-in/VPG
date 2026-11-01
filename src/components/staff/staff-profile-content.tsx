@@ -375,8 +375,18 @@ export function StaffProfileContent({ id }: { id: string }) {
                         )}
                       </div>
                       <div>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Geofence Boundary</p>
-                        <p className="text-base font-bold text-zinc-900">{user.geofenceName || "-"}</p>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Geofence Boundaries</p>
+                        {user.geofenceNames && Object.keys(user.geofenceNames).length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {Object.entries(user.geofenceNames).map(([id, name]) => (
+                              <Badge key={id} variant="secondary" className="bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border-none px-2.5 py-0.5 rounded-lg text-xs font-semibold">
+                                {name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-base font-bold text-zinc-900">{user.geofenceName || "-"}</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Reporting Manager (Reporter)</p>

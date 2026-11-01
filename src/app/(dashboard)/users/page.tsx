@@ -209,8 +209,23 @@ export default function UserPage() {
     },
     {
       accessorKey: "geofenceName",
-      header: "Geofence",
-      cell: ({ row }) => <span className="text-zinc-500 font-medium">{row.original.geofenceName || "-"}</span>,
+      header: "Geofences",
+      cell: ({ row }) => {
+        const names = row.original.geofenceNames ? Object.values(row.original.geofenceNames).filter(Boolean) : []
+        if (names.length === 0 && row.original.geofenceName) {
+          names.push(row.original.geofenceName)
+        }
+        if (names.length === 0) return <span className="text-zinc-500 font-medium">-</span>
+        if (names.length === 1) return <span className="text-zinc-500 font-medium">{names[0]}</span>
+        return (
+          <div className="flex items-center gap-1 flex-wrap max-w-[200px]">
+            <span className="text-zinc-700 font-medium text-xs">{names[0]}</span>
+            <span className="text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+              +{names.length - 1}
+            </span>
+          </div>
+        )
+      },
     },
     {
       accessorKey: "attendancePolicyName",

@@ -23,10 +23,12 @@ export type Staff = {
   aadhaarNumber?: string
   isActive: boolean
   geofenceId: string
+  geofenceIds: string[]
   projectId: string
   projectIds: string[]
   attendancePolicyId: string
   geofenceName?: string
+  geofenceNames?: Record<string, string>
   projectName?: string
   attendancePolicyName?: string
   reportsToName?: string
@@ -74,6 +76,23 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
   const geofenceName = typeof apiUser.geofenceId === "object" && apiUser.geofenceId
     ? apiUser.geofenceId.name
     : undefined
+
+  const geofenceIds = Array.isArray(apiUser.geofenceIds)
+    ? apiUser.geofenceIds.map((g: any) => (typeof g === "object" && g ? (g._id || g.id || String(g)) : String(g)))
+    : (geofenceId ? [geofenceId] : [])
+
+  const geofenceNames: Record<string, string> = {}
+  if (typeof apiUser.geofenceId === "object" && apiUser.geofenceId) {
+    geofenceNames[geofenceId] = apiUser.geofenceId.name
+  }
+  if (Array.isArray(apiUser.geofenceIds)) {
+    apiUser.geofenceIds.forEach((g: any) => {
+      if (typeof g === "object" && g) {
+        const gId = g._id || g.id || String(g)
+        geofenceNames[gId] = g.name
+      }
+    })
+  }
     
   const reportsToName = typeof apiUser.reportsTo === "object" && apiUser.reportsTo
     ? apiUser.reportsTo.name
@@ -127,10 +146,12 @@ const mapApiUserToStaff = (apiUser: ApiUser): Staff => {
     isActive: apiUser.isActive ?? true,
     avatarUrl: getImageUrl(apiUser.profileImage) || undefined,
     geofenceId,
+    geofenceIds,
     projectId,
     projectIds,
     attendancePolicyId,
     geofenceName,
+    geofenceNames,
     projectName,
     projectNames,
     attendancePolicyName,
