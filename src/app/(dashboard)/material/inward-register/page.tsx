@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import {
   Loader2,
@@ -13,6 +14,8 @@ import {
   Filter,
   PackageCheck,
   FileSpreadsheet,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import { purchaseOrderService } from "@/service/purchaseOrderService";
 import { useUnits } from "@/hooks/use-units";
@@ -24,6 +27,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/image-url";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export interface InwardRegisterRow {
   id: string;
@@ -33,13 +45,20 @@ export interface InwardRegisterRow {
   vendorName: string;
   receiptNo: string;
   poNo: string;
+  poId?: string;
   projectName: string;
   itemDescription: string;
   qty: string;
-  items: Array<{ name: string; qty: number | string; unit: string }>;
+  items: Array<{ itemId?: string; name: string; qty: number | string; unit: string }>;
   vehicleNo: string;
   actualCount: string | number;
   recdBy: string;
+  billPhoto?: string | null;
+  materialPhoto?: string | null;
+  remarks?: string | null;
+  verificationStatus?: string;
+  receiptId?: string;
+  po?: any;
 }
 
 const person = (value: any) =>
@@ -73,8 +92,11 @@ function getFinancialYearString(dateVal?: unknown): string {
 }
 
 export default function LedgerInwardRegisterPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
+  const [serverInwardEntries, setServerInwardEntries] = useState<any[]>([]);
+  const [selectedInwardRow, setSelectedInwardRow] = useState<InwardRegisterRow | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const printAreaRef = useRef<HTMLDivElement>(null);
 
@@ -90,7 +112,7 @@ export default function LedgerInwardRegisterPage() {
     return map;
   }, [units]);
 
-  const resolveUnit = (unitRef: any, itemRef?: any): string => {
+  const resolveUnit = useCallback((unitRef: any, itemRef?: any): string => {
     if (unitRef && typeof unitRef === "object") {
       const u = unitRef.unitName || unitRef.name || unitRef.label || unitRef.value;
       if (u) return u;
@@ -120,16 +142,19 @@ export default function LedgerInwardRegisterPage() {
       }
     }
     return "";
-  };
+  }, [unitsMap, allItems]);
 
   const fetchLedgerData = async () => {
     setIsLoading(true);
     try {
-      const response = await purchaseOrderService.getPurchaseOrders({
+      const response = await purchaseOrderService.getMaterialInwardCombined({
         limit: 500,
       });
-      const pos = response.data || [];
+      const pos = response.orders || response.purchaseOrders || [];
       setPurchaseOrders(pos);
+      if (Array.isArray(response.inwardEntries) && response.inwardEntries.length > 0) {
+        setServerInwardEntries(response.inwardEntries);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Failed to load ledger records");
@@ -144,6 +169,19 @@ export default function LedgerInwardRegisterPage() {
 
   // Flatten Purchase Orders & Receipts into Inward Register rows
   const registerRows: InwardRegisterRow[] = useMemo(() => {
+    if (serverInwardEntries.length > 0) {
+      return serverInwardEntries.map((r, idx) => {
+        const matchedPO = purchaseOrders.find((p) => String(p._id || p.id) === String(r.poId));
+        return {
+          ...r,
+          poId: r.poId || String(matchedPO?._id || matchedPO?.id || ""),
+          po: matchedPO || r.po,
+          rawDate: new Date(r.rawDate || r.timestamp || Date.now()),
+          srNo: idx + 1,
+        };
+      });
+    }
+
     const rows: InwardRegisterRow[] = [];
 
     purchaseOrders.forEach((po) => {
@@ -244,6 +282,8 @@ export default function LedgerInwardRegisterPage() {
               vendorName,
               receiptNo: slipNo,
               poNo: po.poNo || "—",
+              poId: String(po._id || po.id || ""),
+              po,
               projectName,
               itemDescription: itemDescs.join(", "),
               qty: qtys.join(", "),
@@ -251,6 +291,11 @@ export default function LedgerInwardRegisterPage() {
               vehicleNo,
               actualCount: totalActualQty || "—",
               recdBy,
+              billPhoto: receipt.billPhoto || null,
+              materialPhoto: receipt.materialPhoto || null,
+              remarks: receipt.remark || receipt.notes || null,
+              verificationStatus: receipt.verificationStatus || "Approved",
+              receiptId: receipt._id ? String(receipt._id) : undefined,
             });
           } else {
             rows.push({
@@ -261,6 +306,8 @@ export default function LedgerInwardRegisterPage() {
               vendorName,
               receiptNo: slipNo,
               poNo: po.poNo || "—",
+              poId: String(po._id || po.id || ""),
+              po,
               projectName,
               itemDescription: "Goods Inward",
               qty: "—",
@@ -268,6 +315,11 @@ export default function LedgerInwardRegisterPage() {
               vehicleNo,
               actualCount: "—",
               recdBy,
+              billPhoto: receipt.billPhoto || null,
+              materialPhoto: receipt.materialPhoto || null,
+              remarks: receipt.remark || receipt.notes || null,
+              verificationStatus: receipt.verificationStatus || "Approved",
+              receiptId: receipt._id ? String(receipt._id) : undefined,
             });
           }
         });
@@ -313,6 +365,8 @@ export default function LedgerInwardRegisterPage() {
           vendorName,
           receiptNo: po.latestSlipNo || po.poNo || "—",
           poNo: po.poNo || "—",
+          poId: String(po._id || po.id || ""),
+          po,
           projectName,
           itemDescription: itemDescs.join(", ") || "Materials",
           qty: qtys.join(", ") || "—",
@@ -320,6 +374,11 @@ export default function LedgerInwardRegisterPage() {
           vehicleNo: po.vehicleNo || po.vehicleNumber || "—",
           actualCount: totalCount || "—",
           recdBy: person(po.receiverMaterial) || person(po.requestedBy) || "—",
+          billPhoto: null,
+          materialPhoto: null,
+          remarks: null,
+          verificationStatus: "Approved",
+          receiptId: undefined,
         });
       }
     });
@@ -330,7 +389,7 @@ export default function LedgerInwardRegisterPage() {
       ...r,
       srNo: idx + 1,
     }));
-  }, [purchaseOrders, resolveUnit]);
+  }, [purchaseOrders, resolveUnit, serverInwardEntries]);
 
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return registerRows;
@@ -607,12 +666,18 @@ export default function LedgerInwardRegisterPage() {
       accessorKey: "receiptNo",
       header: "Receipt No. / Slip No.",
       cell: ({ row }) => (
-        <Badge
-          variant="outline"
-          className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200"
+        <button
+          onClick={() => setSelectedInwardRow(row.original)}
+          className="text-left group cursor-pointer"
+          title="Click to view slip details"
         >
-          {row.original.receiptNo}
-        </Badge>
+          <Badge
+            variant="outline"
+            className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 group-hover:bg-teal-100 group-hover:border-teal-300 transition-colors"
+          >
+            {row.original.receiptNo}
+          </Badge>
+        </button>
       ),
     },
     {
@@ -690,22 +755,24 @@ export default function LedgerInwardRegisterPage() {
       ),
     },
     {
-      accessorKey: "actualCount",
-      header: () => <div className="text-center">Actual Count</div>,
-      cell: ({ row }) => (
-        <div className="text-center font-black text-zinc-900 tabular-nums">
-          {row.original.actualCount}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "recdBy",
-      header: "Recd By",
-      cell: ({ row }) => (
-        <span className="font-semibold text-zinc-800 text-xs">
-          {row.original.recdBy}
-        </span>
-      ),
+      id: "actions",
+      header: () => <div className="text-right font-black">Details</div>,
+      cell: ({ row }) => {
+        const item = row.original;
+        return (
+          <div className="flex items-center justify-end gap-2 pr-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedInwardRow(item)}
+              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Show Details
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -857,6 +924,184 @@ export default function LedgerInwardRegisterPage() {
             <DataTable columns={columns} data={filteredRows} />
           )}
         </div>
+
+        {/* Inward Slip Details Modal */}
+        <Dialog open={!!selectedInwardRow} onOpenChange={(open) => !open && setSelectedInwardRow(null)}>
+          <DialogContent className="max-w-3xl rounded-[2rem] p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col border-none shadow-2xl">
+            {selectedInwardRow && (
+              <>
+                <DialogHeader className="p-6 bg-gradient-to-br from-teal-50/70 via-white to-zinc-50 border-b border-zinc-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-md shadow-teal-600/20">
+                        <BookOpen className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                          Inward Delivery Details
+                          <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider">
+                            {selectedInwardRow.verificationStatus || "Approved"}
+                          </Badge>
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-zinc-400 font-medium">
+                          Official Goods Inward Slip • Slip No:{" "}
+                          <span className="font-mono font-bold text-zinc-700">
+                            {selectedInwardRow.receiptNo}
+                          </span>
+                        </DialogDescription>
+                      </div>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="p-6 space-y-6 overflow-y-auto">
+                  {/* Grid Metadata Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Date</p>
+                      <p className="text-sm font-bold text-zinc-900 mt-0.5">{selectedInwardRow.date}</p>
+                    </div>
+
+                    <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">PO Number</p>
+                      <p className="text-sm font-mono font-black text-teal-700 mt-0.5">{selectedInwardRow.poNo}</p>
+                    </div>
+
+                    <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Vehicle No</p>
+                      <p className="text-sm font-mono font-bold text-zinc-800 mt-0.5">{selectedInwardRow.vehicleNo || "—"}</p>
+                    </div>
+
+                    <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-100">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Received By</p>
+                      <p className="text-sm font-bold text-zinc-800 mt-0.5 truncate">{selectedInwardRow.recdBy || "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-white p-4 rounded-xl border border-zinc-200">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Vendor Information</p>
+                      <p className="text-base font-black text-zinc-900 mt-1">{selectedInwardRow.vendorName}</p>
+                      {selectedInwardRow.po?.vendorMobile && (
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5">Contact: {selectedInwardRow.po.vendorMobile}</p>
+                      )}
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl border border-zinc-200">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Project / Site Location</p>
+                      <p className="text-base font-black text-zinc-900 mt-1">{selectedInwardRow.projectName}</p>
+                      {selectedInwardRow.po?.locationAddress && (
+                        <p className="text-xs text-zinc-500 font-medium mt-0.5 truncate">{selectedInwardRow.po.locationAddress}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Materials Delivered Manifest Table */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Items Delivered in this Slip</p>
+                    <div className="rounded-xl border border-zinc-200 overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-black uppercase text-[10px] tracking-wider">
+                          <tr>
+                            <th className="py-2.5 px-4">#</th>
+                            <th className="py-2.5 px-4">Material / Item</th>
+                            <th className="py-2.5 px-4 text-right">Delivered Quantity</th>
+                            <th className="py-2.5 px-4 text-center">Unit</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {selectedInwardRow.items && selectedInwardRow.items.length > 0 ? (
+                            selectedInwardRow.items.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-zinc-50/50">
+                                <td className="py-2.5 px-4 font-bold text-zinc-400">{idx + 1}</td>
+                                <td className="py-2.5 px-4 font-black text-zinc-900">{item.name}</td>
+                                <td className="py-2.5 px-4 text-right font-black text-teal-700">{item.qty}</td>
+                                <td className="py-2.5 px-4 text-center font-bold text-zinc-500">{item.unit || "Nos"}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={4} className="py-4 text-center text-zinc-400 font-semibold">
+                                {selectedInwardRow.itemDescription || "General Goods Inward"}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                        <tfoot className="bg-zinc-50/50 border-t border-zinc-200 font-black">
+                          <tr>
+                            <td colSpan={2} className="py-2 px-4 uppercase text-[10px] text-zinc-500">Total Actual Count</td>
+                            <td className="py-2 px-4 text-right text-teal-800 text-sm font-black">{selectedInwardRow.actualCount}</td>
+                            <td className="py-2 px-4"></td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Delivery Attachments / Photos */}
+                  {(selectedInwardRow.billPhoto || selectedInwardRow.materialPhoto) && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Delivery Documents & Photos</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {selectedInwardRow.billPhoto && (
+                          <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200 flex flex-col gap-2">
+                            <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">Invoice / Bill Document</span>
+                            <img
+                              src={getImageUrl(selectedInwardRow.billPhoto)}
+                              alt="Invoice photo"
+                              className="w-full h-40 object-cover rounded-lg border border-zinc-200 cursor-pointer hover:opacity-90"
+                              onClick={() => window.open(getImageUrl(selectedInwardRow.billPhoto!), "_blank")}
+                            />
+                          </div>
+                        )}
+                        {selectedInwardRow.materialPhoto && (
+                          <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-200 flex flex-col gap-2">
+                            <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">Material Unloading Photo</span>
+                            <img
+                              src={getImageUrl(selectedInwardRow.materialPhoto)}
+                              alt="Material photo"
+                              className="w-full h-40 object-cover rounded-lg border border-zinc-200 cursor-pointer hover:opacity-90"
+                              onClick={() => window.open(getImageUrl(selectedInwardRow.materialPhoto!), "_blank")}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedInwardRow.remarks && (
+                    <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-3.5">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Remarks</p>
+                      <p className="text-xs text-amber-900 mt-1 font-medium">{selectedInwardRow.remarks}</p>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter className="p-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between sm:justify-between">
+                  {selectedInwardRow.poId ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        router.push(`/material/${selectedInwardRow.poId}`);
+                      }}
+                      className="gap-2 font-bold text-xs rounded-xl border-teal-200 text-teal-700 hover:bg-teal-50"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      View Full PO Material Details
+                    </Button>
+                  ) : <div />}
+
+                  <Button
+                    onClick={() => setSelectedInwardRow(null)}
+                    className="h-10 px-6 rounded-xl font-bold text-xs bg-zinc-900 text-white hover:bg-zinc-800"
+                  >
+                    Close
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ContentLayout>
   );

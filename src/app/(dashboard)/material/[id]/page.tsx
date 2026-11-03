@@ -4,7 +4,7 @@ import { getImageUrl } from "@/lib/image-url";
 import { getMaterialPending } from "@/lib/material-totals";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
   Printer,
@@ -30,7 +30,9 @@ import {
   UserCheck,
   Building,
   Loader2,
-  ClipboardCheck
+  ClipboardCheck,
+  Eye,
+  BookOpen
 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
@@ -136,6 +138,81 @@ export default function MaterialDetailPage() {
     }
   }, [params.id]);
 
+  const inwardRows = useMemo(() => {
+    if (!po || !po.receipts) return [];
+    const list = (po.receipts || []).filter(
+      (r: any) =>
+        String(r.verificationStatus || "").toLowerCase() === "approved" ||
+        !r.verificationStatus
+    );
+    return list.map((receipt: any, rIdx: number) => {
+      const rawDate = new Date(
+        receipt.receiptDate || receipt.createdAt || po.createdAt || Date.now()
+      );
+      const dateStr = !isNaN(rawDate.getTime())
+        ? rawDate.toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+        : "—";
+
+      const slipNo =
+        receipt.slipNo ||
+        po.latestSlipNo ||
+        `2026-27/${String(rIdx + 1).padStart(2, "0")}`;
+      const vehicleNo =
+        receipt.vehicleNo ||
+        receipt.vehicleNumber ||
+        po.vehicleNo ||
+        po.vehicleNumber ||
+        "—";
+      const rItems = receipt.items || [];
+      const parsedItems = rItems.map((ri: any) => {
+        const matchedPOItem = (po.items || []).find((pi: any) => {
+          const pId =
+            pi.itemId?._id ||
+            pi.itemId?.id ||
+            (typeof pi.itemId === "string" ? pi.itemId : "");
+          const rId =
+            ri.itemId?._id ||
+            ri.itemId?.id ||
+            (typeof ri.itemId === "string" ? ri.itemId : "");
+          return pId && rId && String(pId) === String(rId);
+        });
+        const name =
+          ri.itemId?.itemName ||
+          ri.itemId?.name ||
+          matchedPOItem?.itemId?.itemName ||
+          matchedPOItem?.itemId?.name ||
+          "Material";
+        const unit =
+          ri.unitId?.unitName ||
+          ri.unitId?.name ||
+          matchedPOItem?.unitId?.unitName ||
+          matchedPOItem?.unitId?.name ||
+          "Nos";
+        const qty = Number(ri.suppliedQuantity ?? ri.receivedQuantity ?? 0);
+        return { name, qty, unit };
+      });
+
+      return {
+        srNo: rIdx + 1,
+        receiptIndex: (po.receipts || []).indexOf(receipt),
+        date: dateStr,
+        vendorName: po.vendorName || "—",
+        receiptNo: slipNo,
+        poNo: po.poNo || "—",
+        projectName:
+          po.projectId?.projectName || po.projectId?.name || "—",
+        items: parsedItems,
+        vehicleNo,
+        rawReceipt: receipt,
+      };
+    });
+  }, [po]);
+
   if (isLoading) {
     return (
       <ContentLayout title="Loading Purchase Order...">
@@ -156,7 +233,7 @@ export default function MaterialDetailPage() {
           <p className="text-zinc-500 font-bold text-xs">
             Purchase order details could not be found.
           </p>
-          <Button size="sm" onClick={() => router.push("/purchase-order")}>
+          <Button size="sm" onClick={() => router.push("/material")}>
             Go Back
           </Button>
         </div>
@@ -622,18 +699,136 @@ export default function MaterialDetailPage() {
               </div>
             </div>
 
-            {/* Approved Receipt Requests */}
-            <ReceiptHistory
-              title="Approved Receipts"
-              subtitle="Verified and inwarded delivery records"
-              receipts={po.receipts ?? []}
-              items={items}
-              approvedOnly={true}
-              onViewReceipt={(index) => {
-                setSelectedReceiptIndex(index);
-                setIsReceiptOpen(true);
-              }}
-            />
+            {/* Goods Inward Log Table */}
+            <div className="bg-white rounded-2xl border border-slate-200/70 p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-zinc-900 tracking-tight">
+                      Goods Inward Log
+                    </h3>
+                    <p className="text-xs text-zinc-400 font-medium">
+                      Showing all inward delivery slips and recorded deliveries for this order
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="font-semibold text-xs py-1 px-3">
+                  {inwardRows.length} Records
+                </Badge>
+              </div>
+
+              <div className="w-full overflow-x-auto rounded-xl border border-slate-200 shadow-xs">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50/90 text-primary font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-4 text-center">Sr. No</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Vendor Name</th>
+                      <th className="py-3 px-4">Receipt No. / Slip No.</th>
+                      <th className="py-3 px-4">Project Name</th>
+                      <th className="py-3 px-4">Item Name</th>
+                      <th className="py-3 px-4">Qty.</th>
+                      <th className="py-3 px-4">Vehicle No</th>
+                      <th className="py-3 px-4 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {inwardRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-zinc-400 font-medium">
+                          No inward delivery slips recorded yet for this order.
+                        </td>
+                      </tr>
+                    ) : (
+                      inwardRows.map((row: any) => (
+                        <tr key={row.srNo} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3.5 px-4 text-center font-bold text-zinc-900 tabular-nums">
+                            {row.srNo}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-zinc-700 whitespace-nowrap">
+                            {row.date}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-zinc-900">{row.vendorName}</span>
+                              <span className="text-[10px] text-zinc-400 font-mono">PO: {row.poNo}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Badge
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedReceiptIndex(row.receiptIndex);
+                                setIsReceiptOpen(true);
+                              }}
+                              className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 cursor-pointer hover:bg-teal-100 transition-colors"
+                            >
+                              {row.receiptNo}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-zinc-800 truncate max-w-[180px]">
+                            {row.projectName}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col gap-1 max-w-[200px]">
+                              {row.items.map((it: any, idx: number) => (
+                                <div key={idx} className="font-bold text-zinc-900 text-xs truncate">
+                                  {it.name}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col gap-1">
+                              {row.items.map((it: any, idx: number) => (
+                                <div key={idx} className="font-extrabold text-zinc-900 text-xs whitespace-nowrap">
+                                  {it.qty} {it.unit}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-semibold text-zinc-700 text-xs whitespace-nowrap">
+                            {row.vehicleNo}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReceiptIndex(row.receiptIndex);
+                                setIsReceiptOpen(true);
+                              }}
+                              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Show Details
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* If there are pending receipts awaiting admin verification, show the verification tracker */}
+            {po.receipts?.some((r: any) => String(r.verificationStatus || "").toLowerCase() === "pending") && (
+              <ReceiptHistory
+                title="Pending Receipt Verification"
+                subtitle="Delivery requests awaiting approval"
+                receipts={po.receipts ?? []}
+                items={items}
+                approvedOnly={false}
+                onViewReceipt={(index) => {
+                  setSelectedReceiptIndex(index);
+                  setIsReceiptOpen(true);
+                }}
+              />
+            )}
           </div>
 
           {/* Sidebar Panel (Right Column) */}

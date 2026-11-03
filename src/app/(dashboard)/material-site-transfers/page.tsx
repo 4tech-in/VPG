@@ -1,19 +1,74 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { ContentLayout } from "@/components/admin-panel/content-layout"
-import { Loader2, Search } from "lucide-react"
-import { materialSiteTransferService } from "@/service/materialSiteTransfer.api"
+import { Loader2, Search, Plus, Eye, CheckCircle2, AlertCircle, Building2, Truck, User } from "lucide-react"
+import { materialSiteTransferService, CreateMaterialTransferPayload } from "@/service/materialSiteTransfer.api"
+import { projectService, ApiProject } from "@/service/projectService"
+import { itemService, ApiItem } from "@/service/itemService"
+import { userService, ApiUser } from "@/service/userService"
+import { vendorService, ApiVendor } from "@/service/vendorService"
+import { useAuthStore } from "@/store/use-auth-store"
 import { toast } from "sonner"
 import { DataTable } from "@/components/ui/data-table"
 import { ColumnDef } from "@tanstack/react-table"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 export default function MaterialSiteTransfersPage() {
+  const currentUser = useAuthStore((state) => state.user)
+
   const [transfers, setTransfers] = useState<any[]>([])
+  const [projects, setProjects] = useState<ApiProject[]>([])
+  const [items, setItems] = useState<ApiItem[]>([])
+  const [users, setUsers] = useState<ApiUser[]>([])
+  const [vendors, setVendors] = useState<ApiVendor[]>([])
+
   const [isLoading, setIsLoading] = useState(true)
+  const [isActionLoading, setIsActionLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const fetchTransfers = async () => {
+
+  // Modals state
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [selectedTransfer, setSelectedTransfer] = useState<any | null>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [transferToConfirm, setTransferToConfirm] = useState<any | null>(null)
+  const [isConfirmReceiptOpen, setIsConfirmReceiptOpen] = useState(false)
+  const [transferToReject, setTransferToReject] = useState<any | null>(null)
+  const [isRejectOpen, setIsRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
+
+  // Create Form State
+  const [destinationType, setDestinationType] = useState<"site" | "vendor">("site")
+  const [fromProjectId, setFromProjectId] = useState("")
+  const [toProjectId, setToProjectId] = useState("")
+  const [vendorId, setVendorId] = useState("")
+  const [recipientUserId, setRecipientUserId] = useState("")
+  const [materialId, setMaterialId] = useState("")
+  const [quantity, setQuantity] = useState("")
+  const [fromLocation, setFromLocation] = useState("")
+  const [toLocation, setToLocation] = useState("")
+  const [notes, setNotes] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isAdmin = useMemo(() => {
+    const role = currentUser?.roleId
+    const roleName = String(typeof role === "object" ? role?.name : role || "").toLowerCase()
+    const roleScope = typeof role === "object" ? role?.scope : undefined
+    return roleScope === "organization" || ["admin", "superadmin", "super admin"].includes(roleName)
+  }, [currentUser])
+
+  const fetchTransfers = useCallback(async () => {
     setIsLoading(true)
     try {
       const response = await materialSiteTransferService.getTransfers({ limit: 500 })
@@ -24,105 +79,385 @@ export default function MaterialSiteTransfersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  const fetchDependencies = useCallback(async () => {
+    try {
+      const [projRes, itemRes, userRes, vendorRes] = await Promise.all([
+        projectService.getProjects({ limit: 500 }),
+        itemService.getItems({ limit: 500 }),
+        userService.getUsers({ limit: 500, status: "active" }),
+        vendorService.getVendors({ limit: 500, status: "active" }),
+      ])
+      setProjects(projRes.projects || [])
+      setItems(itemRes.items || [])
+      setUsers(userRes.data || [])
+      setVendors(vendorRes.vendors || [])
+    } catch (err) {
+      console.error("Error loading dependency data:", err)
+    }
+  }, [])
 
   useEffect(() => {
     fetchTransfers()
-  }, [])
+    fetchDependencies()
+  }, [fetchTransfers, fetchDependencies])
 
-  const handleApprove = async (id: string) => {
+  const resetCreateForm = () => {
+    setDestinationType("site")
+    setFromProjectId("")
+    setToProjectId("")
+    setVendorId("")
+    setRecipientUserId("")
+    setMaterialId("")
+    setQuantity("")
+    setFromLocation("")
+    setToLocation("")
+    setNotes("")
+  }
+
+  const isFormValid = useMemo(() => {
+    if (!fromProjectId || !materialId) return false
+    const qty = Number(quantity)
+    if (!qty || qty <= 0 || isNaN(qty)) return false
+
+    if (destinationType === "site") {
+      if (!toProjectId || !recipientUserId) return false
+      if (toProjectId === fromProjectId) return false
+    } else {
+      if (!vendorId) return false
+    }
+    return true
+  }, [destinationType, fromProjectId, toProjectId, vendorId, recipientUserId, materialId, quantity])
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isFormValid) {
+      toast.error("Please fill all required fields correctly.")
+      return
+    }
+
+    setIsSubmitting(true)
     try {
-      await materialSiteTransferService.approveTransfer(id)
-      toast.success("Transfer approved successfully")
+      const payload: CreateMaterialTransferPayload = {
+        destinationType,
+        fromProjectId,
+        materialId,
+        quantity: Number(quantity),
+        fromLocation: fromLocation.trim() || undefined,
+        notes: notes.trim() || undefined,
+      }
+
+      if (destinationType === "site") {
+        payload.toProjectId = toProjectId
+        payload.recipientUserId = recipientUserId
+        payload.toLocation = toLocation.trim() || undefined
+      } else {
+        payload.vendorId = vendorId
+        if (recipientUserId) {
+          payload.recipientUserId = recipientUserId
+        }
+      }
+
+      const res = await materialSiteTransferService.createTransfer(payload)
+      toast.success(res?.message || "Material Site Transfer created successfully")
+      setIsCreateOpen(false)
+      resetCreateForm()
       fetchTransfers()
     } catch (err: any) {
-      toast.error(err.message || "Failed to approve transfer")
+      toast.error(err.message || "Failed to create transfer")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleReject = async (id: string) => {
+  const handleApprove = async (id: string) => {
+    setIsActionLoading(true)
     try {
-      await materialSiteTransferService.rejectTransfer(id)
+      const res = await materialSiteTransferService.approveTransfer(id)
+      toast.success("Transfer approved successfully")
+      if (selectedTransfer?._id === id) {
+        setSelectedTransfer(res.data || null)
+      }
+      fetchTransfers()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve transfer")
+    } finally {
+      setIsActionLoading(false)
+    }
+  }
+
+  const handleRejectConfirm = async () => {
+    if (!transferToReject?._id) return
+    setIsActionLoading(true)
+    try {
+      await materialSiteTransferService.rejectTransfer(transferToReject._id, rejectReason.trim() || undefined)
       toast.success("Transfer rejected successfully")
+      setIsRejectOpen(false)
+      setTransferToReject(null)
+      setRejectReason("")
+      if (selectedTransfer?._id === transferToReject._id) {
+        setIsDetailOpen(false)
+        setSelectedTransfer(null)
+      }
       fetchTransfers()
     } catch (err: any) {
       toast.error(err.message || "Failed to reject transfer")
+    } finally {
+      setIsActionLoading(false)
+    }
+  }
+
+  const canUserConfirmReceipt = (transfer: any) => {
+    if (!transfer || !currentUser?._id) return false
+    if (transfer.status !== "Approved") return false
+    if (transfer.recipientStatus !== "Pending") return false
+    const recipientId = typeof transfer.recipientUserId === "object" ? transfer.recipientUserId?._id : transfer.recipientUserId
+    return String(recipientId || "") === String(currentUser._id)
+  }
+
+  const handleConfirmReceipt = async () => {
+    if (!transferToConfirm?._id) return
+    setIsActionLoading(true)
+    try {
+      const res = await materialSiteTransferService.confirmReceipt(transferToConfirm._id)
+      toast.success(res?.message || "Material receipt confirmed successfully")
+      setIsConfirmReceiptOpen(false)
+      setTransferToConfirm(null)
+      if (selectedTransfer?._id === transferToConfirm._id) {
+        setSelectedTransfer(res?.data || null)
+      }
+      fetchTransfers()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to confirm receipt")
+    } finally {
+      setIsActionLoading(false)
     }
   }
 
   const filteredTransfers = useMemo(() => {
     return transfers.filter((t) => {
       const searchLower = searchQuery.toLowerCase()
+      const materialName = t.materialId?.itemName || t.materialId?.name || ""
+      const fromProject = t.fromProjectId?.projectName || t.fromProjectId?.name || ""
+      const toProject = t.toProjectId?.projectName || t.toProjectId?.name || ""
+      const vendorName = t.vendorId?.companyName || t.vendorId?.name || ""
+      const receiverName = t.recipientUserId?.name || ""
+      const notesText = t.notes || ""
+
       return (
-        (t.materialId?.itemName || t.materialId?.name || "").toLowerCase().includes(searchLower) ||
-        (t.fromProjectId?.projectName || t.fromProjectId?.name || "").toLowerCase().includes(searchLower) ||
-        (t.toProjectId?.projectName || t.toProjectId?.name || "").toLowerCase().includes(searchLower)
+        materialName.toLowerCase().includes(searchLower) ||
+        fromProject.toLowerCase().includes(searchLower) ||
+        toProject.toLowerCase().includes(searchLower) ||
+        vendorName.toLowerCase().includes(searchLower) ||
+        receiverName.toLowerCase().includes(searchLower) ||
+        notesText.toLowerCase().includes(searchLower)
       )
     })
   }, [transfers, searchQuery])
+
+  const renderApprovalChip = (status: string) => {
+    const s = status || "Pending"
+    if (s === "Approved") {
+      return (
+        <span className="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Approved
+        </span>
+      )
+    }
+    if (s === "Rejected") {
+      return (
+        <span className="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+          Rejected
+        </span>
+      )
+    }
+    return (
+      <span className="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+        Pending
+      </span>
+    )
+  }
+
+  const renderReceiptChip = (transfer: any) => {
+    const status = transfer.recipientStatus || (transfer.recipientUserId ? "Pending" : "NotRequired")
+    if (status === "Accepted") {
+      return (
+        <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+          Received
+        </span>
+      )
+    }
+    if (status === "Pending") {
+      return (
+        <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+          Receiver pending
+        </span>
+      )
+    }
+    return (
+      <span className="px-2.5 py-0.5 text-[11px] font-medium rounded-md bg-zinc-50 text-zinc-600 border border-zinc-200">
+        No receiver required
+      </span>
+    )
+  }
 
   const columns: ColumnDef<any>[] = [
     {
       accessorKey: "material",
       header: "Material",
-      cell: ({ row }) => row.original.materialId?.itemName || row.original.materialId?.name || "Unknown",
+      cell: ({ row }) => {
+        const mat = row.original.materialId
+        const name = mat?.itemName || mat?.name || "Unknown Material"
+        const code = mat?.itemCode || mat?.code
+        return (
+          <div>
+            <div className="font-bold text-zinc-900">{name}</div>
+            {code && <div className="text-xs text-zinc-500">Code: {code}</div>}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "quantity",
       header: "Quantity",
+      cell: ({ row }) => (
+        <span className="font-semibold text-zinc-800">{row.original.quantity ?? "-"}</span>
+      ),
     },
     {
       accessorKey: "fromProject",
       header: "From Project",
-      cell: ({ row }) => row.original.fromProjectId?.projectName || row.original.fromProjectId?.name || "N/A",
+      cell: ({ row }) => (
+        <span className="text-sm text-zinc-700">
+          {row.original.fromProjectId?.projectName || row.original.fromProjectId?.name || "N/A"}
+        </span>
+      ),
     },
     {
-      accessorKey: "toProject",
-      header: "To Project",
-      cell: ({ row }) => row.original.toProjectId?.projectName || row.original.toProjectId?.name || "N/A",
+      accessorKey: "destination",
+      header: "Destination",
+      cell: ({ row }) => {
+        const t = row.original
+        const isVendor = t.destinationType === "vendor" || (!t.toProjectId && t.vendorId)
+        if (isVendor) {
+          const vName = t.vendorId?.companyName || t.vendorId?.name || "Vendor"
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700">
+                <Truck className="w-3 h-3" /> Vendor
+              </span>
+              <span className="text-sm font-medium text-zinc-800">{vName}</span>
+            </div>
+          )
+        }
+        const siteName = t.toProjectId?.projectName || t.toProjectId?.name || "N/A"
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700">
+              <Building2 className="w-3 h-3" /> Site
+            </span>
+            <span className="text-sm font-medium text-zinc-800">{siteName}</span>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "recipientUserId",
+      header: "Receiver",
+      cell: ({ row }) => {
+        const user = row.original.recipientUserId
+        if (!user) {
+          return <span className="text-xs text-zinc-400 italic">None</span>
+        }
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-zinc-800">{user.name || "Assigned User"}</div>
+            {user.email && <div className="text-xs text-zinc-500">{user.email}</div>}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Approval",
+      cell: ({ row }) => renderApprovalChip(row.original.status),
+    },
+    {
+      accessorKey: "recipientStatus",
+      header: "Receipt",
+      cell: ({ row }) => renderReceiptChip(row.original),
     },
     {
       accessorKey: "createdAt",
       header: "Date",
-      cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status || "Pending"
-        let color = "text-amber-600 bg-amber-50"
-        if (status === "Approved") color = "text-emerald-600 bg-emerald-50"
-        if (status === "Rejected") color = "text-rose-600 bg-rose-50"
-        
-        return (
-          <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md ${color}`}>
-            {status}
-          </span>
-        )
-      },
+      cell: ({ row }) => (
+        <span className="text-xs text-zinc-500">
+          {new Date(row.original.createdAt).toLocaleDateString()}
+        </span>
+      ),
     },
     {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const status = row.original.status || "Pending"
-        if (status !== "Pending") return null
+        const t = row.original
+        const isEligibleReceiver = canUserConfirmReceipt(t)
+        const isPending = (t.status || "Pending") === "Pending"
 
         return (
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => handleApprove(row.original._id)}
-              className="px-3 py-1 text-xs font-bold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors"
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedTransfer(t)
+                setIsDetailOpen(true)
+              }}
+              className="h-8 px-2.5 text-xs text-zinc-700"
             >
-              Approve
-            </button>
-            <button 
-              onClick={() => handleReject(row.original._id)}
-              className="px-3 py-1 text-xs font-bold text-white bg-rose-600 rounded-md hover:bg-rose-700 transition-colors"
-            >
-              Reject
-            </button>
+              <Eye className="w-3.5 h-3.5 mr-1" /> View
+            </Button>
+
+            {isAdmin && isPending && (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => handleApprove(t._id)}
+                  disabled={isActionLoading}
+                  className="h-8 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    setTransferToReject(t)
+                    setRejectReason("")
+                    setIsRejectOpen(true)
+                  }}
+                  disabled={isActionLoading}
+                  className="h-8 px-2.5 text-xs font-semibold"
+                >
+                  Reject
+                </Button>
+              </>
+            )}
+
+            {isEligibleReceiver && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setTransferToConfirm(t)
+                  setIsConfirmReceiptOpen(true)
+                }}
+                disabled={isActionLoading}
+                className="h-8 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Confirm receipt
+              </Button>
+            )}
           </div>
         )
       },
@@ -132,27 +467,46 @@ export default function MaterialSiteTransfersPage() {
   return (
     <ContentLayout title="Material Site Transfers">
       <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto min-h-screen">
+        {/* Header Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-lg border border-zinc-200/80 shadow-sm">
           <div>
             <h1 className="text-2xl font-black text-zinc-950 tracking-tight">Material Site Transfers</h1>
-            <p className="text-sm font-medium text-zinc-500 mt-1">Manage material transfers between sites</p>
+            <p className="text-sm font-medium text-zinc-500 mt-1">
+              Create, track, approve, and confirm delivery of material transfers between sites and vendors.
+            </p>
           </div>
-          <div className="relative w-full sm:w-64 shrink-0">
-            <Input 
-              placeholder="Search transfers..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 rounded-xl bg-white border-zinc-100 pl-10 font-bold text-sm shadow-sm" 
-            />
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                resetCreateForm()
+                setIsCreateOpen(true)
+              }}
+              className="font-bold gap-1.5 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> New Transfer
+            </Button>
           </div>
         </div>
 
+        {/* Search & Stats Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:w-72 shrink-0">
+            <Input
+              placeholder="Search transfers, projects, items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-xl bg-white border-zinc-200 pl-10 font-medium text-sm shadow-sm"
+            />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          </div>
+        </div>
+
+        {/* Table Content */}
         <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-2">
               <Loader2 className="h-6 w-6 text-zinc-400 animate-spin" />
-              <p className="text-zinc-500 font-bold text-xs">Loading transfers...</p>
+              <p className="text-zinc-500 font-bold text-xs">Loading material transfers...</p>
             </div>
           ) : (
             <div className="p-4">
@@ -161,6 +515,483 @@ export default function MaterialSiteTransfersPage() {
           )}
         </div>
       </div>
+
+      {/* CREATE TRANSFER DIALOG */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">New Material Transfer Request</DialogTitle>
+            <DialogDescription>
+              Submit a transfer request to another site or external vendor. Site destinations require destination project and receiver employee.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSubmit} className="space-y-4 pt-2">
+            {/* Destination Type Toggle */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-600">Destination Type *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDestinationType("site")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-bold transition-all ${
+                    destinationType === "site"
+                      ? "border-blue-600 bg-blue-50/70 text-blue-800 ring-2 ring-blue-500/20"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" /> Site Transfer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDestinationType("vendor")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border text-sm font-bold transition-all ${
+                    destinationType === "vendor"
+                      ? "border-purple-600 bg-purple-50/70 text-purple-800 ring-2 ring-purple-500/20"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                  }`}
+                >
+                  <Truck className="w-4 h-4" /> Vendor Transfer
+                </button>
+              </div>
+            </div>
+
+            {/* Source Project */}
+            <div className="space-y-1.5">
+              <Label htmlFor="fromProject" className="text-xs font-bold text-zinc-700">
+                Source Project (From) *
+              </Label>
+              <select
+                id="fromProject"
+                value={fromProjectId}
+                onChange={(e) => {
+                  setFromProjectId(e.target.value)
+                  if (toProjectId === e.target.value) setToProjectId("")
+                }}
+                className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Select source project</option>
+                {projects.map((p) => (
+                  <option key={p._id || p.id} value={p._id || p.id}>
+                    {p.projectName || (p as any).name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Site Specific Fields */}
+            {destinationType === "site" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg bg-blue-50/40 border border-blue-100">
+                <div className="space-y-1.5">
+                  <Label htmlFor="toProject" className="text-xs font-bold text-blue-950">
+                    Destination Project (To) *
+                  </Label>
+                  <select
+                    id="toProject"
+                    value={toProjectId}
+                    onChange={(e) => setToProjectId(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select destination project</option>
+                    {projects
+                      .filter((p) => (p._id || p.id) !== fromProjectId)
+                      .map((p) => (
+                        <option key={p._id || p.id} value={p._id || p.id}>
+                          {p.projectName || (p as any).name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="recipientUser" className="text-xs font-bold text-blue-950">
+                    Receiver Employee *
+                  </Label>
+                  <select
+                    id="recipientUser"
+                    value={recipientUserId}
+                    onChange={(e) => setRecipientUserId(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select receiving user</option>
+                    {users.map((u) => (
+                      <option key={u._id || u.id} value={u._id || u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Vendor Specific Fields */}
+            {destinationType === "vendor" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 rounded-lg bg-purple-50/40 border border-purple-100">
+                <div className="space-y-1.5">
+                  <Label htmlFor="vendor" className="text-xs font-bold text-purple-950">
+                    Destination Vendor *
+                  </Label>
+                  <select
+                    id="vendor"
+                    value={vendorId}
+                    onChange={(e) => setVendorId(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                  >
+                    <option value="">Select vendor</option>
+                    {vendors.map((v) => (
+                      <option key={v._id || v.id} value={v._id || v.id}>
+                        {v.companyName || v.name} {v.vendorCode ? `(${v.vendorCode})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="vendorRecipientUser" className="text-xs font-bold text-purple-950">
+                    Receiver Employee (Optional)
+                  </Label>
+                  <select
+                    id="vendorRecipientUser"
+                    value={recipientUserId}
+                    onChange={(e) => setRecipientUserId(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">None (No receiver confirmation needed)</option>
+                    {users.map((u) => (
+                      <option key={u._id || u.id} value={u._id || u.id}>
+                        {u.name} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Material & Quantity */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <Label htmlFor="material" className="text-xs font-bold text-zinc-700">
+                  Material *
+                </Label>
+                <select
+                  id="material"
+                  value={materialId}
+                  onChange={(e) => setMaterialId(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 p-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select material</option>
+                  {items.map((it) => (
+                    <option key={it._id || it.id} value={it._id || it.id}>
+                      {it.itemName || (it as any).name} {it.itemCode ? `(${it.itemCode})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="quantity" className="text-xs font-bold text-zinc-700">
+                  Quantity *
+                </Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="0.01"
+                  step="any"
+                  placeholder="e.g. 25"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="h-9"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Locations */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="fromLocation" className="text-xs font-bold text-zinc-700">
+                  From Location (Optional)
+                </Label>
+                <Input
+                  id="fromLocation"
+                  placeholder="e.g. Tower A Store"
+                  value={fromLocation}
+                  onChange={(e) => setFromLocation(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              {destinationType === "site" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="toLocation" className="text-xs font-bold text-zinc-700">
+                    To Location (Optional)
+                  </Label>
+                  <Input
+                    id="toLocation"
+                    placeholder="e.g. Tower B Store"
+                    value={toLocation}
+                    onChange={(e) => setToLocation(e.target.value)}
+                    className="h-9"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label htmlFor="notes" className="text-xs font-bold text-zinc-700">
+                Notes (Optional)
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Reason or instructions for transfer..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!isFormValid || isSubmitting} className="font-bold">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  "Create Transfer"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* VIEW DETAILS DIALOG */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Transfer Details</DialogTitle>
+            <DialogDescription>Review material transfer request and delivery status</DialogDescription>
+          </DialogHeader>
+
+          {selectedTransfer && (
+            <div className="space-y-4 text-sm pt-2">
+              <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-zinc-50 border border-zinc-200">
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold">Material</div>
+                  <div className="font-bold text-zinc-900">
+                    {selectedTransfer.materialId?.itemName || selectedTransfer.materialId?.name || "Unknown"}
+                  </div>
+                  {selectedTransfer.materialId?.itemCode && (
+                    <div className="text-xs text-zinc-500">Code: {selectedTransfer.materialId.itemCode}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold">Quantity</div>
+                  <div className="font-bold text-zinc-900">{selectedTransfer.quantity ?? "-"}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold">Source (From)</div>
+                  <div className="font-medium text-zinc-800">
+                    {selectedTransfer.fromProjectId?.projectName || selectedTransfer.fromProjectId?.name || "N/A"}
+                  </div>
+                  {selectedTransfer.fromLocation && (
+                    <div className="text-xs text-zinc-500">Loc: {selectedTransfer.fromLocation}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold">Destination (To)</div>
+                  <div className="font-medium text-zinc-800">
+                    {selectedTransfer.destinationType === "vendor" || (!selectedTransfer.toProjectId && selectedTransfer.vendorId)
+                      ? selectedTransfer.vendorId?.companyName || selectedTransfer.vendorId?.name || "Vendor"
+                      : selectedTransfer.toProjectId?.projectName || selectedTransfer.toProjectId?.name || "N/A"}
+                  </div>
+                  {selectedTransfer.toLocation && (
+                    <div className="text-xs text-zinc-500">Loc: {selectedTransfer.toLocation}</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-zinc-100">
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold mb-1">Approval Status</div>
+                  {renderApprovalChip(selectedTransfer.status)}
+                  {selectedTransfer.approvedAt && (
+                    <div className="text-[11px] text-zinc-500 mt-1">
+                      Approved: {new Date(selectedTransfer.approvedAt).toLocaleString()}
+                    </div>
+                  )}
+                  {selectedTransfer.rejectReason && (
+                    <div className="text-xs text-rose-600 mt-1 font-medium">
+                      Reason: {selectedTransfer.rejectReason}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold mb-1">Receipt Status</div>
+                  {renderReceiptChip(selectedTransfer)}
+                  {selectedTransfer.recipientAcceptedAt && (
+                    <div className="text-[11px] text-zinc-500 mt-1">
+                      Received: {new Date(selectedTransfer.recipientAcceptedAt).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-zinc-50 border border-zinc-100">
+                <div className="text-xs text-zinc-500 font-semibold">Receiver Employee</div>
+                <div className="font-medium text-zinc-800">
+                  {selectedTransfer.recipientUserId?.name || "No receiver assigned"}
+                </div>
+                {selectedTransfer.recipientUserId?.email && (
+                  <div className="text-xs text-zinc-500">{selectedTransfer.recipientUserId.email}</div>
+                )}
+              </div>
+
+              {selectedTransfer.notes && (
+                <div>
+                  <div className="text-xs text-zinc-500 font-semibold">Notes</div>
+                  <div className="text-xs text-zinc-700 bg-zinc-50 p-2 rounded border border-zinc-200">
+                    {selectedTransfer.notes}
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons inside details modal */}
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                {isAdmin && selectedTransfer.status === "Pending" && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApprove(selectedTransfer._id)}
+                      disabled={isActionLoading}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        setTransferToReject(selectedTransfer)
+                        setRejectReason("")
+                        setIsRejectOpen(true)
+                      }}
+                      disabled={isActionLoading}
+                      className="font-semibold"
+                    >
+                      Reject
+                    </Button>
+                  </>
+                )}
+
+                {canUserConfirmReceipt(selectedTransfer) && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setTransferToConfirm(selectedTransfer)
+                      setIsConfirmReceiptOpen(true)
+                    }}
+                    disabled={isActionLoading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                  >
+                    Confirm Receipt
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* CONFIRM RECEIPT DIALOG */}
+      <Dialog open={isConfirmReceiptOpen} onOpenChange={setIsConfirmReceiptOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" /> Confirm receipt
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-zinc-700 text-sm">
+              Have you received this material at the destination?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 pt-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsConfirmReceiptOpen(false)}
+              disabled={isActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmReceipt}
+              disabled={isActionLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Yes, received
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* REJECT CONFIRMATION DIALOG */}
+      <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-rose-700">
+              <AlertCircle className="w-5 h-5" /> Reject Transfer Request
+            </DialogTitle>
+            <DialogDescription className="text-zinc-600 text-sm">
+              Please enter the reason for rejecting this transfer request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="rejectReasonText" className="text-xs font-semibold text-zinc-700">
+              Rejection Reason (Optional)
+            </Label>
+            <Textarea
+              id="rejectReasonText"
+              placeholder="e.g. Destination stock capacity is unavailable"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRejectOpen(false)}
+              disabled={isActionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleRejectConfirm}
+              disabled={isActionLoading}
+              className="font-bold"
+            >
+              {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Confirm Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ContentLayout>
   )
 }

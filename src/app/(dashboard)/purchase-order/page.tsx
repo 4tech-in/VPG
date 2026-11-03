@@ -13,7 +13,8 @@ import {
   FileText,
   Box,
   MapPin,
-  ClipboardCheck
+  ClipboardCheck,
+  PackageX
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ import {
 import { exportPurchaseOrderReceipt } from "@/lib/export-receipt";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog";
+import { CompletePoDialog, canCompletePurchaseOrder } from "@/components/purchase-order/complete-po-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -61,6 +63,8 @@ export default function PurchaseOrderPage() {
   const [showConditions, setShowConditions] = useState(true);
   const [receiptPO, setReceiptPO] = useState<PurchaseOrder | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  const [completePoTarget, setCompletePoTarget] = useState<PurchaseOrder | null>(null);
+  const [isCompletePoOpen, setIsCompletePoOpen] = useState(false);
 
   const openReceipt = async (po: PurchaseOrder) => {
     const id = po._id || po.id;
@@ -242,6 +246,25 @@ export default function PurchaseOrderPage() {
                     </TooltipTrigger>
                     <TooltipContent>Material receipt</TooltipContent>
                   </Tooltip>
+                  {canCompletePurchaseOrder(po, user) && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setCompletePoTarget(po);
+                            setIsCompletePoOpen(true);
+                          }}
+                          className="h-8 w-8 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 transition-all hover:bg-amber-100"
+                          aria-label="Complete / short-close purchase order"
+                        >
+                          <PackageX className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Complete PO (Short-close)</TooltipContent>
+                    </Tooltip>
+                  )}
                   {isCancellable && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -285,6 +308,17 @@ export default function PurchaseOrderPage() {
           allReceived
         />
       )}
+      <CompletePoDialog
+        po={completePoTarget}
+        open={isCompletePoOpen}
+        onOpenChange={(open) => {
+          setIsCompletePoOpen(open);
+          if (!open) setCompletePoTarget(null);
+        }}
+        onSuccess={() => {
+          refetch();
+        }}
+      />
       <div className="flex flex-col gap-8 p-6 sm:p-10 max-w-[1600px] mx-auto min-h-screen">
         {/* Header Control Hub */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 animate-in fade-in duration-300">

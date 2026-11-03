@@ -61,7 +61,7 @@ export const assetService = {
     })
   },
 
-  async createMaintenanceRequest(payload: { assetId: string; assetType: string; maintenanceReason: string; notes?: string; startDate: string; endDate: string }): Promise<any> {
+  async createMaintenanceRequest(payload: { assetId: string; vendorId?: string; assetType: string; maintenanceReason: string; notes?: string; startDate: string; endDate: string }): Promise<any> {
     return apiRequest<any>("assets/maintenances", { method: "POST", body: JSON.stringify(payload) })
   },
 
@@ -81,7 +81,7 @@ export const assetService = {
     return apiRequest<any>(`assets/returns${queryString ? `?${queryString}` : ""}`)
   },
 
-  async createAssetReturnRequest(payload: { projectId: string; assetId: string; notes?: string }): Promise<any> {
+  async createAssetReturnRequest(payload: { projectId?: string; assetId: string; maintenanceId?: string; vendorId?: string; notes?: string }): Promise<any> {
     return apiRequest<any>("assets/returns", { method: "POST", body: JSON.stringify(payload) })
   },
 

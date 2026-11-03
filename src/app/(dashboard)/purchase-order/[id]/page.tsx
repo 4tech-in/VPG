@@ -30,7 +30,8 @@ import {
   ClipboardCheck,
   ChevronDown,
   ChevronUp,
-  Eye
+  Eye,
+  PackageX
 } from "lucide-react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ import { VerificationSheet } from "@/components/purchase-order/verification-shee
 import { ReceiptHistory } from "@/components/purchase-order/receipt-history";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { WhatsAppShareButton } from "@/components/purchase-order/send-whatsapp-dialog";
+import { CompletePoDialog, canCompletePurchaseOrder } from "@/components/purchase-order/complete-po-dialog";
 import { useAuthStore } from "@/store/use-auth-store";
 
 export default function PODetailPage() {
@@ -78,6 +80,7 @@ export default function PODetailPage() {
   const [expandedReceiptIdx, setExpandedReceiptIdx] = useState<number | null>(
     0
   );
+  const [isCompletePoOpen, setIsCompletePoOpen] = useState(false);
 
   const fetchPO = async () => {
     try {
@@ -166,6 +169,7 @@ export default function PODetailPage() {
   }, 0);
 
   const isPendingVerification = po.verificationStatus === "PendingVerification";
+  const showCompletePo = canCompletePurchaseOrder(po, user);
 
   const getInitials = (name: string) => {
     if (!name) return "VD";
@@ -272,7 +276,9 @@ export default function PODetailPage() {
                   po.status === "Issued" &&
                     "bg-teal-50 text-teal-600 border-teal-100",
                   po.status === "Cancelled" &&
-                    "bg-zinc-50 text-zinc-400 border-zinc-150"
+                    "bg-zinc-50 text-zinc-400 border-zinc-150",
+                  po.status === "Completed" &&
+                    "bg-blue-50 text-blue-700 border-blue-200"
                 )}
               >
                 <span className="h-1 w-1 rounded-full bg-current" />
@@ -364,10 +370,28 @@ export default function PODetailPage() {
                   variant="button"
                   label="Send WhatsApp"
                 />
+                {showCompletePo && (
+                  <Button
+                    onClick={() => setIsCompletePoOpen(true)}
+                    variant="outline"
+                    className="h-9 rounded-lg border-amber-300 font-bold text-[11px] gap-1.5 px-3.5 shadow-sm bg-amber-50 text-amber-800 hover:bg-amber-100"
+                  >
+                    <PackageX className="h-3.5 w-3.5 text-amber-600" /> Complete PO
+                  </Button>
+                )}
               </>
             )}
           </div>
         </div>
+
+        <CompletePoDialog
+          po={po}
+          open={isCompletePoOpen}
+          onOpenChange={setIsCompletePoOpen}
+          onSuccess={async () => {
+            await fetchPO();
+          }}
+        />
 
         <ReceiptDialog
           allReceived={selectedReceiptIndex === null}

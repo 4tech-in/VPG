@@ -177,12 +177,7 @@ export function getMenuList(
           submenus: [
             {
               href: "/material",
-              label: "Material Master",
-              permission: "material:view"
-            },
-            {
-              href: "/material/inward-register",
-              label: "Inward Register",
+              label: "Material & Inward",
               permission: "material:view"
             },
             {
