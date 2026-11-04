@@ -172,8 +172,16 @@ export default function LedgerInwardRegisterPage() {
     if (serverInwardEntries.length > 0) {
       return serverInwardEntries.map((r, idx) => {
         const matchedPO = purchaseOrders.find((p) => String(p._id || p.id) === String(r.poId));
+        const rawReceiptNo = String(r.receiptNo || "").trim();
+        const poNo = String(r.poNo || matchedPO?.poNo || "").trim();
+        const isPoIdInReceipt =
+          (rawReceiptNo && poNo && rawReceiptNo.toLowerCase() === poNo.toLowerCase()) ||
+          (/^PO-\d+$/i.test(rawReceiptNo) && !r.receiptId);
+        const receiptNo = isPoIdInReceipt ? "—" : (rawReceiptNo || "—");
+
         return {
           ...r,
+          receiptNo,
           poId: r.poId || String(matchedPO?._id || matchedPO?.id || ""),
           po: matchedPO || r.po,
           rawDate: new Date(r.rawDate || r.timestamp || Date.now()),
@@ -629,6 +637,21 @@ export default function LedgerInwardRegisterPage() {
     toast.success("Inward register downloaded as CSV");
   };
 
+  const navigateToMaterialDetail = (item: InwardRegisterRow) => {
+    const rawId =
+      item.poId ||
+      item.po?._id ||
+      item.po?.id ||
+      (typeof item.id === "string" ? item.id.replace(/-po$/, "").split("-")[0] : "");
+
+    const cleanId = String(rawId || "").replace(/-po$/, "").split("-")[0].trim();
+    if (cleanId) {
+      router.push(`/material/${cleanId}`);
+    } else {
+      toast.error("Purchase order details not found");
+    }
+  };
+
   const columns: ColumnDef<InwardRegisterRow>[] = [
     {
       accessorKey: "srNo",
@@ -665,20 +688,33 @@ export default function LedgerInwardRegisterPage() {
     {
       accessorKey: "receiptNo",
       header: "Receipt No. / Slip No.",
-      cell: ({ row }) => (
-        <button
-          onClick={() => setSelectedInwardRow(row.original)}
-          className="text-left group cursor-pointer"
-          title="Click to view slip details"
-        >
-          <Badge
-            variant="outline"
-            className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 group-hover:bg-teal-100 group-hover:border-teal-300 transition-colors"
+      cell: ({ row }) => {
+        const rNo = row.original.receiptNo;
+        const hasReceipt = rNo && rNo !== "—" && !/^PO-\d+$/i.test(rNo);
+
+        if (!hasReceipt) {
+          return (
+            <span className="text-zinc-400 font-bold text-sm pl-2">
+              —
+            </span>
+          );
+        }
+
+        return (
+          <button
+            onClick={() => navigateToMaterialDetail(row.original)}
+            className="text-left group cursor-pointer"
+            title="Click to view material ledger details"
           >
-            {row.original.receiptNo}
-          </Badge>
-        </button>
-      ),
+            <Badge
+              variant="outline"
+              className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 group-hover:bg-teal-100 group-hover:border-teal-300 transition-colors"
+            >
+              {rNo}
+            </Badge>
+          </button>
+        );
+      },
     },
     {
       accessorKey: "projectName",
@@ -764,8 +800,8 @@ export default function LedgerInwardRegisterPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedInwardRow(item)}
-              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs"
+              onClick={() => navigateToMaterialDetail(item)}
+              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs cursor-pointer"
             >
               <Eye className="h-3.5 w-3.5" />
               Show Details

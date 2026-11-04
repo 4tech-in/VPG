@@ -98,24 +98,6 @@ export interface InwardRegisterRow {
 export default function MaterialMasterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const [activeView, setActiveView] = useState<"ledger" | "inward">(
-    tabParam === "inward" ? "inward" : "ledger"
-  );
-
-  useEffect(() => {
-    if (tabParam === "inward") {
-      setActiveView("inward");
-    } else if (tabParam === "ledger") {
-      setActiveView("ledger");
-    }
-  }, [tabParam]);
-
-  const handleViewChange = (view: "ledger" | "inward") => {
-    setActiveView(view);
-    const url = view === "inward" ? "/material?tab=inward" : "/material";
-    router.replace(url, { scroll: false });
-  };
 
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [inwardEntries, setInwardEntries] = useState<any[]>([]);
@@ -134,6 +116,7 @@ export default function MaterialMasterPage() {
     activeProjects: 0,
     filteredResults: 0,
   });
+  const [backendSummary, setBackendSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessingAction, setIsProcessingAction] = useState<string | null>(
     null
@@ -251,6 +234,7 @@ export default function MaterialMasterPage() {
         status: poFilters.status || undefined
       });
       const pos = response.orders || response.purchaseOrders || [];
+      setBackendSummary(response.summary || null);
 
       setSummaryStats({
         totalOrders: Number(response.totalOrders ?? response.summary?.totalOrders ?? pos.length),
@@ -341,6 +325,13 @@ export default function MaterialMasterPage() {
   }, [purchaseOrders, searchQuery, statusFilter, poFilters.vehicleNo]);
 
   const materialSummary = useMemo(() => {
+    if (backendSummary?.totalMaterial != null) {
+      return {
+        total: Number(backendSummary.totalMaterial).toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+        used: Number(backendSummary.materialUsed ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+        pending: Number(backendSummary.materialPending ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 2 }),
+      };
+    }
     const sumTotal = (field: "materialUsed" | "pending" | "totalCount") => {
       if (filteredPOs.some((po) => po[field] == null || !Number.isFinite(Number(po[field])))) {
         return "—";
@@ -353,14 +344,22 @@ export default function MaterialMasterPage() {
       pending: sumTotal("pending"),
       total: sumTotal("totalCount"),
     };
-  }, [filteredPOs]);
+  }, [backendSummary, filteredPOs]);
 
   const inwardRegisterRows: InwardRegisterRow[] = useMemo(() => {
     if (inwardEntries.length > 0) {
       return inwardEntries.map((r, idx) => {
         const matchedPO = purchaseOrders.find((p) => String(p._id || p.id) === String(r.poId));
+        const rawReceiptNo = String(r.receiptNo || "").trim();
+        const poNo = String(r.poNo || matchedPO?.poNo || "").trim();
+        const isPoIdInReceipt =
+          (rawReceiptNo && poNo && rawReceiptNo.toLowerCase() === poNo.toLowerCase()) ||
+          (/^PO-\d+$/i.test(rawReceiptNo) && !r.receiptId);
+        const receiptNo = isPoIdInReceipt ? "—" : (rawReceiptNo || "—");
+
         return {
           ...r,
+          receiptNo,
           poId: r.poId || String(matchedPO?._id || matchedPO?.id || ""),
           po: matchedPO || r.po,
           projectId: r.projectId || String(matchedPO?.projectId?._id || matchedPO?.projectId || ""),
@@ -396,7 +395,7 @@ export default function MaterialMasterPage() {
       rows = rows.filter((r) => (r.vehicleNo || "").toLowerCase().includes(v));
     }
 
-    const q = (activeView === "inward" ? (inwardSearchQuery || searchQuery) : searchQuery).toLowerCase().trim();
+    const q = (inwardSearchQuery || searchQuery).toLowerCase().trim();
     if (q) {
       rows = rows.filter(
         (r) =>
@@ -411,7 +410,7 @@ export default function MaterialMasterPage() {
     }
 
     return rows;
-  }, [inwardRegisterRows, inwardSearchQuery, searchQuery, activeView, poFilters]);
+  }, [inwardRegisterRows, inwardSearchQuery, searchQuery, poFilters]);
 
   const handlePrintInward = () => {
     const printWindow = window.open("", "_blank", "width=1200,height=800");
@@ -1022,6 +1021,21 @@ export default function MaterialMasterPage() {
     }
   ];
 
+  const navigateToMaterialDetail = (item: InwardRegisterRow) => {
+    const rawId =
+      item.poId ||
+      item.po?._id ||
+      item.po?.id ||
+      (typeof item.id === "string" ? item.id.replace(/-po$/, "").split("-")[0] : "");
+
+    const cleanId = String(rawId || "").replace(/-po$/, "").split("-")[0].trim();
+    if (cleanId) {
+      router.push(`/material/${cleanId}`);
+    } else {
+      toast.error("Purchase order details not found");
+    }
+  };
+
   const inwardColumns: ColumnDef<InwardRegisterRow>[] = [
     {
       accessorKey: "srNo",
@@ -1058,20 +1072,33 @@ export default function MaterialMasterPage() {
     {
       accessorKey: "receiptNo",
       header: "Receipt No. / Slip No.",
-      cell: ({ row }) => (
-        <button
-          onClick={() => setSelectedInwardRow(row.original)}
-          className="text-left group cursor-pointer"
-          title="Click to view slip details"
-        >
-          <Badge
-            variant="outline"
-            className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 group-hover:bg-teal-100 group-hover:border-teal-300 transition-colors"
+      cell: ({ row }) => {
+        const rNo = row.original.receiptNo;
+        const hasReceipt = rNo && rNo !== "—" && !/^PO-\d+$/i.test(rNo);
+
+        if (!hasReceipt) {
+          return (
+            <span className="text-zinc-400 font-bold text-sm pl-2">
+              —
+            </span>
+          );
+        }
+
+        return (
+          <button
+            onClick={() => navigateToMaterialDetail(row.original)}
+            className="text-left group cursor-pointer"
+            title="Click to view material ledger details"
           >
-            {row.original.receiptNo}
-          </Badge>
-        </button>
-      ),
+            <Badge
+              variant="outline"
+              className="font-mono font-bold text-xs bg-teal-50 text-teal-800 border-teal-200 group-hover:bg-teal-100 group-hover:border-teal-300 transition-colors"
+            >
+              {rNo}
+            </Badge>
+          </button>
+        );
+      },
     },
     {
       accessorKey: "projectName",
@@ -1185,8 +1212,8 @@ export default function MaterialMasterPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedInwardRow(item)}
-              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs"
+              onClick={() => navigateToMaterialDetail(item)}
+              className="h-8 px-3 rounded-xl gap-1.5 font-bold text-xs border-teal-200 text-teal-700 hover:bg-teal-50 hover:text-teal-800 shadow-xs cursor-pointer"
             >
               <Eye className="h-3.5 w-3.5" />
               Show Details
@@ -1198,110 +1225,53 @@ export default function MaterialMasterPage() {
   ];
 
   return (
-    <ContentLayout title="Material Master">
-      <div className="flex flex-col gap-8 p-6 sm:p-12 max-w-[1600px] mx-auto min-h-screen">
-        {/* Top View Mode Switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5 p-1.5 bg-zinc-100/90 rounded-2xl border border-zinc-200/70 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => handleViewChange("ledger")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all duration-200",
-                activeView === "ledger"
-                  ? "bg-white text-zinc-900 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
-              )}
-            >
-              <Box className="h-4 w-4 text-rose-500" />
-              Material Master (POs)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleViewChange("inward")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all duration-200",
-                activeView === "inward"
-                  ? "bg-white text-teal-800 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-900 hover:bg-white/60"
-              )}
-            >
-              <BookOpen className="h-4 w-4 text-teal-600" />
-              Goods Inward Register
-              <Badge
-                variant="outline"
-                className="ml-1 text-[10px] font-mono font-bold bg-teal-50 text-teal-700 border-teal-200"
-              >
-                {inwardRegisterRows.length}
-              </Badge>
-            </button>
-          </div>
-
-          {activeView === "inward" && (
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handlePrintInward}
-                className="h-10 rounded-xl px-4 gap-2 font-bold text-xs bg-zinc-900 hover:bg-black text-white shadow-xs"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                Print Register
-              </Button>
-              <Button
-                onClick={handleExportInwardCSV}
-                variant="outline"
-                className="h-10 rounded-xl px-4 gap-2 font-bold text-xs border-zinc-200 hover:bg-zinc-50 shadow-xs"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-                Export CSV
-              </Button>
-            </div>
-          )}
-        </div>
-
+    <ContentLayout title="Ledger Inward Register">
+      <div className="flex flex-col gap-8 p-6 sm:p-12 max-w-[1650px] mx-auto min-h-screen">
         {/* Header Control Hub */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tighter">
-              {activeView === "inward" ? "Ledger Inward Register" : "Material Receipts & Goods Inward"}
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tight flex items-center gap-3">
+              <BookOpen className="h-8 w-8 text-teal-600" />
+              Ledger Inward Register
             </h1>
             <div className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em]">
-                {activeView === "inward"
-                  ? "Official Goods Inward & Shipment Receiving Register"
-                  : "Goods Inward & Material Lifecycle Management"}
+              <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.25em]">
+                Official Goods Inward & Shipment Receiving Register
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="relative w-full sm:w-64 shrink-0">
+            <div className="relative w-full sm:w-72 shrink-0">
               <Input
-                placeholder={activeView === "inward" ? "Search vendor, project, slip, vehicle..." : "Search POs, vendors, vehicle..."}
-                value={activeView === "inward" ? (inwardSearchQuery || searchQuery) : searchQuery}
+                placeholder="Search vendor, project, slip, po, vehicle..."
+                value={inwardSearchQuery || searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setInwardSearchQuery(e.target.value);
                 }}
-                className="h-11 rounded-xl bg-white border-zinc-100 pl-10 font-bold text-sm shadow-sm"
+                className="h-11 rounded-xl bg-white border-zinc-200 pl-10 font-medium text-sm shadow-sm"
               />
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             </div>
 
-            {activeView === "ledger" && approvedPOCount > 0 && (
-              <Button
-                onClick={handleOrderAllApproved}
-                disabled={isProcessingAction === "bulk-order"}
-                className="h-11 rounded-xl px-5 font-black shadow-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-2 transition-all active:scale-95 duration-300"
-              >
-                {isProcessingAction === "bulk-order" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Truck className="h-4 w-4" />
-                )}
-                Order All Approved ({approvedPOCount})
-              </Button>
-            )}
+            <Button
+              onClick={handlePrintInward}
+              className="h-11 rounded-xl px-5 font-bold shadow-sm bg-zinc-900 hover:bg-zinc-800 text-white flex items-center gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print Register
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleExportInwardCSV}
+              className="h-11 rounded-xl px-4 font-bold border-zinc-200 text-zinc-700 hover:bg-zinc-50 flex items-center gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              Export CSV
+            </Button>
 
             <Button
               variant={showPOFilters ? "default" : "outline"}
@@ -1314,11 +1284,12 @@ export default function MaterialMasterPage() {
               <Filter className="h-4 w-4" />
               Filters {Object.values(poFilters).filter(Boolean).length > 0 && `(${Object.values(poFilters).filter(Boolean).length})`}
             </Button>
+
             <Button
               variant="outline"
               onClick={fetchPurchaseOrders}
               className="h-11 w-11 rounded-xl p-0 border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800"
-              title="Refresh records"
+              title="Refresh ledger"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -1547,205 +1518,138 @@ export default function MaterialMasterPage() {
           </div>
         )}
 
-        {/* Conditional Views */}
-        {activeView === "inward" ? (
-          <>
-            {/* Inward Register KPI Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                    Total Inward Entries
-                  </p>
-                  <p className="text-2xl font-black text-zinc-900 mt-1">
-                    {inwardRegisterRows.length}
-                  </p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
-                  <PackageCheck className="h-5 w-5" />
-                </div>
-              </div>
+        {/* Summary Stats Overview (8 KPI Cards) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
+            <p className="text-2xl font-black text-zinc-800 mt-1">{summaryStats.totalOrders}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Quantity</p>
+            <p className="text-2xl font-black text-indigo-600 mt-1">{summaryStats.totalQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Received Quantity</p>
+            <p className="text-2xl font-black text-emerald-600 mt-1">{summaryStats.receivedQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pending Quantity</p>
+            <p className="text-2xl font-black text-amber-600 mt-1">{summaryStats.pendingQuantity}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Material</p>
+            <p className="text-2xl font-black text-indigo-600 mt-1">{isLoading ? "—" : materialSummary.total}</p>
+            <p className="text-[10px] text-zinc-400 font-medium">Listed orders</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Used</p>
+            <p className="text-2xl font-black text-teal-600 mt-1">{isLoading ? "—" : materialSummary.used}</p>
+            <p className="text-[10px] text-zinc-400 font-medium">Listed orders</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Pending</p>
+            <p className="text-2xl font-black text-amber-600 mt-1">{isLoading ? "—" : materialSummary.pending}</p>
+            <p className="text-[10px] text-zinc-400 font-medium">Listed orders</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Value</p>
+            <p className="text-2xl font-black text-emerald-600 mt-1">
+              ₹{summaryStats.totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
 
-              <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                    Unique Vendors
-                  </p>
-                  <p className="text-2xl font-black text-zinc-900 mt-1">
-                    {new Set(inwardRegisterRows.map((r) => r.vendorName)).size}
-                  </p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                  <Building className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                    Active Projects
-                  </p>
-                  <p className="text-2xl font-black text-zinc-900 mt-1">
-                    {new Set(inwardRegisterRows.map((r) => r.projectName)).size}
-                  </p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <Building className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                    Filtered Results
-                  </p>
-                  <p className="text-2xl font-black text-teal-700 mt-1">
-                    {filteredInwardRows.length}
-                  </p>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-                  <Filter className="h-5 w-5" />
-                </div>
-              </div>
+        {/* Inward Register KPI Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                Total Inward Entries
+              </p>
+              <p className="text-2xl font-black text-zinc-900 mt-1">
+                {inwardRegisterRows.length}
+              </p>
             </div>
-
-            {/* Goods Inward Log Table Card */}
-            <div className="bg-white rounded-[2rem] border border-zinc-200/70 shadow-sm p-6 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
-                    <BookOpen className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-zinc-900 tracking-tight">
-                      Goods Inward Log
-                    </h3>
-                    <p className="text-xs text-zinc-400 font-medium">
-                      Showing all inward delivery slips and recorded deliveries
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="font-semibold text-xs py-1 px-3">
-                  {filteredInwardRows.length} Records
-                </Badge>
-              </div>
-
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
-                  <p className="text-zinc-500 font-bold text-sm">
-                    Loading inward register records...
-                  </p>
-                </div>
-              ) : (
-                <DataTable columns={inwardColumns} data={filteredInwardRows} />
-              )}
+            <div className="h-11 w-11 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
+              <PackageCheck className="h-5 w-5" />
             </div>
-          </>
-        ) : (
-          <>
-            {/* Tab-like Filters */}
-            <div className="flex items-center gap-2 border-b border-zinc-200 pb-px overflow-x-auto">
-              {[
-                { id: "All", label: "All POs" },
-                { id: "PendingOrder", label: "Pending Order (Approved)" },
-                { id: "Issued", label: "Issued (Completed)" }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={cn(
-                    "h-10 px-4 font-black text-xs uppercase tracking-wider border-b-2 transition-all whitespace-nowrap",
-                    statusFilter === tab.id
-                      ? "border-primary text-primary"
-                      : "border-transparent text-zinc-400 hover:text-zinc-600 hover:border-zinc-200"
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          </div>
 
-            {/* Summary Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Orders</p>
-                <p className="text-2xl font-black text-zinc-800">{summaryStats.totalOrders}</p>
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                Unique Vendors
+              </p>
+              <p className="text-2xl font-black text-zinc-900 mt-1">
+                {new Set(inwardRegisterRows.map((r) => r.vendorName)).size}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+              <Building className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                Active Projects
+              </p>
+              <p className="text-2xl font-black text-zinc-900 mt-1">
+                {new Set(inwardRegisterRows.map((r) => r.projectName)).size}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+              <Building className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                Filtered Results
+              </p>
+              <p className="text-2xl font-black text-teal-700 mt-1">
+                {filteredInwardRows.length}
+              </p>
+            </div>
+            <div className="h-11 w-11 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
+              <Filter className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Goods Inward Log Table Card */}
+        <div className="bg-white rounded-[2rem] border border-zinc-200/70 shadow-sm p-6 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
+                <BookOpen className="h-5 w-5" />
               </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Quantity</p>
-                <p className="text-2xl font-black text-indigo-600">{summaryStats.totalQuantity}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Received Quantity</p>
-                <p className="text-2xl font-black text-emerald-600">{summaryStats.receivedQuantity}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Pending Quantity</p>
-                <p className="text-2xl font-black text-amber-600">{summaryStats.pendingQuantity}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Material</p>
-                <p className="text-2xl font-black text-indigo-600">{isLoading ? "—" : materialSummary.total}</p>
-                <p className="text-[10px] text-zinc-400">Listed orders</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Used</p>
-                <p className="text-2xl font-black text-teal-600">{isLoading ? "—" : materialSummary.used}</p>
-                <p className="text-[10px] text-zinc-400">Listed orders</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Material Pending</p>
-                <p className="text-2xl font-black text-amber-600">{isLoading ? "—" : materialSummary.pending}</p>
-                <p className="text-[10px] text-zinc-400">Listed orders</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-zinc-200/60 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Value</p>
-                <p className="text-2xl font-black text-emerald-600">
-                  ₹{summaryStats.totalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+              <div>
+                <h3 className="text-lg font-black text-zinc-900 tracking-tight">
+                  Goods Inward Log
+                </h3>
+                <p className="text-xs text-zinc-400 font-medium">
+                  Showing all inward delivery slips and recorded deliveries
                 </p>
               </div>
             </div>
+            <Badge variant="outline" className="font-semibold text-xs py-1 px-3">
+              {filteredInwardRows.length} Records
+            </Badge>
+          </div>
 
-            {/* Table Board */}
-            <div className="bg-white rounded-[2rem] border border-zinc-200/60 shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-teal-50 flex items-center justify-center border border-teal-100 text-teal-600">
-                    <Scale className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-zinc-900 tracking-tight">
-                      Ledger Inward Registry
-                    </h3>
-                    <p className="text-xs text-zinc-400 font-medium">
-                      Material lifecycle & inward tracking overview
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => handleViewChange("inward")}
-                  className="h-9 rounded-xl px-4 gap-2 text-xs font-bold border-teal-200 text-teal-700 hover:bg-teal-50"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  View Goods Inward Register
-                </Button>
-              </div>
-
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                  <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
-                  <p className="text-zinc-500 font-bold text-sm">
-                    Loading procurement ledger...
-                  </p>
-                </div>
-              ) : (
-                <DataTable columns={columns} data={filteredPOs} />
-              )}
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+              <p className="text-zinc-500 font-bold text-sm">
+                Loading inward register records...
+              </p>
             </div>
-          </>
-        )}
+          ) : (
+            <DataTable columns={inwardColumns} data={filteredInwardRows} />
+          )}
+        </div>
 
         {/* Dialog: Receive Material */}
         <Dialog open={isReceiveOpen} onOpenChange={setIsReceiveOpen}>
