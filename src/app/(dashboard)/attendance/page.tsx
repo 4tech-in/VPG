@@ -597,6 +597,185 @@ export default function AttendancePage() {
     return list
   }, [users, data, search])
 
+  const handleExportAttendance = () => {
+    if (viewMode === "matrix") {
+      if (monthMatrixData.length === 0) {
+        toast.error("No employee records found to export for this month.")
+        return
+      }
+
+      const headers = [
+        "Employee Name",
+        "Email",
+        "Phone",
+        "Department",
+        "Role",
+        ...monthDays.map((d) => format(d, "yyyy-MM-dd")),
+        "Present (P)",
+        "Late (L)",
+        "Half Day (HD)",
+        "Absent (A)",
+        "Weekly Off (WO)",
+      ]
+
+      const rows = monthMatrixData.map((emp) => {
+        const dayStatuses = monthDays.map((d) => {
+          const dayKey = format(d, "yyyy-MM-dd")
+          const rec = emp.recordsByDay[dayKey]
+          if (rec) {
+            if (rec.status === "Present") return "P"
+            if (rec.status === "Late") return "L"
+            if (rec.status === "HalfDay") return "HD"
+            if (rec.status === "Absent") return "A"
+            if (rec.status === "WeeklyOff") return "WO"
+            return rec.status
+          }
+          return isWeekend(d) ? "WO" : "-"
+        })
+
+        return [
+          `"${(emp.name || "").replace(/"/g, '""')}"`,
+          `"${(emp.email || "").replace(/"/g, '""')}"`,
+          `"${(emp.mobile || "").replace(/"/g, '""')}"`,
+          `"${(emp.dept || "").replace(/"/g, '""')}"`,
+          `"${(emp.role || "").replace(/"/g, '""')}"`,
+          ...dayStatuses.map((s) => `"${s}"`),
+          emp.totalPresent,
+          emp.totalLate,
+          emp.totalHalfDay,
+          emp.totalAbsent,
+          emp.totalWeeklyOff,
+        ].join(",")
+      })
+
+      const csvContent = [headers.join(","), ...rows].join("\n")
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.setAttribute("href", url)
+      link.setAttribute(
+        "download",
+        `attendance_month_sheet_${format(selectedMonth, "yyyy_MM")}.csv`
+      )
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success("Month attendance sheet exported successfully!")
+    } else {
+      if (filteredData.length === 0) {
+        toast.error("No attendance logs found to export.")
+        return
+      }
+
+      const headers = [
+        "Employee Name",
+        "Email",
+        "Date",
+        "Check In",
+        "Check Out",
+        "Work Hours",
+        "Status",
+        "Note",
+      ]
+
+      const rows = filteredData.map((rec) => {
+        const name = rec.userId?.name || "Unknown Staff"
+        const email = rec.userId?.email || ""
+        const dateStr = format(new Date(rec.date), "yyyy-MM-dd")
+        const checkIn = rec.punchInTime ? format(new Date(rec.punchInTime), "hh:mm a") : "-"
+        const checkOut = rec.punchOutTime ? format(new Date(rec.punchOutTime), "hh:mm a") : "-"
+        const hours = rec.totalMinutes ? `${(rec.totalMinutes / 60).toFixed(1)}h` : "0.0h"
+        const status = rec.status || "-"
+        const note = rec.note || ""
+
+        return [
+          `"${name.replace(/"/g, '""')}"`,
+          `"${email.replace(/"/g, '""')}"`,
+          `"${dateStr}"`,
+          `"${checkIn}"`,
+          `"${checkOut}"`,
+          `"${hours}"`,
+          `"${status}"`,
+          `"${note.replace(/"/g, '""')}"`,
+        ].join(",")
+      })
+
+      const csvContent = [headers.join(","), ...rows].join("\n")
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.setAttribute("href", url)
+      link.setAttribute(
+        "download",
+        `attendance_logs_${format(fromDate || new Date(), "yyyyMMdd")}_${format(toDate || new Date(), "yyyyMMdd")}.csv`
+      )
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success("Attendance logs exported successfully!")
+    }
+  }
+
+  const handleExportLeaves = () => {
+    if (filteredLeavesData.length === 0) {
+      toast.error("No leave applications found to export.")
+      return
+    }
+
+    const headers = [
+      "Employee Name",
+      "Email",
+      "Leave Type",
+      "Start Date",
+      "End Date",
+      "Total Days",
+      "Reason",
+      "Status",
+      "Applied On",
+    ]
+
+    const rows = filteredLeavesData.map((leave) => {
+      const name = leave.userId?.name || "Staff"
+      const email = leave.userId?.email || ""
+      const type = leave.leaveType || "-"
+      const start = leave.startDate ? format(new Date(leave.startDate), "yyyy-MM-dd") : "-"
+      const end = leave.endDate ? format(new Date(leave.endDate), "yyyy-MM-dd") : "-"
+      const days = leave.daysCount ?? 1
+      const reason = leave.reason || ""
+      const status = leave.status || "Pending"
+      const applied = leave.createdAt ? format(new Date(leave.createdAt), "yyyy-MM-dd") : "-"
+
+      return [
+        `"${name.replace(/"/g, '""')}"`,
+        `"${email.replace(/"/g, '""')}"`,
+        `"${type.replace(/"/g, '""')}"`,
+        `"${start}"`,
+        `"${end}"`,
+        days,
+        `"${reason.replace(/"/g, '""')}"`,
+        `"${status}"`,
+        `"${applied}"`,
+      ].join(",")
+    })
+
+    const csvContent = [headers.join(","), ...rows].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute(
+      "download",
+      `leave_applications_${format(new Date(), "yyyy_MM_dd")}.csv`
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success("Leave applications exported successfully!")
+  }
+
   const columns: ColumnDef<AttendanceRecord>[] = [
     {
       accessorKey: "userId.name",
@@ -868,6 +1047,17 @@ export default function AttendancePage() {
                   <Plus className="h-4 w-4" />
                   Mark Attendance
                 </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleExportAttendance}
+                  className="h-11 px-4 rounded-xl font-bold gap-2 text-zinc-700 bg-white hover:bg-zinc-50 border-zinc-200/80 shadow-sm transition-all text-xs cursor-pointer"
+                  title="Export Attendance Records as CSV"
+                >
+                  <Download className="h-4 w-4 text-[#006d64]" />
+                  <span>Export CSV</span>
+                </Button>
               </>
             ) : (
               <>
@@ -914,6 +1104,17 @@ export default function AttendancePage() {
                   className="h-11 px-5 rounded-xl font-bold gap-2 text-white bg-zinc-900 hover:bg-zinc-800 shadow-lg transition-all"
                 >
                   Apply Leave
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleExportLeaves}
+                  className="h-11 px-4 rounded-xl font-bold gap-2 text-zinc-700 bg-white hover:bg-zinc-50 border-zinc-200/80 shadow-sm transition-all text-xs cursor-pointer"
+                  title="Export Leave Records as CSV"
+                >
+                  <Download className="h-4 w-4 text-zinc-700" />
+                  <span>Export CSV</span>
                 </Button>
               </>
             )}
@@ -1035,6 +1236,17 @@ export default function AttendancePage() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-300">
                       <span className="h-2 w-2 rounded-full bg-indigo-400" /> Off (WO)
                     </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleExportAttendance}
+                      className="ml-auto sm:ml-2 h-7 px-2.5 rounded-lg text-[11px] font-bold gap-1.5 bg-white/10 hover:bg-white/20 text-teal-300 border border-white/10 transition-all cursor-pointer"
+                      title="Export Month Sheet as CSV"
+                    >
+                      <Download className="h-3.5 w-3.5 text-teal-300" />
+                      <span>Export</span>
+                    </Button>
                   </div>
                 </div>
 
