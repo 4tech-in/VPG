@@ -16,6 +16,10 @@ import {
   Activity,
   ArrowUpRight,
   Store,
+  Printer,
+  Filter,
+  FileSpreadsheet,
+  X,
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
@@ -55,13 +59,29 @@ export default function StoresPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [projects, setProjects] = useState<ApiProject[]>([])
+  
+  // Filters state
+  const [showFilters, setShowFilters] = useState(false)
   const [selectedProjectId, setSelectedProjectId] = useState("")
+  const [selectedType, setSelectedType] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
   const [newProjectId, setNewProjectId] = useState("")
   
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1 })
+
+  const activeFilterCount = [
+    selectedProjectId,
+    selectedType,
+    selectedStatus,
+    dateFrom,
+    dateTo
+  ].filter(Boolean).length
   
   // Transfer requests state
   const [transferRequests, setTransferRequests] = useState<any[]>([])
@@ -91,10 +111,28 @@ export default function StoresPage() {
   const [editMaintenanceDate, setEditMaintenanceDate] = useState("")
   const [editExtraNote, setEditExtraNote] = useState("")
 
-  const fetchAssets = async (searchStr = searchTerm, p = page, l = limit, projectId = selectedProjectId) => {
+  const fetchAssets = async (
+    searchStr = searchTerm,
+    p = page,
+    l = limit,
+    projectId = selectedProjectId,
+    status = selectedStatus,
+    type = selectedType,
+    dFrom = dateFrom,
+    dTo = dateTo
+  ) => {
     try {
       setLoading(true)
-      const res = await assetService.getAssets({ search: searchStr, page: p, limit: l, projectId: projectId || undefined })
+      const res = await assetService.getAssets({
+        search: searchStr,
+        page: p,
+        limit: l,
+        projectId: projectId || undefined,
+        status: status || undefined,
+        type: type || undefined,
+        dateFrom: dFrom || undefined,
+        dateTo: dTo || undefined,
+      })
       if (Array.isArray(res)) {
         setData(res)
       } else if (res && res.data) {
@@ -124,14 +162,470 @@ export default function StoresPage() {
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
       setPage(1)
-      fetchAssets(searchTerm, 1, limit)
+      fetchAssets(searchTerm, 1, limit, selectedProjectId, selectedStatus, selectedType, dateFrom, dateTo)
     }, 400)
     return () => clearTimeout(delayDebounce)
   }, [searchTerm])
 
   useEffect(() => {
-    fetchAssets(searchTerm, page, limit)
-  }, [page, limit, selectedProjectId])
+    fetchAssets(searchTerm, page, limit, selectedProjectId, selectedStatus, selectedType, dateFrom, dateTo)
+  }, [page, limit, selectedProjectId, selectedStatus, selectedType, dateFrom, dateTo])
+
+  const handleClearFilters = () => {
+    setSelectedProjectId("")
+    setSelectedType("")
+    setSelectedStatus("")
+    setDateFrom("")
+    setDateTo("")
+    setPage(1)
+  }
+
+  const handlePrintAssets = async () => {
+    try {
+      setIsPrinting(true)
+      let printData = data
+
+      if (pagination.total > data.length) {
+        toast.info("Preparing complete asset register for print...")
+        const res = await assetService.getAssets({
+          search: searchTerm || undefined,
+          page: 1,
+          limit: Math.max(pagination.total, 500),
+          projectId: selectedProjectId || undefined,
+          status: selectedStatus || undefined,
+          type: selectedType || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+        })
+        if (res && res.data && Array.isArray(res.data)) {
+          printData = res.data
+        }
+      }
+
+      if (!printData || printData.length === 0) {
+        toast.error("No assets available to print.")
+        return
+      }
+
+      const printWindow = window.open("", "_blank", "width=1200,height=800")
+      if (!printWindow) {
+        toast.error("Please allow popups to print asset report.")
+        return
+      }
+
+      const tableRowsHtml = printData.map((asset, index) => {
+        const pId = asset.projectId?._id || asset.projectId
+        const projectObj = projects.find((p) => String(p._id || p.id) === String(pId))
+        const projectName = projectObj?.projectName || "—"
+        const issuedDateStr = asset.issuedDate 
+          ? new Date(asset.issuedDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" }) 
+          : "—"
+        const returnDateVal = asset.returnDate || asset.returnedAt || asset.lastReturnDate || returnDatesByAssetId[String(asset._id)]
+        const returnDateStr = returnDateVal
+          ? new Date(returnDateVal).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "numeric" })
+          : "—"
+
+        return `
+          <tr>
+            <td style="text-align: center; font-weight: bold;">${index + 1}</td>
+            <td style="font-weight: 700;">${asset.name || "—"}</td>
+            <td style="text-align: center;">${asset.type || "—"}</td>
+            <td style="font-family: monospace; font-weight: 600; text-align: center;">${asset.serialNumber || "—"}</td>
+            <td>${projectName}</td>
+            <td style="text-align: center; white-space: nowrap;">${issuedDateStr}</td>
+            <td style="text-align: center;">
+              <span class="status-badge status-${(asset.status || "Issued").toLowerCase().replace(/\\s+/g, '-')}">
+                ${asset.status || "Issued"}
+              </span>
+            </td>
+            <td style="text-align: center; white-space: nowrap;">${returnDateStr}</td>
+            <td>${asset.extraNote || "—"}</td>
+          </tr>
+        `
+      }).join("")
+
+      const filterSummaries = []
+      if (selectedProjectId) {
+        const p = projects.find(pr => String(pr._id || pr.id) === String(selectedProjectId))
+        if (p) filterSummaries.push(`Project: ${p.projectName}`)
+      }
+      if (selectedType) filterSummaries.push(`Type: ${selectedType}`)
+      if (selectedStatus) filterSummaries.push(`Status: ${selectedStatus}`)
+      if (dateFrom) filterSummaries.push(`From: ${dateFrom}`)
+      if (dateTo) filterSummaries.push(`To: ${dateTo}`)
+      if (searchTerm) filterSummaries.push(`Search: "${searchTerm}"`)
+      const filterMeta = filterSummaries.length > 0 ? filterSummaries.join(" | ") : "All Assets"
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Asset Inventory Register - VPG Construction</title>
+            <style>
+              @page {
+                size: A4 landscape;
+                margin: 12mm 10mm;
+              }
+              * {
+                box-sizing: border-box;
+              }
+              body {
+                font-family: Arial, -apple-system, BlinkMacSystemFont, sans-serif;
+                color: #111827;
+                background: #ffffff;
+                margin: 0;
+                padding: 0;
+                font-size: 11px;
+                line-height: 1.4;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .header-box {
+                text-align: center;
+                margin-bottom: 14px;
+                border-bottom: 2px solid #18181b;
+                padding-bottom: 10px;
+              }
+              .company-name {
+                font-size: 18px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin-bottom: 4px;
+                color: #09090b;
+              }
+              .register-title {
+                font-size: 14px;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #18181b;
+                margin-bottom: 4px;
+              }
+              .filter-subtitle {
+                font-size: 10px;
+                color: #52525b;
+                font-weight: 600;
+                margin-bottom: 6px;
+              }
+              .meta-bar {
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                font-weight: 700;
+                margin-top: 6px;
+                color: #52525b;
+                border-top: 1px dashed #d4d4d8;
+                padding-top: 4px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 8px;
+              }
+              th {
+                background-color: #f4f4f5;
+                color: #09090b;
+                border: 1px solid #71717a;
+                padding: 7px 6px;
+                font-size: 10px;
+                font-weight: 800;
+                text-transform: uppercase;
+                text-align: center;
+                letter-spacing: 0.03em;
+              }
+              td {
+                border: 1px solid #a1a1aa;
+                padding: 6px 7px;
+                font-size: 10px;
+                vertical-align: middle;
+              }
+              tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+              tr:nth-child(even) td {
+                background-color: #fafafa;
+              }
+              .status-badge {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 9px;
+                font-weight: 800;
+                text-transform: uppercase;
+                border: 1px solid #e4e4e7;
+              }
+              .status-issued {
+                background-color: #eff6ff;
+                color: #1d4ed8;
+                border-color: #bfdbfe;
+              }
+              .status-under-maintenance {
+                background-color: #fffbeb;
+                color: #b45309;
+                border-color: #fde68a;
+              }
+              .status-returned {
+                background-color: #ecfdf5;
+                color: #047857;
+                border-color: #a7f3d0;
+              }
+              .footer-box {
+                margin-top: 36px;
+                display: flex;
+                justify-content: space-around;
+                padding-top: 12px;
+                border-top: 1px solid #e4e4e7;
+                font-size: 10px;
+                color: #71717a;
+              }
+              .sig-block {
+                text-align: center;
+                min-width: 150px;
+                padding-top: 30px;
+                border-top: 1px solid #000;
+                font-weight: 700;
+                color: #000;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header-box">
+              <div class="company-name">VPG Construction Private Limited</div>
+              <div class="register-title">Asset Inventory Register</div>
+              <div class="filter-subtitle">${filterMeta}</div>
+              <div class="meta-bar">
+                <span>Date Generated: ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span>Total Assets: ${printData.length}</span>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 45px;">Sr. No</th>
+                  <th>Asset Name</th>
+                  <th style="width: 110px;">Type</th>
+                  <th style="width: 130px;">Serial Number</th>
+                  <th>Project</th>
+                  <th style="width: 90px;">Issued Date</th>
+                  <th style="width: 120px;">Status</th>
+                  <th style="width: 90px;">Return Date</th>
+                  <th>Remarks / Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRowsHtml || '<tr><td colspan="9" style="text-align: center; padding: 20px;">No assets found matching the criteria.</td></tr>'}
+              </tbody>
+            </table>
+
+            <div class="footer-box">
+              <div class="sig-block">Prepared By</div>
+              <div class="sig-block">Store In-Charge</div>
+              <div class="sig-block">Authorized Signatory</div>
+            </div>
+
+            <script>
+              window.onload = function() {
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `
+
+      printWindow.document.open()
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to print assets")
+    } finally {
+      setIsPrinting(false)
+    }
+  }
+
+  const handlePrintSingleAsset = (asset: any) => {
+    const printWindow = window.open("", "_blank", "width=850,height=900")
+    if (!printWindow) {
+      toast.error("Please allow popups to print asset details.")
+      return
+    }
+
+    const pId = asset.projectId?._id || asset.projectId
+    const projectObj = projects.find((p) => String(p._id || p.id) === String(pId))
+    const projectName = projectObj?.projectName || "—"
+    const issuedDateStr = asset.issuedDate 
+      ? new Date(asset.issuedDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "long", year: "numeric" }) 
+      : "—"
+    const returnDateVal = asset.returnDate || asset.returnedAt || asset.lastReturnDate || returnDatesByAssetId[String(asset._id)]
+    const returnDateStr = returnDateVal
+      ? new Date(returnDateVal).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "long", year: "numeric" })
+      : "—"
+    const maintenanceDateStr = asset.maintenanceDueDate
+      ? new Date(asset.maintenanceDueDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "long", year: "numeric" })
+      : "—"
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Asset Slip - ${asset.name || "Asset"}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 15mm 12mm;
+            }
+            body {
+              font-family: Arial, -apple-system, BlinkMacSystemFont, sans-serif;
+              color: #111827;
+              margin: 0;
+              padding: 0;
+              font-size: 12px;
+              line-height: 1.5;
+            }
+            .border-box {
+              border: 2px solid #18181b;
+              border-radius: 8px;
+              padding: 24px;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #18181b;
+              padding-bottom: 16px;
+              margin-bottom: 20px;
+            }
+            .company {
+              font-size: 20px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .title {
+              font-size: 13px;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: #4b5563;
+              margin-top: 4px;
+            }
+            .grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 16px;
+              margin-bottom: 24px;
+            }
+            .field-label {
+              font-size: 10px;
+              font-weight: 800;
+              text-transform: uppercase;
+              color: #6b7280;
+              margin-bottom: 3px;
+            }
+            .field-val {
+              font-size: 13px;
+              font-weight: 700;
+              color: #111827;
+              padding: 8px 12px;
+              background: #f9fafb;
+              border: 1px solid #e5e7eb;
+              border-radius: 6px;
+            }
+            .full-width {
+              grid-column: span 2;
+            }
+            .signatures {
+              margin-top: 60px;
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 20px;
+              text-align: center;
+            }
+            .sig-line {
+              border-top: 1px solid #111827;
+              padding-top: 8px;
+              font-weight: 800;
+              font-size: 11px;
+              text-transform: uppercase;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="border-box">
+            <div class="header">
+              <div class="company">VPG Construction Private Limited</div>
+              <div class="title">Official Asset Allocation & Verification Slip</div>
+              <div style="font-size: 10px; color: #6b7280; margin-top: 6px;">Generated: ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+            </div>
+
+            <div class="grid">
+              <div>
+                <div class="field-label">Asset Name</div>
+                <div class="field-val">${asset.name || "—"}</div>
+              </div>
+              <div>
+                <div class="field-label">Asset Type / Category</div>
+                <div class="field-val">${asset.type || "—"}</div>
+              </div>
+              <div>
+                <div class="field-label">Serial Number</div>
+                <div class="field-val">${asset.serialNumber || "—"}</div>
+              </div>
+              <div>
+                <div class="field-label">Allocated Project</div>
+                <div class="field-val">${projectName}</div>
+              </div>
+              <div>
+                <div class="field-label">Issued Date</div>
+                <div class="field-val">${issuedDateStr}</div>
+              </div>
+              <div>
+                <div class="field-label">Current Status</div>
+                <div class="field-val">${asset.status || "Issued"}</div>
+              </div>
+              <div>
+                <div class="field-label">Maintenance Due Date</div>
+                <div class="field-val">${maintenanceDateStr}</div>
+              </div>
+              <div>
+                <div class="field-label">Return Date</div>
+                <div class="field-val">${returnDateStr}</div>
+              </div>
+              <div class="full-width">
+                <div class="field-label">Remarks / Operator Details</div>
+                <div class="field-val" style="min-height: 50px;">${asset.extraNote || "No remarks specified."}</div>
+              </div>
+            </div>
+
+            <div class="signatures">
+              <div>
+                <div style="height: 40px;"></div>
+                <div class="sig-line">Prepared By</div>
+              </div>
+              <div>
+                <div style="height: 40px;"></div>
+                <div class="sig-line">Site Store In-Charge</div>
+              </div>
+              <div>
+                <div style="height: 40px;"></div>
+                <div class="sig-line">Receiver / Operator</div>
+              </div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `
+
+    printWindow.document.open()
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+  }
 
   const fetchTransferRequests = async () => {
     try {
@@ -225,7 +719,7 @@ export default function StoresPage() {
         name: newName,
         type: newType,
         projectId: newProjectId,
-        serialNumber: newSerialNumber,
+        serialNumber: newSerialNumber.trim() || undefined,
         issuedDate: newIssuedDate || undefined,
         status: newStatus,
         maintenanceDueDate: newMaintenanceDate || undefined,
@@ -258,7 +752,7 @@ export default function StoresPage() {
       await assetService.updateAsset(editingAsset._id, {
         name: editName,
         type: editType,
-        serialNumber: editSerialNumber,
+        serialNumber: editSerialNumber.trim() || undefined,
         issuedDate: editIssuedDate || undefined,
         status: editStatus,
         maintenanceDueDate: editMaintenanceDate || undefined,
@@ -338,6 +832,19 @@ export default function StoresPage() {
       ),
     },
     {
+      id: "project",
+      header: "Project",
+      cell: ({ row }) => {
+        const pId = row.original.projectId?._id || row.original.projectId
+        const projectObj = projects.find((p) => String(p._id || p.id) === String(pId))
+        return (
+          <span className="text-zinc-700 font-semibold text-xs">
+            {projectObj?.projectName || "—"}
+          </span>
+        )
+      },
+    },
+    {
       accessorKey: "serialNumber",
       header: "Serial Number",
       cell: ({ row }) => (
@@ -385,7 +892,17 @@ export default function StoresPage() {
       id: "actions",
       header: () => <div className="w-full text-center">Operations</div>,
       cell: ({ row }) => (
-        <div className="flex justify-center gap-2 w-full">
+        <div className="flex justify-center gap-1.5 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePrintSingleAsset(row.original)}
+            className="h-9 px-2.5 rounded-xl text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 font-bold text-[11px] gap-1.5 transition-all"
+            title="Print Asset Slip"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            Print
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -528,33 +1045,66 @@ export default function StoresPage() {
             <TabsTrigger value="requests" className="h-11 px-8 rounded-xl font-bold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 transition-all">Asset Return Request</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="list" className="space-y-8 outline-none">
+          <TabsContent value="list" className="space-y-6 outline-none">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="relative w-full sm:w-72">
+              <div className="relative w-full sm:w-80">
                  <Input 
-                   placeholder="Search assets..." 
+                   placeholder="Search assets by name, serial no, note..." 
                    value={searchTerm}
                    onChange={(e) => setSearchTerm(e.target.value)}
-                   className="h-12 rounded-2xl bg-white border-zinc-100 pl-11 font-bold shadow-sm focus:ring-primary" 
+                   className="h-11 rounded-xl bg-white border-zinc-200/80 pl-10 font-medium text-sm shadow-xs focus:ring-primary" 
                  />
-                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-300" />
+                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-              <Select value={selectedProjectId || "all"} onValueChange={(value) => { setSelectedProjectId(value === "all" ? "" : value); setPage(1); setSelectedAssetIds([]) }}>
-                <SelectTrigger className="h-11 w-[220px] rounded-xl bg-white font-semibold"><SelectValue placeholder="All projects" /></SelectTrigger>
-                <SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map((project) => <SelectItem key={project._id || project.id} value={String(project._id || project.id)}>{project.projectName}</SelectItem>)}</SelectContent>
-              </Select>
-              {selectedAssetIds.length > 0 && <Button variant="destructive" className="h-11 rounded-xl" disabled={isBulkDeleting} onClick={handleBulkDeleteAssets}>
-                {isBulkDeleting ? "Deleting..." : `Delete ${selectedAssetIds.length} Selected`}
-              </Button>}
-              {/* Create Asset Dialog */}
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-11 rounded-xl px-6 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300">
-                     Add Asset
+              <div className="flex flex-wrap items-center gap-2.5">
+                <Button
+                  onClick={handlePrintAssets}
+                  disabled={isPrinting}
+                  className="h-11 rounded-xl px-4 font-bold shadow-xs bg-zinc-900 hover:bg-zinc-800 text-white flex items-center gap-2 text-xs"
+                >
+                  <Printer className="h-4 w-4" />
+                  {isPrinting ? "Preparing..." : "Print Register"}
+                </Button>
+
+                <Button
+                  variant={showFilters ? "default" : "outline"}
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={cn(
+                    "h-11 rounded-xl px-4 gap-2 font-bold text-xs shadow-xs transition-all",
+                    showFilters 
+                      ? "bg-primary text-primary-foreground shadow-primary/20" 
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                  )}
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <Badge variant="secondary" className="ml-0.5 px-1.5 py-0.5 text-[10px] font-black bg-zinc-100 text-zinc-900 rounded-md">
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </Button>
+
+                {selectedAssetIds.length > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    className="h-11 rounded-xl px-4 font-bold text-xs" 
+                    disabled={isBulkDeleting} 
+                    onClick={handleBulkDeleteAssets}
+                  >
+                    {isBulkDeleting ? "Deleting..." : `Delete ${selectedAssetIds.length} Selected`}
                   </Button>
-                </DialogTrigger>
+                )}
+
+                {/* Create Asset Dialog */}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="h-11 rounded-xl px-5 font-bold shadow-lg shadow-primary/20 bg-primary text-primary-foreground flex items-center gap-2 transition-all active:scale-95 duration-300 text-xs">
+                       <Plus className="h-4 w-4" />
+                       Add Asset
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden bg-white max-h-[90vh] flex flex-col">
                   <DialogHeader className="p-8 pb-6 bg-gradient-to-br from-zinc-50 to-white border-b border-zinc-100 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -610,7 +1160,7 @@ export default function StoresPage() {
 
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2.5">
-                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number</Label>
+                        <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number (Optional)</Label>
                         <Input 
                           placeholder="e.g. SN-982173" 
                           value={newSerialNumber}
@@ -673,6 +1223,110 @@ export default function StoresPage() {
               </Dialog>
             </div>
             </div>
+
+            {/* Filters Panel */}
+            {showFilters && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-5 bg-white rounded-2xl border border-zinc-200/80 shadow-xs animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Project</Label>
+                  <Select 
+                    value={selectedProjectId || "all"} 
+                    onValueChange={(value) => { 
+                      setSelectedProjectId(value === "all" ? "" : value)
+                      setPage(1)
+                      setSelectedAssetIds([]) 
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-zinc-50 border-zinc-200/70 font-semibold text-xs">
+                      <SelectValue placeholder="All projects" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl bg-white max-h-72">
+                      <SelectItem value="all">All Projects</SelectItem>
+                      {projects.map((project) => (
+                        <SelectItem key={project._id || project.id} value={String(project._id || project.id)}>
+                          {project.projectName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Asset Type</Label>
+                  <Select 
+                    value={selectedType || "all"} 
+                    onValueChange={(value) => { 
+                      setSelectedType(value === "all" ? "" : value)
+                      setPage(1) 
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-zinc-50 border-zinc-200/70 font-semibold text-xs">
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl bg-white">
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="Vehicle">Vehicle</SelectItem>
+                      <SelectItem value="Equipment">Equipment</SelectItem>
+                      <SelectItem value="Tool">Tool</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Furniture">Furniture</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Status</Label>
+                  <Select 
+                    value={selectedStatus || "all"} 
+                    onValueChange={(value) => { 
+                      setSelectedStatus(value === "all" ? "" : value)
+                      setPage(1) 
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-zinc-50 border-zinc-200/70 font-semibold text-xs">
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl bg-white">
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="Issued">Issued</SelectItem>
+                      <SelectItem value="Under Maintenance">Under Maintenance</SelectItem>
+                      <SelectItem value="Returned">Returned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Date From</Label>
+                  <Input 
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                    className="h-11 rounded-xl bg-zinc-50 border-zinc-200/70 font-semibold text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Date To</Label>
+                  <Input 
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                    className="h-11 rounded-xl bg-zinc-50 border-zinc-200/70 font-semibold text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5 flex items-end">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleClearFilters}
+                    disabled={activeFilterCount === 0}
+                    className="h-11 w-full rounded-xl font-bold text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-200"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            )}
             
             {/* Ledger Card */}
             {loading ? (
@@ -806,7 +1460,7 @@ export default function StoresPage() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2.5">
-                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number</Label>
+                  <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serial Number (Optional)</Label>
                   <Input 
                     value={editSerialNumber}
                     onChange={(e) => setEditSerialNumber(e.target.value)}

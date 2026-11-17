@@ -15,11 +15,11 @@ export type ApiAsset = {
 export type CreateAssetPayload = Omit<ApiAsset, "_id">
 
 export const assetService = {
-  async getAssets(params?: { page?: number; limit?: number; search?: string; status?: string; type?: string; sortBy?: string; sortOrder?: string; projectId?: string }): Promise<any> {
+  async getAssets(params?: { page?: number; limit?: number; search?: string; status?: string; type?: string; sortBy?: string; sortOrder?: string; projectId?: string; dateFrom?: string; dateTo?: string }): Promise<any> {
     const query = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) query.append(key, String(value))
+        if (value !== undefined && value !== "") query.append(key, String(value))
       })
     }
     const queryString = query.toString()
