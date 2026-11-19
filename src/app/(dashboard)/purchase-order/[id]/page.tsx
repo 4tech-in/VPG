@@ -1059,20 +1059,22 @@ export default function PODetailPage() {
         </div>
       </div>
 
-      <VerificationSheet
-        key={verificationReceiptId || "pending-receipt"}
-        po={po}
-        receiptId={verificationReceiptId}
-        initialAction={verificationInitialAction}
-        isOpen={isVerificationSheetOpen}
-        onClose={() => {
-          setIsVerificationSheetOpen(false);
-          setVerificationInitialAction(null);
-        }}
-        onSuccess={() => {
-          fetchPO();
-        }}
-      />
+      {isSuperAdminOrAdmin && (
+        <VerificationSheet
+          key={verificationReceiptId || "pending-receipt"}
+          po={po}
+          receiptId={verificationReceiptId}
+          initialAction={verificationInitialAction}
+          isOpen={isVerificationSheetOpen}
+          onClose={() => {
+            setIsVerificationSheetOpen(false);
+            setVerificationInitialAction(null);
+          }}
+          onSuccess={() => {
+            fetchPO();
+          }}
+        />
+      )}
     </ContentLayout>
   );
 }
