@@ -1036,7 +1036,7 @@ export default function PODetailPage() {
                 Quick Actions
               </h4>
               <div className="flex flex-col gap-2">
-                {isPendingVerification && (
+                {isPendingVerification && isSuperAdminOrAdmin && (
                   <Button
                     className="w-full justify-start gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold"
                     onClick={() => {
@@ -1048,7 +1048,7 @@ export default function PODetailPage() {
                     <ClipboardCheck className="h-4 w-4" /> Verify Receipt
                   </Button>
                 )}
-                {!isPendingVerification && (
+                {(!isPendingVerification || !isSuperAdminOrAdmin) && (
                   <p className="text-xs text-zinc-500 font-bold">
                     No quick actions available.
                   </p>
