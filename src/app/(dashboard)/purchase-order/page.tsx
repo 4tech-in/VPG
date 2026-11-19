@@ -44,7 +44,12 @@ import { useAuthStore } from "@/store/use-auth-store";
 export default function PurchaseOrderPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.roleId?.name?.toLowerCase() === "admin";
+  const roleName = String(user?.roleId?.name || "").toLowerCase().trim();
+  const roleScope = String(user?.roleId?.scope || "").toLowerCase().trim();
+  const isAdmin = 
+    roleScope === "organization" || 
+    ["admin", "superadmin", "super admin"].includes(roleName) ||
+    Boolean(user?.roleId?.permissions?.includes("*"));
   const {
     purchaseOrders,
     isLoading,

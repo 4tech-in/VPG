@@ -55,10 +55,18 @@ import { VerificationSheet } from "@/components/purchase-order/verification-shee
 import { ReceiptHistory } from "@/components/purchase-order/receipt-history";
 import { ReceiptDialog } from "@/components/purchase-order/receipt-dialog";
 import { materialIssueService } from "@/service/materialIssue.api";
+import { useAuthStore } from "@/store/use-auth-store";
 
 export default function MaterialDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const roleName = String(user?.roleId?.name || "").toLowerCase().trim();
+  const roleScope = String(user?.roleId?.scope || "").toLowerCase().trim();
+  const isSuperAdminOrAdmin = 
+    roleScope === "organization" || 
+    ["admin", "superadmin", "super admin"].includes(roleName) ||
+    Boolean(user?.roleId?.permissions?.includes("*"));
   const [po, setPo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReceiveModalOpen, setIsReceiveModalOpen] = useState(false);
@@ -479,7 +487,7 @@ export default function MaterialDetailPage() {
                   + Receive Shipment
                 </Button>
               )}
-            {isPendingVerification && (
+            {isPendingVerification && isSuperAdminOrAdmin && (
               <Button
                 onClick={() => setIsVerificationSheetOpen(true)}
                 className="h-10 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs uppercase tracking-wider rounded-lg shadow-md px-6"
@@ -823,6 +831,7 @@ export default function MaterialDetailPage() {
                 receipts={po.receipts ?? []}
                 items={items}
                 approvedOnly={false}
+                canApprove={isSuperAdminOrAdmin}
                 onViewReceipt={(index) => {
                   setSelectedReceiptIndex(index);
                   setIsReceiptOpen(true);

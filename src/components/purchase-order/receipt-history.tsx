@@ -4,6 +4,7 @@ import { getImageUrl } from "@/lib/image-url";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/use-auth-store";
 
 type Material = {
   itemId?: string | { _id?: string; itemName?: string; name?: string };
@@ -38,6 +39,7 @@ export function ReceiptHistory({
   onApprove,
   onReject,
   approvedOnly = false,
+  canApprove,
   title,
   subtitle,
 }: {
@@ -47,9 +49,20 @@ export function ReceiptHistory({
   onApprove?: (receiptId: string) => void;
   onReject?: (receiptId: string) => void;
   approvedOnly?: boolean;
+  canApprove?: boolean;
   title?: string;
   subtitle?: string;
 }) {
+  const user = useAuthStore((state) => state.user);
+  const roleName = String(user?.roleId?.name || "").toLowerCase().trim();
+  const roleScope = String(user?.roleId?.scope || "").toLowerCase().trim();
+  const isSuperAdminOrAdmin = 
+    roleScope === "organization" || 
+    ["admin", "superadmin", "super admin"].includes(roleName) ||
+    Boolean(user?.roleId?.permissions?.includes("*"));
+
+  const userCanApprove = canApprove !== undefined ? canApprove : isSuperAdminOrAdmin;
+
   const [filterTab, setFilterTab] = useState<"all" | "approved" | "pending">(approvedOnly ? "approved" : "all");
 
   const approvedList = receipts.filter((receipt) =>
@@ -245,7 +258,7 @@ export function ReceiptHistory({
                           <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-bold text-zinc-800 border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900 shadow-2xs" onClick={() => onViewReceipt(targetIndex)} aria-label={`View receipt for request ${targetIndex + 1}`}>
                             <FileText className="h-3.5 w-3.5 text-zinc-500" />Receipt
                           </Button>
-                          {pending && (
+                          {pending && userCanApprove && (
                             <>
                               <Button
                                 size="sm"

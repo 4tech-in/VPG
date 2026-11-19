@@ -61,7 +61,13 @@ export default function PODetailPage() {
   const params = useParams();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.roleId?.name?.toLowerCase() === "admin";
+  const roleName = String(user?.roleId?.name || "").toLowerCase().trim();
+  const roleScope = String(user?.roleId?.scope || "").toLowerCase().trim();
+  const isSuperAdminOrAdmin = 
+    roleScope === "organization" || 
+    ["admin", "superadmin", "super admin"].includes(roleName) ||
+    Boolean(user?.roleId?.permissions?.includes("*"));
+  const isAdmin = isSuperAdminOrAdmin;
   const [po, setPo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVerificationSheetOpen, setIsVerificationSheetOpen] = useState(false);
@@ -402,18 +408,18 @@ export default function PODetailPage() {
               ? po
               : { ...po, receipts: [po.receipts[selectedReceiptIndex]] }
           }
-          onApprove={(receiptId) => {
+          onApprove={isSuperAdminOrAdmin ? (receiptId) => {
             setIsReceiptOpen(false);
             setVerificationReceiptId(receiptId);
             setVerificationInitialAction("approve");
             setIsVerificationSheetOpen(true);
-          }}
-          onReject={(receiptId) => {
+          } : undefined}
+          onReject={isSuperAdminOrAdmin ? (receiptId) => {
             setIsReceiptOpen(false);
             setVerificationReceiptId(receiptId);
             setVerificationInitialAction("reject");
             setIsVerificationSheetOpen(true);
-          }}
+          } : undefined}
         />
 
         {/* 5-Column Core Dashboard Summary Info Grid */}
@@ -740,20 +746,21 @@ export default function PODetailPage() {
             <ReceiptHistory
               receipts={po.receipts ?? []}
               items={items}
+              canApprove={isSuperAdminOrAdmin}
               onViewReceipt={(index) => {
                 setSelectedReceiptIndex(index);
                 setIsReceiptOpen(true);
               }}
-              onApprove={(receiptId) => {
+              onApprove={isSuperAdminOrAdmin ? (receiptId) => {
                 setVerificationReceiptId(receiptId);
                 setVerificationInitialAction("approve");
                 setIsVerificationSheetOpen(true);
-              }}
-              onReject={(receiptId) => {
+              } : undefined}
+              onReject={isSuperAdminOrAdmin ? (receiptId) => {
                 setVerificationReceiptId(receiptId);
                 setVerificationInitialAction("reject");
                 setIsVerificationSheetOpen(true);
-              }}
+              } : undefined}
             />
 
             {/* Remarks & Notes Card row */}
