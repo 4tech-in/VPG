@@ -668,7 +668,10 @@ export default function PODetailPage() {
                               <span className="text-[9px] font-semibold text-zinc-400 mt-0.5">
                                 Specification:{" "}
                                 <span className="text-zinc-600 font-bold">
-                                  {item.specification || "N/A"}
+                                  {item.itemId?.specification ||
+                                    item.itemId?.unindentSpecification ||
+                                    item.specification ||
+                                    "N/A"}
                                 </span>
                               </span>
                             </div>

@@ -679,7 +679,10 @@ export default function MaterialDetailPage() {
                             </span>{" "}
                             | Spec:{" "}
                             <span className="text-slate-600">
-                              {item.specification || "N/A"}
+                              {item.itemId?.specification ||
+                                item.itemId?.unindentSpecification ||
+                                item.specification ||
+                                "N/A"}
                             </span>
                           </span>
                         </div>

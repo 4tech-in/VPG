@@ -324,17 +324,25 @@ export function purchaseOrderReceiptHtml(
 
   const itemsHtml = (po.items || [])
     .map(
-      (item: any, index: number) => `
+      (item: any, index: number) => {
+        const spec =
+          item.itemId?.specification ||
+          item.itemId?.unindentSpecification ||
+          item.specification ||
+          "-";
+        return `
       <tr>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${index + 1}</td>
-        <td style="padding: 10px; border: 1px solid #000;">${item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</td>
+        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${item.itemId?.itemName || item.itemId?.name || "Unknown Item"}</td>
+        <td style="padding: 10px; border: 1px solid #000; text-align: left;">${spec}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.itemId?.HSNcode || item.itemId?.unindentHSNcode || "-"}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.itemId?.unitId?.name || item.itemId?.unitId?.unitName || item.itemId?.unitId?.label || item.unitId?.name || item.unitId?.unitName || item.unitId?.label || "-"}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${item.orderQuantity || item.indentQuantity}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: center;">${Number(item.rate || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
         <td style="padding: 10px; border: 1px solid #000; text-align: right;">${Number(item.amount || (item.orderQuantity || item.indentQuantity) * (item.rate || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
       </tr>
-    `,
+    `;
+      },
     )
     .join("");
 
@@ -591,7 +599,8 @@ export function purchaseOrderReceiptHtml(
             page-break-inside: avoid;
             break-inside: avoid;
           }
-          .items-table td:nth-child(2) {
+          .items-table td:nth-child(2),
+          .items-table td:nth-child(3) {
             text-align: left;
           }
           .items-table .totals-row td {
@@ -771,11 +780,12 @@ export function purchaseOrderReceiptHtml(
               <tr >
                 <th style="width: 40px;">SR</th>
                 <th style="text-align: left;">DESCRIPTION</th>
-                <th style="width: 80px;">HSN</th>
-                <th style="width: 80px;">UNIT</th>
-                <th style="width: 80px;">QTY</th>
-                <th style="width: 80px;">RATE</th>
-                <th style="width: 100px;">TOTAL</th>
+                <th style="text-align: left; width: 110px;">SPECIFICATION</th>
+                <th style="width: 75px;">HSN</th>
+                <th style="width: 75px;">UNIT</th>
+                <th style="width: 65px;">QTY</th>
+                <th style="width: 75px;">RATE</th>
+                <th style="width: 95px;">TOTAL</th>
               </tr>
             </thead>
             <tbody>
@@ -783,7 +793,7 @@ export function purchaseOrderReceiptHtml(
               <!-- Empty rows to fill space as in image -->
               <!-- Empty rows removed to save space -->
               <tr class="totals-row">
-                <td colspan="5" style="border: none;"></td>
+                <td colspan="6" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Subtotal</td>
                 <td style="border: 1px solid #000;">${itemsSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
@@ -791,19 +801,19 @@ export function purchaseOrderReceiptHtml(
                 totalAdditionalCharges > 0
                   ? `
               <tr class="totals-row">
-                <td colspan="5" style="border: none;"></td>
+                <td colspan="6" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">Additional Charges</td>
                 <td style="border: 1px solid #000;">${totalAdditionalCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>`
                   : ""
               }
               <tr class="totals-row">
-                <td colspan="5" style="border: none;"></td>
+                <td colspan="6" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000;">GST ${gstPercent}%</td>
                 <td style="border: 1px solid #000;">${gstCalculatedAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr class="totals-row">
-                <td colspan="5" style="border: none;"></td>
+                <td colspan="6" style="border: none;"></td>
                 <td style="border: 1px solid #000; border-left: 1px solid #000; font-weight: bold;">G. Total</td>
                 <td style="border: 1px solid #000; font-weight: bold;">${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
               </tr>
