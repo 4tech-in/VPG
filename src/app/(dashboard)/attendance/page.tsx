@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 
 import { ContentLayout } from "@/components/admin-panel/content-layout"
+import { exportToExcel } from "@/lib/export-excel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable } from "@/components/ui/data-table"
@@ -634,34 +635,27 @@ export default function AttendancePage() {
         })
 
         return [
-          `"${(emp.name || "").replace(/"/g, '""')}"`,
-          `"${(emp.email || "").replace(/"/g, '""')}"`,
-          `"${(emp.mobile || "").replace(/"/g, '""')}"`,
-          `"${(emp.dept || "").replace(/"/g, '""')}"`,
-          `"${(emp.role || "").replace(/"/g, '""')}"`,
-          ...dayStatuses.map((s) => `"${s}"`),
+          emp.name || "",
+          emp.email || "",
+          emp.mobile || "",
+          emp.dept || "",
+          emp.role || "",
+          ...dayStatuses,
           emp.totalPresent,
           emp.totalLate,
           emp.totalHalfDay,
           emp.totalAbsent,
           emp.totalWeeklyOff,
-        ].join(",")
+        ]
       })
 
-      const csvContent = [headers.join(","), ...rows].join("\n")
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.setAttribute("href", url)
-      link.setAttribute(
-        "download",
-        `attendance_month_sheet_${format(selectedMonth, "yyyy_MM")}.csv`
+      exportToExcel(
+        `attendance_month_sheet_${format(selectedMonth, "yyyy_MM")}.xlsx`,
+        `Attendance ${format(selectedMonth, "MMM yyyy")}`,
+        headers,
+        rows
       )
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      toast.success("Month attendance sheet exported successfully!")
+      toast.success("Month attendance sheet exported to Excel successfully!")
     } else {
       if (filteredData.length === 0) {
         toast.error("No attendance logs found to export.")
@@ -689,32 +683,16 @@ export default function AttendancePage() {
         const status = rec.status || "-"
         const note = rec.note || ""
 
-        return [
-          `"${name.replace(/"/g, '""')}"`,
-          `"${email.replace(/"/g, '""')}"`,
-          `"${dateStr}"`,
-          `"${checkIn}"`,
-          `"${checkOut}"`,
-          `"${hours}"`,
-          `"${status}"`,
-          `"${note.replace(/"/g, '""')}"`,
-        ].join(",")
+        return [name, email, dateStr, checkIn, checkOut, hours, status, note]
       })
 
-      const csvContent = [headers.join(","), ...rows].join("\n")
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.setAttribute("href", url)
-      link.setAttribute(
-        "download",
-        `attendance_logs_${format(fromDate || new Date(), "yyyyMMdd")}_${format(toDate || new Date(), "yyyyMMdd")}.csv`
+      exportToExcel(
+        `attendance_logs_${format(fromDate || new Date(), "yyyyMMdd")}_${format(toDate || new Date(), "yyyyMMdd")}.xlsx`,
+        "Attendance Logs",
+        headers,
+        rows
       )
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      toast.success("Attendance logs exported successfully!")
+      toast.success("Attendance logs exported to Excel successfully!")
     }
   }
 
@@ -747,33 +725,16 @@ export default function AttendancePage() {
       const status = leave.status || "Pending"
       const applied = leave.createdAt ? format(new Date(leave.createdAt), "yyyy-MM-dd") : "-"
 
-      return [
-        `"${name.replace(/"/g, '""')}"`,
-        `"${email.replace(/"/g, '""')}"`,
-        `"${type.replace(/"/g, '""')}"`,
-        `"${start}"`,
-        `"${end}"`,
-        days,
-        `"${reason.replace(/"/g, '""')}"`,
-        `"${status}"`,
-        `"${applied}"`,
-      ].join(",")
+      return [name, email, type, start, end, days, reason, status, applied]
     })
 
-    const csvContent = [headers.join(","), ...rows].join("\n")
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute(
-      "download",
-      `leave_applications_${format(new Date(), "yyyy_MM_dd")}.csv`
+    exportToExcel(
+      `leave_applications_${format(new Date(), "yyyy_MM_dd")}.xlsx`,
+      "Leave Applications",
+      headers,
+      rows
     )
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    toast.success("Leave applications exported successfully!")
+    toast.success("Leave applications exported to Excel successfully!")
   }
 
   const columns: ColumnDef<AttendanceRecord>[] = [
@@ -1053,10 +1014,10 @@ export default function AttendancePage() {
                   variant="outline"
                   onClick={handleExportAttendance}
                   className="h-11 px-4 rounded-xl font-bold gap-2 text-zinc-700 bg-white hover:bg-zinc-50 border-zinc-200/80 shadow-sm transition-all text-xs cursor-pointer"
-                  title="Export Attendance Records as CSV"
+                  title="Export Attendance Records as Excel"
                 >
                   <Download className="h-4 w-4 text-[#006d64]" />
-                  <span>Export CSV</span>
+                  <span>Export Excel</span>
                 </Button>
               </>
             ) : (
@@ -1111,10 +1072,10 @@ export default function AttendancePage() {
                   variant="outline"
                   onClick={handleExportLeaves}
                   className="h-11 px-4 rounded-xl font-bold gap-2 text-zinc-700 bg-white hover:bg-zinc-50 border-zinc-200/80 shadow-sm transition-all text-xs cursor-pointer"
-                  title="Export Leave Records as CSV"
+                  title="Export Leave Records as Excel"
                 >
                   <Download className="h-4 w-4 text-zinc-700" />
-                  <span>Export CSV</span>
+                  <span>Export Excel</span>
                 </Button>
               </>
             )}
@@ -1242,7 +1203,7 @@ export default function AttendancePage() {
                       size="sm"
                       onClick={handleExportAttendance}
                       className="ml-auto sm:ml-2 h-7 px-2.5 rounded-lg text-[11px] font-bold gap-1.5 bg-white/10 hover:bg-white/20 text-teal-300 border border-white/10 transition-all cursor-pointer"
-                      title="Export Month Sheet as CSV"
+                      title="Export Month Sheet as Excel"
                     >
                       <Download className="h-3.5 w-3.5 text-teal-300" />
                       <span>Export</span>
