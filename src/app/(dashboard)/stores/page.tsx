@@ -478,136 +478,133 @@ export default function StoresPage() {
             }
             body {
               font-family: Arial, -apple-system, BlinkMacSystemFont, sans-serif;
-              color: #111827;
+              color: #000;
               margin: 0;
               padding: 0;
               font-size: 12px;
-              line-height: 1.5;
+              line-height: 1.45;
             }
-            .border-box {
-              border: 2px solid #18181b;
-              border-radius: 8px;
-              padding: 24px;
+            .slip {
+              border: 1px solid #000;
+              padding: 20px;
             }
             .header {
               text-align: center;
-              border-bottom: 2px solid #18181b;
-              padding-bottom: 16px;
-              margin-bottom: 20px;
+              border-bottom: 1px solid #000;
+              padding-bottom: 12px;
+              margin-bottom: 16px;
             }
             .company {
-              font-size: 20px;
-              font-weight: 900;
+              font-size: 18px;
+              font-weight: 700;
               text-transform: uppercase;
-              letter-spacing: 0.05em;
+              letter-spacing: 0.04em;
             }
             .title {
-              font-size: 13px;
-              font-weight: 800;
+              font-size: 12px;
+              font-weight: 700;
               text-transform: uppercase;
-              letter-spacing: 0.1em;
-              color: #4b5563;
+              letter-spacing: 0.08em;
               margin-top: 4px;
             }
-            .grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 16px;
+            .meta {
+              font-size: 10px;
+              color: #444;
+              margin-top: 4px;
+            }
+            table.details {
+              width: 100%;
+              border-collapse: collapse;
               margin-bottom: 24px;
             }
-            .field-label {
+            table.details th,
+            table.details td {
+              border: 1px solid #000;
+              padding: 8px 10px;
+              text-align: left;
+              vertical-align: top;
+            }
+            table.details th {
+              width: 18%;
+              background: #f3f4f6;
               font-size: 10px;
-              font-weight: 800;
-              text-transform: uppercase;
-              color: #6b7280;
-              margin-bottom: 3px;
-            }
-            .field-val {
-              font-size: 13px;
               font-weight: 700;
-              color: #111827;
-              padding: 8px 12px;
-              background: #f9fafb;
-              border: 1px solid #e5e7eb;
-              border-radius: 6px;
+              text-transform: uppercase;
+              color: #111;
             }
-            .full-width {
-              grid-column: span 2;
+            table.details td {
+              width: 32%;
+              font-size: 12px;
+              font-weight: 500;
             }
             .signatures {
-              margin-top: 60px;
+              margin-top: 56px;
               display: grid;
               grid-template-columns: 1fr 1fr 1fr;
-              gap: 20px;
+              gap: 24px;
               text-align: center;
             }
             .sig-line {
-              border-top: 1px solid #111827;
-              padding-top: 8px;
-              font-weight: 800;
-              font-size: 11px;
+              border-top: 1px solid #000;
+              padding-top: 6px;
+              font-weight: 700;
+              font-size: 10px;
               text-transform: uppercase;
             }
           </style>
         </head>
         <body>
-          <div class="border-box">
+          <div class="slip">
             <div class="header">
               <div class="company">VPG Construction Private Limited</div>
-              <div class="title">Official Asset Allocation & Verification Slip</div>
-              <div style="font-size: 10px; color: #6b7280; margin-top: 6px;">Generated: ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+              <div class="title">Asset Allocation Slip</div>
+              <div class="meta">Generated: ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
             </div>
 
-            <div class="grid">
-              <div>
-                <div class="field-label">Asset Name</div>
-                <div class="field-val">${asset.name || "—"}</div>
-              </div>
-              <div>
-                <div class="field-label">Asset Type / Category</div>
-                <div class="field-val">${asset.type || "—"}</div>
-              </div>
-              <div>
-                <div class="field-label">Serial Number</div>
-                <div class="field-val">${asset.serialNumber || "—"}</div>
-              </div>
-              <div>
-                <div class="field-label">Allocated Project</div>
-                <div class="field-val">${projectName}</div>
-              </div>
-              <div>
-                <div class="field-label">Issued Date</div>
-                <div class="field-val">${issuedDateStr}</div>
-              </div>
-              <div>
-                <div class="field-label">Current Status</div>
-                <div class="field-val">${asset.status || "Issued"}</div>
-              </div>
-              <div>
-                <div class="field-label">Maintenance Due Date</div>
-                <div class="field-val">${maintenanceDateStr}</div>
-              </div>
-              <div>
-                <div class="field-label">Return Date</div>
-                <div class="field-val">${returnDateStr}</div>
-              </div>
-              <div class="full-width">
-                <div class="field-label">Remarks / Operator Details</div>
-                <div class="field-val" style="min-height: 50px;">${asset.extraNote || "No remarks specified."}</div>
-              </div>
-            </div>
+            <table class="details">
+              <tbody>
+                <tr>
+                  <th>Asset Name</th>
+                  <td><strong>${asset.name || "—"}</strong></td>
+                  <th>Type / Category</th>
+                  <td>${asset.type || "—"}</td>
+                </tr>
+                <tr>
+                  <th>Serial Number</th>
+                  <td>${asset.serialNumber || "—"}</td>
+                  <th>Project</th>
+                  <td>${projectName}</td>
+                </tr>
+                <tr>
+                  <th>Issued Date</th>
+                  <td>${issuedDateStr}</td>
+                  <th>Status</th>
+                  <td>${asset.status || "Issued"}</td>
+                </tr>
+                <tr>
+                  <th>Maintenance Due</th>
+                  <td>${maintenanceDateStr}</td>
+                  <th>Return Date</th>
+                  <td>${returnDateStr}</td>
+                </tr>
+                <tr>
+                  <th>Remarks</th>
+                  <td colspan="3">${asset.extraNote || "—"}</td>
+                </tr>
+              </tbody>
+            </table>
 
             <div class="signatures">
               <div>
-                <div style="height: 40px;"></div>
+                <div style="height: 36px;"></div>
                 <div class="sig-line">Prepared By</div>
               </div>
               <div>
-                <div style="height: 40px;"></div>
+                <div style="height: 36px;"></div>
                 <div class="sig-line">Site Store In-Charge</div>
               </div>
               <div>
-                <div style="height: 40px;"></div>
+                <div style="height: 36px;"></div>
                 <div class="sig-line">Receiver / Operator</div>
               </div>
             </div>
