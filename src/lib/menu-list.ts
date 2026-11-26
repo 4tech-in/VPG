@@ -153,17 +153,17 @@ export function getMenuList(
             {
               href: "/stores",
               label: "Asset Master",
-              permission: "asset:view"
+              permission: "stores:view"
             },
             {
               href: "/asset-site-transfers",
               label: "Site Transfers",
-              permission: "asset-site-transfer:view"
+              permission: "stores:view"
             },
             {
               href: "/asset-maintenances",
               label: "Maintenance",
-              permission: "asset-maintenance:view"
+              permission: "stores:view"
             }
           ]
         },
